@@ -1,0 +1,17 @@
+{
+  "name": "@pakangers/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Supabase client and generated types for the Pakangers tournament platform.",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

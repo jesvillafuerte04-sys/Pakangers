@@ -4,18 +4,18 @@
 
 ## Implementation phases
 
-| Phase | What | Needed for the first tournament? |
-|---|---|---|
-| **1** | **Engine** (pure TS, test-first): format registry, round robin, single elimination, standings with configurable tiebreakers, qualification resolver, stage wiring, validation suite | ✅ |
-| **2** | **Data layer**: Supabase project, schema migrations, RLS policies, typed client, seed from template | ✅ |
-| **3** | **Organizer console**: passcode gate, setup wizard, players, teams, groups, stages, lock | ✅ |
-| **4** | **Score entry**: match list, per-game entry, derive → recompute → populate, edit with audit log, forfeits | ✅ |
-| **5** | **Public view**: live/upcoming/completed, standings, bracket, results, QR, realtime | ✅ |
-| 6 | **Scheduling**: courts, ordering, greedy auto-assign with conflict + rest checks, manual override | ❌ |
-| 7 | **Rules module**: rule sets, per-tournament selection, curated summaries with links | ❌ |
-| 8 | **DUPR export**: CSV in DUPR template shape, eligibility flags, submission records | ❌ |
-| 9 | **Templates**: save-as-template, create-from-template, seed the three starter templates | ❌ |
-| 10 | **Hardening**: offline score queue, full dry run, printable standings and bracket | ✅ (partial) |
+| Phase | What | Needed for the first tournament? | Status |
+|---|---|---|---|
+| **1** | **Engine** (pure TS, test-first): format registry, round robin, single elimination, standings with configurable tiebreakers, qualification resolver, stage wiring, validation suite | ✅ | **Done** — `packages/engine`, 46 tests |
+| **2** | **Data layer**: Supabase project, schema migrations, RLS policies, typed client, seed from template | ✅ | **Done** — `packages/db`, project `pakangers-tournament`, real tournament seeded in `draft` |
+| **3** | **Organizer console**: passcode gate, setup wizard, players, teams, groups, stages, lock | ✅ | Not started |
+| **4** | **Score entry**: match list, per-game entry, derive → recompute → populate, edit with audit log, forfeits | ✅ | Not started |
+| **5** | **Public view**: live/upcoming/completed, standings, bracket, results, QR, realtime | ✅ | Not started |
+| 6 | **Scheduling**: courts, ordering, greedy auto-assign with conflict + rest checks, manual override | ❌ | Not started |
+| 7 | **Rules module**: rule sets, per-tournament selection, curated summaries with links | ❌ | Not started |
+| 8 | **DUPR export**: CSV in DUPR template shape, eligibility flags, submission records | ❌ | Not started |
+| 9 | **Templates**: save-as-template, create-from-template, seed the three starter templates | ❌ | Partial — 3 starter templates seeded; save-as-template UI not built |
+| 10 | **Hardening**: offline score queue, full dry run, printable standings and bracket | ✅ (partial) | Not started |
 
 **Phases 1–5 plus the offline queue and a dry run are what the first tournament actually requires.**
 Everything else can land afterward without disrupting a live event.
