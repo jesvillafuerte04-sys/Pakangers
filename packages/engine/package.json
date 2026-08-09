@@ -1,0 +1,15 @@
+{
+  "name": "@pakangers/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure tournament engine: formats, standings, qualification, brackets, validation. No database, no UI.",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  }
+}
