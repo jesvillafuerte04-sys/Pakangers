@@ -1,0 +1,21 @@
+:root{
+/* Brand base */
+--color-navy:#1B294B;--color-navy-hover:#263863;
+--color-gold:#C1A265;--color-gold-hover:#D9BB7D;
+--color-brown:#463220;
+--color-cream:#F5EEDC;--color-cream-dark:#EBE3CF;
+--color-white:#FFFFFF;
+/* Semantic */
+--color-success:#4A7C59;--color-error:#9B3838;
+--color-text-main:var(--color-brown);
+--color-text-muted:#8A7B6B;
+--color-text-inverse:var(--color-white);
+--color-nav-inactive:#7481A0;
+/* Aliases */
+--surface-page:var(--color-cream);
+--surface-card:var(--color-white);
+--surface-sunken:var(--color-cream-dark);
+--surface-inverse:var(--color-navy);
+--border-subtle:var(--color-cream-dark);
+--accent:var(--color-gold);
+--focus-ring:rgba(193,162,101,.2)}

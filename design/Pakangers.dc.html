@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link rel="stylesheet" href="_ds/pakangers-design-system-95a9a335-67db-4374-8261-bcb265bcf5a3/styles.css">
+<script src="_ds/pakangers-design-system-95a9a335-67db-4374-8261-bcb265bcf5a3/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Roboto+Slab:wght@700;900&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#131F3A;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#1B294B;text-decoration:none}a:hover{color:#1B294B}
+*{box-sizing:border-box}
+::-webkit-scrollbar{width:0;height:0}
+@keyframes livepulse{0%,100%{opacity:1}50%{opacity:.35}}
+</style>
+</helmet>
+
+<div style="display:flex;min-height:100vh;color:#F5EEDC">
+
+  <aside style="width:268px;flex:none;background:#1B294B;border-right:1px solid rgba(245,238,220,.1);padding:22px 16px 40px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;overflow-y:auto">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <img src="assets/pakangers-wordmark.png" alt="Pakangers" style="width:150px;height:auto;display:block;filter:invert(1) sepia(1) saturate(.35) hue-rotate(5deg) brightness(1.35)">
+      <div style="font:400 11px/1.4 Inter,sans-serif;color:rgba(245,238,220,.45)">TOURNAMENT PLATFORM · UI PASS</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <div style="font:700 10px/1 Inter,sans-serif;letter-spacing:.12em;color:rgba(245,238,220,.4)">ORGANIZER CONSOLE</div>
+      <sc-for list="{{ navA }}" as="s" hint-placeholder-count="15">
+        <button onClick="{{ s.go }}" style="display:flex;gap:9px;align-items:center;width:100%;text-align:left;padding:8px 9px;border-radius:8px;border:1px solid transparent;background:{{ s.bg }};color:{{ s.fg }};cursor:pointer;font:500 12.5px/1.2 Inter">
+          <span style="font:700 10px/1 Inter,sans-serif;opacity:.6;width:24px;flex:none">{{ s.id }}</span>
+          <span>{{ s.label }}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <div style="font:700 10px/1 Inter,sans-serif;letter-spacing:.12em;color:rgba(245,238,220,.4)">PUBLIC PLAYER PAGE</div>
+      <sc-for list="{{ navP }}" as="s" hint-placeholder-count="7">
+        <button onClick="{{ s.go }}" style="display:flex;gap:9px;align-items:center;width:100%;text-align:left;padding:8px 9px;border-radius:8px;border:1px solid transparent;background:{{ s.bg }};color:{{ s.fg }};cursor:pointer;font:500 12.5px/1.2 Inter">
+          <span style="font:700 10px/1 Inter,sans-serif;opacity:.6;width:24px;flex:none">{{ s.id }}</span>
+          <span>{{ s.label }}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="margin-top:auto;font:400 11px/1.6 Inter;color:rgba(245,238,220,.4);border-top:1px solid rgba(245,238,220,.1);padding-top:14px">
+      Scores you enter here really save — standings, brackets and the public page all recompute live.
+    </div>
+  </aside>
+
+  <main style="flex:1;display:flex;gap:34px;padding:40px 44px;align-items:flex-start;justify-content:center">
+
+    <div style="display:flex;flex-direction:column;gap:14px;align-items:center">
+      <div style="width:390px;font:400 11px/1.4 Inter,sans-serif;color:rgba(245,238,220,.45);display:flex;justify-content:space-between">
+        <span>{{ screenId }}</span><span>390 × 844</span>
+      </div>
+      <div style="width:410px;height:864px;border:10px solid #131F3A;border-radius:44px;background:#F5EEDC;overflow:hidden;position:relative;box-shadow:0 40px 90px rgba(70,50,32,.4);color:#1B294B;display:flex;flex-direction:column">
+
+        <div style="height:42px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font:600 13px/1 Inter;color:#1B294B;background:#F5EEDC">
+          <span>{{ clock }}</span>
+          <span style="display:flex;gap:5px;align-items:center;font:600 11px/1 Inter,sans-serif;opacity:.75">{{ netLabel }}</span>
+        </div>
+
+        <div style="flex:1;overflow-y:auto;overflow-x:hidden">
+
+          <sc-if value="{{ isA0 }}">
+            <div style="min-height:720px;display:flex;flex-direction:column;justify-content:center;gap:26px;padding:32px 26px 60px;background:#F2EBDD;color:#463220">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <img src="assets/pakangers-wordmark.png" alt="Pakangers" style="width:186px;height:auto;display:block;margin:0 0 10px">
+                <div style="font:900 14px/1.2 'Roboto Slab',serif;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap">1st Pakangers Exclusive Tournament</div>
+                <div style="font:400 13px/1.5 Inter;color:#8A7B6B">Organizer console · Sat 15 Aug</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <label style="font:600 11px/1 Inter,sans-serif;letter-spacing:.1em;color:#8A7B6B">PASSCODE</label>
+                <div style="display:flex;gap:10px">
+                  <sc-for list="{{ pinCells }}" as="c" hint-placeholder-count="4">
+                    <div style="flex:1;height:64px;border-radius:8px;background:#FFFFFF;border:2px solid {{ c.border }};display:flex;align-items:center;justify-content:center;font:700 26px/1 Inter,sans-serif;color:#1B294B">{{ c.ch }}</div>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ pinError }}"><div style="font:500 13px/1.4 Inter;color:#9B3838">That passcode doesn't match. Try again — nothing is locked out.</div></sc-if>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+                <sc-for list="{{ pinKeys }}" as="k" hint-placeholder-count="12">
+                  <button onClick="{{ k.press }}" style="height:60px;border-radius:9999px;border:2px solid {{ k.border }};background:{{ k.bg }};color:#1B294B;font:600 22px/1 Inter,sans-serif;cursor:pointer">{{ k.label }}</button>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="font:400 12.5px/1.5 Inter;color:#8A7B6B">Try 1234. After unlocking you type your name once — it's attached to every score you record.</div>
+                <div style="border-top:1px solid #EBE3CF;padding-top:10px;display:flex;flex-direction:column;gap:2px">
+                  <span style="font:600 9.5px/1 Inter,sans-serif;letter-spacing:1px;color:#8A7B6B">DEVELOPED BY</span>
+                  <span style="font:700 13px/1.3 'Roboto Slab',serif;letter-spacing:.5px;text-transform:uppercase;color:#463220">Jes Villafuerte</span>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isA1 }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:14px 18px 30px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font:600 10px/1 Inter,sans-serif;letter-spacing:1px;padding:4px 12px;border-radius:9999px;background:#1B294B;color:#F5EEDC">IN PROGRESS</span>
+                  <span style="font:400 12px/1 Inter;color:rgba(70,50,32,.55)">Pool stage · live</span>
+                </div>
+                <div style="font: 900 25px/1.1 'Roboto Slab',serif; letter-spacing: 1px; text-transform: uppercase; text-align: left">1ST PAKANGERS EXCLUSIVE TOURNAMENT</div>
+                <div style="font:400 13px/1 Inter;color:rgba(70,50,32,.55)">Sat 15 AUG · Tanjay City, Negros Oriental</div>
+              </div>
+
+              <div style="background:#1B294B;color:#F5EEDC;border-radius:16px;padding:16px 16px 14px;display:flex;flex-direction:column;gap:11px;border-top:6px solid #C1A265">
+                <div style="display:flex;justify-content:space-between;align-items:baseline">
+                  <span style="font:600 13px/1 Inter">Pool matches</span>
+                  <span style="font:700 15px/1 Inter,sans-serif">{{ poolProgress }}</span>
+                </div>
+                <div style="height:9px;border-radius:9999px;background:rgba(245,238,220,.16);overflow:hidden">
+                  <div style="height:100%;background:#C1A265;width:{{ poolPct }}"></div>
+                </div>
+                <div style="font:400 12px/1.4 Inter;color:rgba(245,238,220,.6)">Knockout unlocks when every pool match has a score.</div>
+              </div>
+
+              <sc-if value="{{ hasAttention }}">
+                <div style="border:1.5px solid #9B3838;border-radius:16px;padding:13px 14px;display:flex;flex-direction:column;gap:8px;background:#F7E9E9">
+                  <div style="font:700 11px/1 Inter,sans-serif;letter-spacing:.1em;color:#9B3838">NEEDS ATTENTION</div>
+                  <sc-for list="{{ attention }}" as="a" hint-placeholder-count="2">
+                    <div style="font:500 13.5px/1.45 Inter">{{ a.text }}</div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <div style="font:700 11px/1 Inter,sans-serif;letter-spacing:.1em;color:rgba(70,50,32,.5)">NEXT UP</div>
+                <sc-for list="{{ nextUp }}" as="m" hint-placeholder-count="3">
+                  <div style="background:#fff;border-top:6px solid #C1A265;border-radius:16px;padding:14px 13px 12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 4px 12px rgba(70,50,32,.12)">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                      <span style="font:600 11px/1 Inter,sans-serif;color:rgba(70,50,32,.5)">{{ m.code }} · {{ m.group }}</span>
+                      <span style="font:600 11px/1 Inter,sans-serif;color:rgba(70,50,32,.5)">{{ m.court }}</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:7px">
+                      <div style="display:flex;flex-direction:column;gap:1px">
+                        <span style="font:700 16px/1.15 Inter;letter-spacing:0">{{ m.aName }}</span>
+                        <span style="font:400 12px/1.2 Inter;color:rgba(70,50,32,.5)">{{ m.aPlayers }}</span>
+                      </div>
+                      <span style="font:700 10px/1 Inter,sans-serif;color:rgba(70,50,32,.35)">VS</span>
+                      <div style="display:flex;flex-direction:column;gap:1px">
+                        <span style="font:700 16px/1.15 Inter;letter-spacing:0">{{ m.bName }}</span>
+                        <span style="font:400 12px/1.2 Inter;color:rgba(70,50,32,.5)">{{ m.bPlayers }}</span>
+                      </div>
+                    </div>
+                    <button onClick="{{ m.enter }}" style="height:50px;border:none;border-radius:9999px;background:#1B294B;color:#C1A265;font:600 15px/1 Inter;cursor:pointer;width:100%">Enter score</button>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+                <sc-for list="{{ quickLinks }}" as="q" hint-placeholder-count="4">
+                  <button onClick="{{ q.go }}" style="padding:14px 12px;border-radius:9999px;border:2px solid #1B294B;background:transparent;text-align:left;cursor:pointer;font:600 14px/1.2 Inter;color:#1B294B">{{ q.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isA8 }}">
+            <div style="display:flex;flex-direction:column">
+              <div style="position:sticky;top:0;background:#F5EEDC;padding:12px 18px 10px;z-index:2;border-bottom:1px solid rgba(70,50,32,.1);display:flex;flex-direction:column;gap:10px">
+                <div style="font:900 23px/1 'Roboto Slab',serif;letter-spacing:1px;text-transform:uppercase">Matches</div>
+                <div style="display:flex;gap:7px">
+                  <sc-for list="{{ filters }}" as="f" hint-placeholder-count="3">
+                    <button onClick="{{ f.go }}" style="flex:1;height:38px;border-radius:9999px;border:2px solid {{ f.border }};background:{{ f.bg }};color:{{ f.fg }};font:600 13px/1 Inter;cursor:pointer">{{ f.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:12px 18px 30px;display:flex;flex-direction:column;gap:9px">
+                <sc-for list="{{ matchRows }}" as="m" hint-placeholder-count="6">
+                  <button onClick="{{ m.enter }}" style="color:#1B294B;text-align:left;width:100%;background:#fff;border-top:6px solid {{ m.border }};border-radius:16px;padding:14px 13px 12px;display:flex;flex-direction:column;gap:9px;cursor:pointer;box-shadow:0 4px 12px rgba(70,50,32,.12)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+                      <span style="font:600 11px/1 Inter,sans-serif;color:rgba(70,50,32,.5)">{{ m.code }} · {{ m.group }}</span>
+                      <span style="font:600 10px/1 Inter,sans-serif;letter-spacing:1px;padding:4px 12px;border-radius:9999px;background:{{ m.statusBg }};color:{{ m.statusFg }}">{{ m.status }}</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;width:100%">
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+                        <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                          <span style="font-family:Inter,sans-serif;font-size:16px;line-height:1.15;font-weight:{{ m.aWeight }}">{{ m.aName }}</span>
+                          <span style="font:400 11.5px/1.2 Inter;color:rgba(70,50,32,.5)">{{ m.aPlayers }}</span>
+                        </div>
+                        <span style="font:700 22px/1 Inter,sans-serif;color:{{ m.aScoreColor }}">{{ m.aScore }}</span>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+                        <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                          <span style="font-family:Inter,sans-serif;font-size:16px;line-height:1.15;font-weight:{{ m.bWeight }}">{{ m.bName }}</span>
+                          <span style="font:400 11.5px/1.2 Inter;color:rgba(70,50,32,.5)">{{ m.bPlayers }}</span>
+                        </div>
+                        <span style="font:700 22px/1 Inter,sans-serif;color:{{ m.bScoreColor }}">{{ m.bScore }}</span>
+                      </div>
+                    </div>
+                    <div style="font:500 11.5px/1 Inter;color:rgba(70,50,32,.45)">{{ m.footer }}</div>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isA9 }}">
+            <div style="min-height:740px;display:flex;flex-direction:column;background:#F5EEDC">
+              <div style="padding:12px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(70,50,32,.12)">
+                <button onClick="{{ backToList }}" style="border:none;background:none;font:600 14px/1 Inter;color:#1B294B;cursor:pointer;padding:6px 0">← Matches</button>
+                <span style="font:600 11px/1 Inter,sans-serif;color:rgba(70,50,32,.5)">{{ entryCode }}</span>
+              </div>
+
+              <div style="padding:14px 18px;background:#1B294B;color:#F5EEDC;display:flex;flex-direction:column;gap:4px;border-bottom:4px solid #C1A265">
+                <div style="font:700 10px/1 Inter,sans-serif;letter-spacing:.1em;color:#C1A265">SCORING RULE FOR THIS STAGE</div>
+                <div style="font:600 16px/1.25 Inter">{{ entryRule }}</div>
+              </div>
+
+              <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ entrySides }}" as="s" hint-placeholder-count="2">
+                  <button onClick="{{ s.focus }}" style="color:#1B294B;width:100%;text-align:left;background:#fff;border:2px solid {{ s.border }};border-top:6px solid {{ s.border }};border-radius:16px;padding:14px 15px;box-shadow:0 4px 12px rgba(70,50,32,.12);display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                      <span style="font:700 19px/1.1 Inter;letter-spacing:0">{{ s.name }}</span>
+                      <span style="font:400 12.5px/1.2 Inter;color:rgba(70,50,32,.55)">{{ s.players }}</span>
+                    </div>
+                    <span style="font:700 46px/1 Inter,sans-serif;color:{{ s.numColor }}">{{ s.score }}</span>
+                  </button>
+                </sc-for>
+
+                <sc-if value="{{ showSteppers }}">
+                  <div style="display:flex;gap:10px">
+                    <sc-for list="{{ stepperBtns }}" as="b" hint-placeholder-count="4">
+                      <button onClick="{{ b.press }}" style="flex:1;height:62px;border-radius:16px;border:1.5px solid rgba(70,50,32,.18);background:#fff;font:700 20px/1 Inter,sans-serif;color:#1B294B;cursor:pointer">{{ b.label }}</button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ showKeypad }}">
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px">
+                    <sc-for list="{{ padKeys }}" as="k" hint-placeholder-count="12">
+                      <button onClick="{{ k.press }}" style="height:58px;border-radius:16px;border:1.5px solid rgba(70,50,32,.16);background:{{ k.bg }};color:{{ k.fg }};font:600 22px/1 Inter,sans-serif;cursor:pointer">{{ k.label }}</button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ entryError }}">
+                  <div style="border-radius:8px;background:#F7E9E9;border:1.5px solid #9B3838;padding:12px 13px;font:500 13.5px/1.45 Inter;color:#9B3838">{{ entryError }}</div>
+                </sc-if>
+
+                <sc-if value="{{ entryPrior }}">
+                  <div style="font:400 12.5px/1.45 Inter;color:rgba(70,50,32,.55)">{{ entryPrior }}</div>
+                </sc-if>
+
+                <div style="font:500 13px/1 Inter;color:rgba(70,50,32,.6)">Recorded by <span style="font-weight:700;color:#1B294B">Jes</span></div>
+
+                <button onClick="{{ saveScore }}" style="height:62px;border:none;border-radius:9999px;background:{{ saveBg }};color:#C1A265;font:600 18px/1 Inter;letter-spacing:.01em;cursor:pointer">{{ saveLabel }}</button>
+
+                <div style="display:flex;gap:8px">
+                  <sc-for list="{{ secondaryActions }}" as="s" hint-placeholder-count="3">
+                    <button style="flex:1;height:40px;border-radius:9999px;border:2px solid rgba(27,41,75,.3);background:transparent;font:500 12.5px/1 Inter;color:rgba(70,50,32,.6);cursor:pointer">{{ s.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isStandings }}">
+            <div style="padding:14px 18px 30px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font:900 23px/1 'Roboto Slab',serif;letter-spacing:1px;text-transform:uppercase">Standings</div>
+                <div style="font:400 12.5px/1.45 Inter;color:rgba(70,50,32,.6)">Ties broken by: head-to-head, then point differential, then points scored.</div>
+              </div>
+
+              <sc-for list="{{ standings }}" as="g" hint-placeholder-count="2">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline">
+                    <span style="font:700 15px/1 Inter">{{ g.name }}</span>
+                    <span style="font:600 9.5px/1 Inter,sans-serif;letter-spacing:1px;color:#1B294B;background:#C1A265;padding:4px 10px;border-radius:9999px">TOP {{ g.qualify }} ADVANCE</span>
+                  </div>
+                  <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="4">
+                    <div style="display:flex;flex-direction:column">
+                      <button onClick="{{ r.toggle }}" style="color:#1B294B;width:100%;text-align:left;background:{{ r.bg }};border:{{ r.borderW }} solid {{ r.border }};border-top:{{ r.barW }} solid {{ r.bar }};border-radius:8px;padding:11px 12px;display:flex;align-items:center;gap:11px;cursor:pointer;box-shadow:{{ r.shadow }};opacity:{{ r.dim }}">
+                        <span style="display:flex;flex-direction:column;align-items:center;gap:3px;width:26px;flex:none">
+                          <span style="font:700 17px/1 Inter,sans-serif;color:{{ r.rankColor }}">{{ r.rank }}</span>
+                          <sc-if value="{{ r.q }}"><span style="width:18px;height:3px;border-radius:9999px;background:#C1A265"></span></sc-if>
+                        </span>
+                        <span style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
+                          <span style="font-family:Inter,sans-serif;font-size:15.5px;line-height:1.15;font-weight:{{ r.nameWeight }}">{{ r.name }}</span>
+                          <sc-if value="{{ r.q }}"><span style="font:600 9px/1 Inter,sans-serif;letter-spacing:1px;color:#1B294B;background:#C1A265;padding:3px 8px;border-radius:9999px;align-self:flex-start;margin-top:2px">ADVANCING</span></sc-if>
+                          <span style="font:400 11.5px/1.2 Inter;color:rgba(70,50,32,.5)">{{ r.players }}</span>
+                        </span>
+                        <span style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex:none">
+                          <span style="display:flex;align-items:baseline;gap:2px;font:700 16px/1 Inter,sans-serif">
+                            <span style="color:#4A7C59">{{ r.w }}</span>
+                            <span style="color:rgba(70,50,32,.35)">–</span>
+                            <span style="color:#9B3838">{{ r.l }}</span>
+                            <span style="color:rgba(70,50,32,.35)">–</span>
+                            <span style="color:{{ r.pdColor }}">{{ r.pd }}</span>
+                          </span>
+                          <span style="font:600 9.5px/1 Inter,sans-serif;letter-spacing:1px;color:{{ r.diffColor }}">{{ r.diff }}</span>
+                        </span>
+                      </button>
+                      <sc-if value="{{ r.open }}">
+                        <div style="margin:6px 0 2px;padding:11px 12px;background:#fff;border:1px solid rgba(70,50,32,.12);border-radius:8px;display:flex;flex-direction:column;gap:7px">
+                          <div style="display:flex;gap:16px">
+                            <sc-for list="{{ r.stats }}" as="s" hint-placeholder-count="3">
+                              <span style="display:flex;flex-direction:column;gap:2px">
+                                <span style="font:600 10px/1 Inter,sans-serif;letter-spacing:.08em;color:rgba(70,50,32,.45)">{{ s.k }}</span>
+                                <span style="font:700 15px/1 Inter,sans-serif">{{ s.v }}</span>
+                              </span>
+                            </sc-for>
+                          </div>
+                          <sc-for list="{{ r.matches }}" as="m" hint-placeholder-count="3">
+                            <div style="display:flex;justify-content:space-between;font:500 12.5px/1.3 Inter;color:rgba(70,50,32,.7)">
+                              <span>{{ m.label }}</span><span style="font-family:Inter,sans-serif;font-weight:700;color:{{ m.color }}">{{ m.score }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ r.line }}">
+                        <div style="display:flex;align-items:center;gap:9px;margin:8px 0 2px">
+                          <div style="flex:1;height:0;border-top:2px dashed #9B3838"></div>
+                          <span style="font:600 9px/1 Inter,sans-serif;letter-spacing:1px;color:#9B3838">ELIMINATED BELOW</span>
+                          <div style="flex:1;height:0;border-top:2px dashed #9B3838"></div>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+
+              <sc-if value="{{ isA10 }}">
+                <div style="border:1px solid rgba(70,50,32,.14);border-radius:8px;padding:12px;background:#fff;display:flex;flex-direction:column;gap:6px">
+                  <div style="font:700 10px/1 Inter,sans-serif;letter-spacing:.1em;color:rgba(70,50,32,.5)">ORGANIZER ONLY</div>
+                  <div style="font:500 13px/1.45 Inter">Tap any team to see the matches behind its numbers — that's how you settle a placement question at the court.</div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isBracket }}">
+            <div style="padding:14px 18px 30px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font:900 23px/1 'Roboto Slab',serif;letter-spacing:1px;text-transform:uppercase">Knockout</div>
+                <div style="font:400 12.5px/1.45 Inter;color:rgba(70,50,32,.6)">First to 15, win by 2. Unfilled slots name where the team comes from.</div>
+              </div>
+              <sc-for list="{{ bracket }}" as="rd" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <div style="display:flex;align-items:center;gap:9px">
+                    <span style="font:700 11px/1 Inter,sans-serif;letter-spacing:.1em;color:rgba(70,50,32,.5)">{{ rd.name }}</span>
+                    <div style="flex:1;height:0;border-top:1px solid rgba(70,50,32,.14)"></div>
+                  </div>
+                  <sc-for list="{{ rd.matches }}" as="m" hint-placeholder-count="2">
+                    <button onClick="{{ m.enter }}" style="color:#1B294B;width:100%;text-align:left;background:{{ m.bg }};border:1.5px solid {{ m.border }};border-radius:16px;padding:0;overflow:hidden;cursor:pointer">
+                      <div style="padding:8px 12px;display:flex;justify-content:space-between;background:rgba(70,50,32,.04)">
+                        <span style="font:600 11px/1 Inter,sans-serif;color:rgba(70,50,32,.55)">{{ m.code }}</span>
+                        <span style="font:600 11px/1 Inter,sans-serif;color:rgba(70,50,32,.55)">{{ m.status }}</span>
+                      </div>
+                      <sc-for list="{{ m.slots }}" as="s" hint-placeholder-count="2">
+                        <div style="padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid rgba(70,50,32,.08)">
+                          <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                            <span style="font-family:Inter,sans-serif;font-size:16px;line-height:1.15;font-weight:{{ s.weight }};color:{{ s.color }}">{{ s.name }}</span>
+                            <span style="font:400 11.5px/1.2 Inter;color:rgba(70,50,32,.45)">{{ s.sub }}</span>
+                          </span>
+                          <span style="font:700 20px/1 Inter,sans-serif;color:{{ s.color }}">{{ s.score }}</span>
+                        </div>
+                      </sc-for>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isP0 }}">
+            <div style="padding:14px 18px 30px;display:flex;flex-direction:column;gap:15px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font:900 19px/1.12 'Roboto Slab',serif;letter-spacing:1px;text-transform:uppercase">1st Pakangers Exclusive Tournament</div>
+                  <div style="font:400 12px/1.3 Inter;color:rgba(70,50,32,.55)">Sat 15 Aug · Tanjay City, Negros Oriental</div>
+                </div>
+                <span style="font:500 10px/1.3 Inter,sans-serif;color:rgba(70,50,32,.45);text-align:right;flex:none">UPDATED<br>JUST NOW</span>
+              </div>
+
+              <sc-if value="{{ hasLive }}">
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <div style="display:flex;align-items:center;gap:7px">
+                    <span style="width:8px;height:8px;border-radius:9999px;background:#9B3838;animation:livepulse 1.8s ease-in-out infinite"></span>
+                    <span style="font:700 11px/1 Inter,sans-serif;letter-spacing:.1em;color:#9B3838">LIVE NOW</span>
+                  </div>
+                  <sc-for list="{{ liveMatches }}" as="m" hint-placeholder-count="1">
+                    <div style="background:#1B294B;color:#F5EEDC;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;border-top:6px solid #C1A265">
+                      <div style="display:flex;justify-content:space-between;font:600 11px/1 Inter,sans-serif;color:rgba(245,238,220,.55)">
+                        <span>{{ m.code }} · {{ m.group }}</span><span>{{ m.court }}</span>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:8px">
+                        <div style="display:flex;flex-direction:column;gap:1px">
+                          <span style="font:700 18px/1.1 Inter;letter-spacing:0">{{ m.aName }}</span>
+                          <span style="font:400 12px/1.2 Inter;color:rgba(245,238,220,.5)">{{ m.aPlayers }}</span>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:1px">
+                          <span style="font:700 18px/1.1 Inter;letter-spacing:0">{{ m.bName }}</span>
+                          <span style="font:400 12px/1.2 Inter;color:rgba(245,238,220,.5)">{{ m.bPlayers }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <div style="font:700 11px/1 Inter,sans-serif;letter-spacing:.1em;color:rgba(70,50,32,.5)">UP NEXT</div>
+                <sc-for list="{{ nextUp }}" as="m" hint-placeholder-count="3">
+                  <div style="background:#fff;border-top:6px solid #C1A265;border-radius:16px;padding:13px 12px 11px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 4px 12px rgba(70,50,32,.12)">
+                    <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                      <span style="font:600 10.5px/1 Inter,sans-serif;color:rgba(70,50,32,.45)">{{ m.code }} · {{ m.group }}</span>
+                      <span style="font:700 15px/1.2 Inter;letter-spacing:0">{{ m.aName }} <span style="font-weight:400;color:rgba(70,50,32,.4)">v</span> {{ m.bName }}</span>
+                    </div>
+                    <span style="font:700 11px/1 Inter,sans-serif;color:#1B294B;flex:none">{{ m.court }}</span>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline">
+                  <span style="font:700 11px/1 Inter,sans-serif;letter-spacing:.1em;color:rgba(70,50,32,.5)">POOL LEADERS</span>
+                  <button onClick="{{ goP2 }}" style="border:none;background:none;font:600 12.5px/1 Inter;color:#1B294B;cursor:pointer;padding:0">Full standings →</button>
+                </div>
+                <sc-for list="{{ leaders }}" as="l" hint-placeholder-count="2">
+                  <div style="background:#fff;border-top:6px solid #C1A265;border-radius:16px;padding:13px 12px 11px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 12px rgba(70,50,32,.12)">
+                    <span style="font:600 11px/1 Inter,sans-serif;color:rgba(70,50,32,.45)">{{ l.group }}</span>
+                    <sc-for list="{{ l.rows }}" as="r" hint-placeholder-count="2">
+                      <div style="display:flex;align-items:center;gap:9px">
+                        <span style="font:700 13px/1 Inter,sans-serif;color:#1B294B;width:14px">{{ r.rank }}</span>
+                        <span style="flex:1;font:600 14px/1.2 Inter;min-width:0">{{ r.name }}</span>
+                        <span style="font:700 13px/1 Inter,sans-serif">{{ r.wl }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isP1 }}">
+            <div style="display:flex;flex-direction:column">
+              <div style="position:sticky;top:0;background:#F5EEDC;padding:12px 18px 10px;z-index:2;border-bottom:1px solid rgba(70,50,32,.1);display:flex;flex-direction:column;gap:10px">
+                <div style="font:900 23px/1 'Roboto Slab',serif;letter-spacing:1px;text-transform:uppercase">Matches</div>
+                <div style="display:flex;gap:7px">
+                  <sc-for list="{{ filters }}" as="f" hint-placeholder-count="3">
+                    <button onClick="{{ f.go }}" style="flex:1;height:38px;border-radius:9999px;border:2px solid {{ f.border }};background:{{ f.bg }};color:{{ f.fg }};font:600 13px/1 Inter;cursor:pointer">{{ f.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:12px 18px 30px;display:flex;flex-direction:column;gap:9px">
+                <sc-for list="{{ matchRows }}" as="m" hint-placeholder-count="6">
+                  <div style="background:#fff;border-top:6px solid {{ m.border }};border-radius:16px;padding:14px 13px 12px;display:flex;flex-direction:column;gap:9px;box-shadow:0 4px 12px rgba(70,50,32,.12)">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                      <span style="font:600 11px/1 Inter,sans-serif;color:rgba(70,50,32,.5)">{{ m.code }} · {{ m.group }}</span>
+                      <span style="font:600 10px/1 Inter,sans-serif;letter-spacing:1px;padding:4px 12px;border-radius:9999px;background:{{ m.statusBg }};color:{{ m.statusFg }}">{{ m.status }}</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+                        <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                          <span style="font-family:Inter,sans-serif;font-size:16px;line-height:1.15;font-weight:{{ m.aWeight }}">{{ m.aName }}</span>
+                          <span style="font:400 11.5px/1.2 Inter;color:rgba(70,50,32,.5)">{{ m.aPlayers }}</span>
+                        </span>
+                        <span style="font:700 22px/1 Inter,sans-serif;color:{{ m.aScoreColor }}">{{ m.aScore }}</span>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+                        <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                          <span style="font-family:Inter,sans-serif;font-size:16px;line-height:1.15;font-weight:{{ m.bWeight }}">{{ m.bName }}</span>
+                          <span style="font:400 11.5px/1.2 Inter;color:rgba(70,50,32,.5)">{{ m.bPlayers }}</span>
+                        </span>
+                        <span style="font:700 22px/1 Inter,sans-serif;color:{{ m.bScoreColor }}">{{ m.bScore }}</span>
+                      </div>
+                    </div>
+                    <div style="font:500 11.5px/1 Inter;color:rgba(70,50,32,.45)">{{ m.footer }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isP6 }}">
+            <div style="min-height:740px;background:#1B294B;color:#F5EEDC;padding:22px 18px 34px;display:flex;flex-direction:column;gap:22px">
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <span style="font:700 10px/1 Inter,sans-serif;letter-spacing:.14em;color:#C1A265">FINAL RESULTS</span>
+                <span style="font:900 23px/1.1 'Roboto Slab',serif;letter-spacing:1px;text-transform:uppercase">1st Pakangers Exclusive Tournament</span>
+                <span style="font:400 12.5px/1 Inter;color:rgba(245,238,220,.5)">15 August · Tanjay City · 9 teams · 20 matches</span>
+              </div>
+              <sc-for list="{{ podium }}" as="p" hint-placeholder-count="3">
+                <div style="border-radius:16px;padding:16px;background:{{ p.bg }};color:{{ p.fg }};display:flex;align-items:center;gap:14px">
+                  <span style="font:900 34px/1 Inter,sans-serif;opacity:.85">{{ p.place }}</span>
+                  <span style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                    <span style="font:700 10px/1 Inter,sans-serif;letter-spacing:.12em;opacity:.7">{{ p.title }}</span>
+                    <span style="font:900 21px/1.1 Inter;letter-spacing:0">{{ p.name }}</span>
+                    <span style="font:400 13px/1.25 Inter;opacity:.7">{{ p.players }}</span>
+                  </span>
+                </div>
+              </sc-for>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font:700 10px/1 Inter,sans-serif;letter-spacing:.12em;color:rgba(245,238,220,.45)">THE FINAL</span>
+                <div style="font:600 16px/1.4 Inter">{{ finalLine }}</div>
+              </div>
+              <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+                <div style="font:400 12px/1.5 Inter;color:rgba(245,238,220,.4)">Full standings, every match and the final bracket stay live at this link.</div>
+                <div style="border-top:1px solid rgba(193,162,101,.35);padding-top:8px;font:600 9.5px/1.4 Inter,sans-serif;letter-spacing:1px;color:#C1A265">APP DEVELOPED BY JES VILLAFUERTE</div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isDoc }}">
+            <div style="padding:14px 18px 30px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <span style="font:700 10px/1 Inter,sans-serif;letter-spacing:.12em;color:rgba(70,50,32,.45)">{{ screenId }}</span>
+                <span style="font:900 23px/1.05 'Roboto Slab',serif;letter-spacing:1px;text-transform:uppercase">{{ docTitle }}</span>
+                <span style="font:400 13px/1.5 Inter;color:rgba(70,50,32,.6)">{{ docIntro }}</span>
+              </div>
+              <sc-for list="{{ docBlocks }}" as="b" hint-placeholder-count="4">
+                <div style="background:{{ b.bg }};border-top:6px solid {{ b.border }};border-radius:16px;padding:15px 14px 13px;box-shadow:0 4px 12px rgba(70,50,32,.12);display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                    <span style="font:700 14.5px/1.2 Inter;letter-spacing:0">{{ b.title }}</span>
+                    <sc-if value="{{ b.tag }}"><span style="font:600 9.5px/1 Inter,sans-serif;letter-spacing:1px;padding:4px 12px;border-radius:9999px;background:{{ b.tagBg }};color:{{ b.tagFg }};flex:none">{{ b.tag }}</span></sc-if>
+                  </div>
+                  <sc-if value="{{ b.body }}"><div style="font:400 13px/1.5 Inter;color:rgba(70,50,32,.68)">{{ b.body }}</div></sc-if>
+                  <sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="0">
+                    <div style="display:flex;justify-content:space-between;gap:12px;padding-top:7px;border-top:1px solid rgba(70,50,32,.09)">
+                      <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                        <span style="font:600 13.5px/1.25 Inter">{{ r.k }}</span>
+                        <sc-if value="{{ r.sub }}"><span style="font:400 11.5px/1.25 Inter;color:rgba(70,50,32,.5)">{{ r.sub }}</span></sc-if>
+                      </span>
+                      <span style="font:600 12.5px/1.3 Inter,sans-serif;color:{{ r.color }};text-align:right;flex:none">{{ r.v }}</span>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ b.action }}">
+                    <button style="height:44px;border:none;border-radius:9999px;background:#1B294B;color:#C1A265;font:600 14px/1 Inter;cursor:pointer;margin-top:2px">{{ b.action }}</button>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+        </div>
+
+        <sc-if value="{{ showTabs }}">
+          <div style="flex:none;display:flex;justify-content:space-around;background:#1B294B;padding:8px 0 16px;box-shadow:0 -4px 16px rgba(27,41,75,.1)">
+            <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+              <button onClick="{{ t.go }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;border:none;background:none;cursor:pointer;font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:{{ t.fg }};transition:color .2s ease">
+                <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:currentColor"><path d="{{ t.d }}"></path></svg>
+                <span>{{ t.label }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ toast }}">
+          <div style="position:absolute;left:16px;right:16px;bottom:84px;background:#1B294B;color:#F5EEDC;border-radius:16px;padding:13px 14px;font:600 13.5px/1.35 Inter;box-shadow:0 12px 30px rgba(70,50,32,.15)">{{ toast }}</div>
+        </sc-if>
+      </div>
+    </div>
+
+    <div style="width:300px;flex:none;display:flex;flex-direction:column;gap:16px;padding-top:26px">
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <span style="font:700 10px/1 Inter,sans-serif;letter-spacing:.12em;color:rgba(245,238,220,.4)">{{ screenId }}</span>
+        <span style="font:700 20px/1.15 Inter;letter-spacing:0">{{ noteTitle }}</span>
+        <span style="font:400 13.5px/1.55 Inter;color:rgba(245,238,220,.6)">{{ noteBody }}</span>
+      </div>
+      <div style="border-top:1px solid rgba(245,238,220,.12);padding-top:14px;display:flex;flex-direction:column;gap:11px">
+        <span style="font:700 10px/1 Inter,sans-serif;letter-spacing:.12em;color:rgba(245,238,220,.4)">DESIGN DECISIONS</span>
+        <sc-for list="{{ notePoints }}" as="p" hint-placeholder-count="3">
+          <div style="display:flex;gap:9px;font:400 13px/1.5 Inter;color:rgba(245,238,220,.72)">
+            <span style="color:#C1A265;flex:none">—</span><span>{{ p.text }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="border-top:1px solid rgba(245,238,220,.12);padding-top:14px;display:flex;flex-direction:column;gap:9px">
+        <span style="font:700 10px/1 Inter,sans-serif;letter-spacing:.12em;color:rgba(245,238,220,.4)">OPEN VARIATIONS</span>
+        <sc-for list="{{ variationSwitches }}" as="v" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font:500 12px/1.3 Inter;color:rgba(245,238,220,.55)">{{ v.label }}</span>
+            <div style="display:flex;gap:6px">
+              <sc-for list="{{ v.opts }}" as="o" hint-placeholder-count="2">
+                <button onClick="{{ o.go }}" style="flex:1;height:34px;border-radius:8px;border:1px solid {{ o.border }};background:{{ o.bg }};color:{{ o.fg }};font:600 12px/1 Inter;cursor:pointer">{{ o.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;scoreInput&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;keypad&quot;,&quot;stepper&quot;,&quot;both&quot;],&quot;default&quot;:&quot;keypad&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Open variations&quot;},&quot;standingsLayout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;cards&quot;,&quot;table&quot;],&quot;default&quot;:&quot;cards&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Open variations&quot;},&quot;publicDefault&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;now&quot;,&quot;standings&quot;],&quot;default&quot;:&quot;now&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Open variations&quot;}}">
+const GREEN = '#4A7C59', NAVY = '#1B294B', LIVE = '#9B3838', INK = '#463220', GOLD = '#C1A265';
+
+const TEAMS = [
+  { n: 1, name: 'Smash Bandits', players: 'Jes Villafuerte · Marco Reyes', g: 0, seed: 1 },
+  { n: 2, name: 'Net Ninjas', players: 'Ana Lim · Paolo Cruz', g: 0, seed: 4 },
+  { n: 3, name: 'Dink Dynasty', players: 'Rita Sy · Ben Ocampo', g: 0, seed: 5 },
+  { n: 4, name: 'Kitchen Sink', players: 'Cha Uy · Nico Tan', g: 0, seed: 8 },
+  { n: 5, name: 'Paddle Pop', players: 'Ivy Ramos · Dan Chua', g: 1, seed: 2 },
+  { n: 6, name: 'Third Shot Co.', players: 'Lea Dizon · Migs Alonzo', g: 1, seed: 3 },
+  { n: 7, name: 'Court Jesters', players: 'Kim Bautista · Raul Yap', g: 1, seed: 6 },
+  { n: 8, name: 'Baseline Bros', players: 'Ella Mendez · Toffee Lao', g: 1, seed: 7 },
+  { n: 9, name: 'Lob Story', players: 'Gio Panganiban · Mae Ferrer', g: 1, seed: 9 }
+];
+const GROUPS = ['Sunrise Pool', 'Sunset Pool'];
+
+function buildMatches() {
+  const ms = []; let n = 1;
+  [0, 1].forEach(g => {
+    const t = TEAMS.filter(x => x.g === g).map(x => x.n);
+    for (let i = 0; i < t.length; i++) for (let j = i + 1; j < t.length; j++)
+      ms.push({ id: 'M' + n, num: n++, stage: 'pool', group: GROUPS[g], gi: g, a: t[i], b: t[j], court: 'Court ' + (ms.length % 2 + 1) });
+  });
+  ms.push({ id: 'M17', num: 17, stage: 'ko', round: 'Semifinals', group: 'Semifinal 1', a: null, b: null, srcA: [0, 1], srcB: [1, 2], court: 'Court 1' });
+  ms.push({ id: 'M18', num: 18, stage: 'ko', round: 'Semifinals', group: 'Semifinal 2', a: null, b: null, srcA: [1, 1], srcB: [0, 2], court: 'Court 2' });
+  ms.push({ id: 'M19', num: 19, stage: 'ko', round: 'Third place', group: 'Third place', a: null, b: null, loserOf: ['M17', 'M18'], court: 'Court 2' });
+  ms.push({ id: 'M20', num: 20, stage: 'ko', round: 'Final', group: 'Final', a: null, b: null, winnerOf: ['M17', 'M18'], court: 'Court 1' });
+  return ms;
+}
+
+const SEED = { M1: [11, 6], M2: [9, 11], M3: [11, 4], M4: [11, 8], M5: [7, 11], M6: [11, 9], M7: [11, 3], M8: [8, 11], M9: [11, 7], M10: [11, 5], M11: [6, 11] };
+
+const ICONS = {
+  home: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+  matches: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z',
+  profile: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+  standings: 'M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z',
+  bracket: 'M22 11V3h-7v3H9V3H2v8h7V8h2v10h4v3h7v-8h-7v3h-2V8h2v3z'
+};
+
+const NOTES = {
+  A0: ['Passcode unlock', 'One shared organizer passcode, then a name for the audit trail. Session persists so nobody retypes it between matches.', ['Numeric pad rather than a text field — thumb-reachable, no keyboard shift', 'A wrong code is stated plainly and never locks anyone out', 'Dark here only: it is the one screen used indoors before the event']],
+  A1: ['Dashboard', 'Answers "what do I do next" in under two seconds. Progress, then the next matches, each one tap from a score.', ['Needs-attention block only renders when it has something to say', 'Next-up cards carry the Enter score button — no drill-down', 'Status pill states the live stage, not a decorative badge']],
+  A2: ['Setup wizard', 'Seven linear, resumable steps. Step 7 runs the full validation suite before locking.', ['Blocking issues name the entity and link to the fix', 'Warnings are acknowledged, not blocked', 'Templates pre-fill steps 4–6']],
+  A3: ['Players', 'Bulk paste is the fast path for 18 names. DUPR ID reads as genuinely optional.', ['No red state, no asterisk on a blank DUPR field', 'Search sits above the list, always reachable', 'Unassigned-player warning appears only after teams exist']],
+  A4: ['Teams', 'Where pairing happens. Swap is two taps, never delete-and-recreate.', ['Live validation panel is always visible, not a submit-time report', 'Custom team name is primary; players are subtext everywhere', 'Lock makes fields read-only with a visible unlock path']],
+  A5: ['Groups & draw', 'Group names are free text. The 4+5 split is presented as normal, not an error.', ['Never shows "A" and "B" as fixed labels', 'Uneven pools get a quiet explanatory note', 'Auto-distribute offers random or seeded snake']],
+  A6: ['Stages & scoring', 'The differentiator. Entrant wiring reads as two source slots feeding a match box.', ['Wiring is expressed in the tournament\u2019s own group names', 'Scoring is a per-stage setting shown as a sentence, not a form dump', 'Changing scoring after played matches raises a warning']],
+  A7: ['Schedule', 'Courts and order. Times are optional — many club events run "next on court 2 when it frees".', ['Conflicts render on the offending match, not as a count at the top', 'Manual reorder before auto-schedule', 'Works with zero times set']],
+  A8: ['Match list', 'The tournament-day workhorse. Defaults to Upcoming; whole row is the tap target.', ['Winner name goes bold, loser stays regular — scannable at arm\u2019s length', 'Completed matches reopen for correction with the same one tap', 'Live rows are outlined, not animated, in the list']],
+  A9: ['Score entry', 'Used more than everything else combined. Ten seconds, one hand, in sunlight.', ['The scoring rule sits on screen while you type — the top error preventer', 'Tap a team card to aim the keypad at it; the active side is outlined', 'Validation is specific: it names the rule that makes a score impossible']],
+  A10: ['Standings — organizer', 'Same data as public, plus the tiebreaker order and the matches behind each number.', ['Card rows beat a five-column table at 375px', 'W-L is the headline; differential is the secondary number', 'Expansion shows the evidence for a placement dispute']],
+  A11: ['Bracket — organizer', 'Vertical stacking by round. Empty slots name their source, never "TBD".', ['Tapping a bracket match opens the same score entry screen', 'Source labels use the organizer\u2019s own group names', 'No shrunken desktop tree, no pinch-zoom required']],
+  A12: ['Rules', 'Organizer-written summaries and links. Never full rulebook text.', ['Official and tournament-specific are visually separate', 'Scoring by stage is the block players actually read', 'Read-only mirror on the public page']],
+  A13: ['DUPR export', 'The job is making blocked rows actionable, not celebrating ready ones.', ['Blocked rows sort to the top and name the missing player', 'Each block links straight to that player\u2019s record', 'CSV export never depends on DUPR being reachable']],
+  A14: ['Audit log', 'Exists for one purpose: settling a dispute. Findable then, invisible otherwise.', ['Every entry states from-value, to-value, actor and time', 'Filterable by match', 'Read-only by construction']],
+  P0: ['Now', 'A sweaty player wants one thing: when do I play, and where do I stand.', ['Live match gets the inverted card — the only one on the screen', 'Header is compact; the player already knows what tournament this is', 'Pool leaders snippet answers the standings question without navigation']],
+  P1: ['Matches — public', 'Same rows as the organizer sees, minus every affordance to change anything.', ['Not tappable — nothing on the public page is interactive but navigation', 'Final score is the thing people scan for, so it is the largest element', 'Pool and knockout are visually distinguished']],
+  P2: ['Standings — public', 'Two things most platforms bury: the qualification line and the tiebreaker order.', ['Dashed qualification line sits between the rows, impossible to miss', 'Tiebreaker order stated in plain language at the top', 'Card rows, so a doubles name never truncates']],
+  P3: ['Bracket — public', 'Lets a player still in pools see exactly what they are playing for.', ['Source slots read "Sunrise Pool — 1st"', 'Champion is visually distinct once resolved', 'Same vertical layout as the organizer view']],
+  P4: ['Teams & players', 'Low frequency, genuinely useful — players look up who they are about to face.', ['Team name primary, both players listed in full', 'Grouped by pool with seed shown', 'No contact details ever exposed publicly']],
+  P5: ['Rules — public', 'Scoring by stage goes near the top because it is asked at every tournament.', ['Per-stage scoring is the first block, not buried under officialese', 'Links out to the official source instead of reproducing it', 'Tournament-specific rules in the organizer\u2019s own words']],
+  P6: ['Final results', 'The screenshot screen. The one place restraint is relaxed.', ['Podium is the whole first fold', 'Gold used exactly once in the product, here', 'Standings, archive and final bracket stay reachable below']]
+};
+
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.matches = buildMatches();
+    this.state = {
+      screen: 'A1', filter: 'Upcoming', results: Object.assign({}, ...Object.keys(SEED).map(k => ({ [k]: { a: SEED[k][0], b: SEED[k][1], by: 'Jes', at: '1:52pm' } }))),
+      live: 'M12', entryId: null, draft: { a: '', b: '' }, side: 'a', err: null, toast: null, open: null,
+      pin: '', pinError: false, scoreInput: null, standingsLayout: null, pubDefault: null
+    };
+  }
+  set(k, v) { this.setState({ [k]: v }); }
+  team(n) { return TEAMS.find(t => t.n === n); }
+
+  standingsFor(gi) {
+    const ts = TEAMS.filter(t => t.g === gi).map(t => ({ t, w: 0, l: 0, pf: 0, pa: 0 }));
+    this.matches.filter(m => m.stage === 'pool' && m.gi === gi).forEach(m => {
+      const r = this.state.results[m.id]; if (!r) return;
+      const A = ts.find(x => x.t.n === m.a), B = ts.find(x => x.t.n === m.b);
+      A.pf += r.a; A.pa += r.b; B.pf += r.b; B.pa += r.a;
+      if (r.a > r.b) { A.w++; B.l++; } else { B.w++; A.l++; }
+    });
+    ts.sort((x, y) => (y.w - x.w) || ((y.pf - y.pa) - (x.pf - x.pa)) || (y.pf - x.pf));
+    return ts;
+  }
+  qualifier(gi, rank) { const s = this.standingsFor(gi); return s[rank - 1] && s[rank - 1].w + s[rank - 1].l > 0 ? s[rank - 1].t : null; }
+  poolDone() { return this.matches.filter(m => m.stage === 'pool').every(m => this.state.results[m.id]); }
+
+  resolved(m) {
+    if (m.stage === 'pool') return { a: this.team(m.a), b: this.team(m.b), subA: '', subB: '' };
+    const done = this.poolDone();
+    if (m.srcA) return {
+      a: done ? this.qualifier(m.srcA[0], m.srcA[1]) : null, b: done ? this.qualifier(m.srcB[0], m.srcB[1]) : null,
+      subA: GROUPS[m.srcA[0]] + ' — ' + (m.srcA[1] === 1 ? '1st' : '2nd'), subB: GROUPS[m.srcB[0]] + ' — ' + (m.srcB[1] === 1 ? '1st' : '2nd')
+    };
+    const pick = (id, win) => { const r = this.state.results[id]; if (!r) return null; const mm = this.matches.find(x => x.id === id); const rr = this.resolved(mm); if (!rr.a || !rr.b) return null; const aWin = r.a > r.b; return win ? (aWin ? rr.a : rr.b) : (aWin ? rr.b : rr.a); };
+    const src = m.winnerOf || m.loserOf, win = !!m.winnerOf;
+    return { a: pick(src[0], win), b: pick(src[1], win), subA: (win ? 'Winner of ' : 'Loser of ') + src[0], subB: (win ? 'Winner of ' : 'Loser of ') + src[1] };
+  }
+
+  rule(m) { return m.stage === 'pool' ? 'First to 11 · sudden death at 11 · best of 1' : 'First to 15 · win by 2 · best of 1'; }
+  status(m) { return this.state.results[m.id] ? 'Completed' : (this.state.live === m.id ? 'Live' : 'Upcoming'); }
+
+  openEntry(id) { const r = this.state.results[id]; this.setState({ screen: 'A9', entryId: id, draft: r ? { a: String(r.a), b: String(r.b) } : { a: '', b: '' }, side: 'a', err: null }); }
+
+  save() {
+    const m = this.matches.find(x => x.id === this.state.entryId);
+    const a = parseInt(this.state.draft.a, 10), b = parseInt(this.state.draft.b, 10);
+    if (isNaN(a) || isNaN(b)) return this.set('err', 'Both teams need a score before this can be saved.');
+    if (a === b) return this.set('err', 'A match can\u2019t end level — ' + a + '–' + b + ' has no winner.');
+    const hi = Math.max(a, b), lo = Math.min(a, b);
+    if (m.stage === 'pool') {
+      if (hi !== 11) return this.set('err', 'This stage is first to 11: the winning score has to be exactly 11, not ' + hi + '.');
+      if (lo === 10) return this.set('err', 'Sudden death at 11: a score of 11–10 isn\u2019t possible in this stage.');
+    } else if (hi < 15 || (hi === 15 && lo > 13) || (hi > 15 && hi - lo !== 2)) {
+      return this.set('err', 'This stage is first to 15, win by 2: ' + hi + '–' + lo + ' isn\u2019t a possible finish.');
+    }
+    const next = Object.assign({}, this.state.results, { [m.id]: { a, b, by: 'Jes', at: '2:14pm' } });
+    const live = this.state.live === m.id ? null : this.state.live;
+    this.setState({ results: next, live, screen: 'A8', filter: 'Upcoming', entryId: null, err: null, toast: m.id + ' saved · standings updated' });
+    clearTimeout(this._t); this._t = setTimeout(() => this.set('toast', null), 2600);
+  }
+
+  navItem(id, label) {
+    const on = this.state.screen === id;
+    return { id, label, bg: on ? 'rgba(193,162,101,.16)' : 'transparent', fg: on ? '#C1A265' : 'rgba(245,238,220,.7)', go: () => this.setState({ screen: id, entryId: id === 'A9' ? (this.state.entryId || 'M12') : this.state.entryId, open: null }) };
+  }
+  chip(label, active, go) { return { label, go, border: active ? INK : 'rgba(70,50,32,.16)', bg: active ? INK : '#fff', fg: active ? '#F5EEDC' : 'rgba(70,50,32,.65)' }; }
+
+  matchCard(m) {
+    const r = this.state.results[m.id], st = this.status(m), rr = this.resolved(m);
+    const aw = r && r.a > r.b, bw = r && r.b > r.a;
+    return {
+      code: m.id, group: m.group, court: m.court, status: st.toUpperCase(),
+      statusBg: st === 'Live' ? '#F7E9E9' : st === 'Completed' ? 'rgba(27,41,75,.12)' : 'rgba(70,50,32,.06)',
+      statusFg: st === 'Live' ? LIVE : st === 'Completed' ? GREEN : 'rgba(70,50,32,.5)',
+      border: st === 'Live' ? LIVE : 'rgba(70,50,32,.13)',
+      aName: rr.a ? rr.a.name : rr.subA, bName: rr.b ? rr.b.name : rr.subB,
+      aPlayers: rr.a ? rr.a.players : 'awaiting result', bPlayers: rr.b ? rr.b.players : 'awaiting result',
+      aWeight: aw ? 700 : 500, bWeight: bw ? 700 : 500,
+      aScore: r ? r.a : '', bScore: r ? r.b : '',
+      aScoreColor: aw ? INK : 'rgba(70,50,32,.4)', bScoreColor: bw ? INK : 'rgba(70,50,32,.4)',
+      footer: r ? 'Recorded by ' + r.by + ' at ' + r.at + ' · tap to correct' : m.court + ' · tap to enter score',
+      enter: () => this.openEntry(m.id)
+    };
+  }
+
+  docFor(id) {
+    const B = (title, body, rows, tag, action) => ({ title, body, rows: rows || [], tag, action, bg: '#fff', border: 'rgba(70,50,32,.13)', tagBg: 'rgba(70,50,32,.07)', tagFg: 'rgba(70,50,32,.55)' });
+    const W = o => Object.assign(o, { bg: '#F7E9E9', border: LIVE, tagBg: LIVE, tagFg: '#F5EEDC' });
+    const row = (k, v, sub, color) => ({ k, v, sub, color: color || 'rgba(70,50,32,.6)' });
+    const g0 = this.standingsFor(0), g1 = this.standingsFor(1);
+    const maps = {
+      A2: ['Setup wizard', 'Step 7 of 7 — Review & lock. Everything below is checked before the tournament can start.', [
+        W(B('Pool sizes are uneven', 'Sunset Pool has 5 teams and plays one extra round. This is expected with 9 teams — acknowledge to continue.', [row('Acknowledge and continue', 'CHECK')], 'WARNING')),
+        B('18 of 18 players assigned', 'Every registered player is on exactly one team.', [], 'PASSED'),
+        B('9 teams, 2 groups', 'Sunrise Pool 4 · Sunset Pool 5.', [], 'PASSED'),
+        B('Stages configured', '', [row('Pool stage', 'TO 11', 'round robin · sudden death'), row('Knockout', 'TO 15', 'single elim · win by 2')], 'PASSED'),
+        B('Lock tournament', 'Locking freezes teams and groups. Scores can still be entered and corrected.', [], null, 'Lock and start')
+      ]],
+      A3: ['Players', '18 registered · 4 with a DUPR ID. Paste a list to add several at once.', [
+        B('Bulk add', 'Paste one name per line — the fastest path to a full roster.', [], null, 'Paste a list'),
+        B('Roster', '', TEAMS.flatMap(t => t.players.split(' · ').map(p => row(p, t.name, null))), null),
+        B('DUPR IDs', 'Optional. Most club players don\u2019t have one, and that\u2019s fine — it only affects the post-event export.', [row('Jes Villafuerte', '84K2P9'), row('Ivy Ramos', 'QQ71LM'), row('Everyone else', '—')])
+      ]],
+      A4: ['Teams', '9 teams · all locked. Team name is what appears everywhere in the product; players read as subtext.', [
+        Object.assign(B('Live validation', '', [row('18 of 18 players assigned', 'OK', null, GREEN), row('No player on two teams', 'OK', null, GREEN), row('All 9 teams have a group', 'OK', null, GREEN)], 'ALL CLEAR'), { bg: 'rgba(27,41,75,.06)', border: 'rgba(27,41,75,.4)', tagBg: GREEN, tagFg: '#F5EEDC' }),
+        B('Teams', 'Tap two players to swap them between teams — two taps, no delete-and-recreate.', TEAMS.map(t => row(t.name, 'SEED ' + t.seed, t.players)))
+      ]],
+      A5: ['Groups & draw', 'Group names are free text. Rename them to anything the club actually calls them.', [
+        B('Sunrise Pool', '4 teams · 6 matches', TEAMS.filter(t => t.g === 0).map(t => row(t.name, 'SEED ' + t.seed, t.players))),
+        B('Sunset Pool', '5 teams · 10 matches', TEAMS.filter(t => t.g === 1).map(t => row(t.name, 'SEED ' + t.seed, t.players))),
+        B('Uneven split', 'With 9 teams the split is 4 + 5. Sunset Pool plays one extra round — normal and expected, not something to fix.', [], 'NOTE'),
+        B('Redistribute', '', [row('Random draw', ''), row('Seeded snake', ''), row('Manual', 'CURRENT', null, GREEN)])
+      ]],
+      A6: ['Stages & scoring', 'Two stages. Knockout entrants are wired to pool finishing positions — change the wiring, not the code.', [
+        B('1 · Pool stage', 'Round robin, both pools.', [row('Points to win', '11'), row('Win by 2', 'OFF · SUDDEN DEATH'), row('Best of', '1'), row('Serve', 'SIDE-OUT'), row('Advancing per pool', 'TOP 2')], 'ROUND ROBIN'),
+        B('2 · Knockout', 'Single elimination with a third-place match.', [row('Points to win', '15'), row('Win by 2', 'ON'), row('Best of', '1')], 'SINGLE ELIM'),
+        Object.assign(B('Entrant wiring', 'Each knockout match takes two source slots. Read it as a sentence: Semifinal 1 is Sunrise Pool 1st against Sunset Pool 2nd.', [
+          row('Semifinal 1', 'M17', 'Sunrise Pool 1st  ◀▶  Sunset Pool 2nd'),
+          row('Semifinal 2', 'M18', 'Sunset Pool 1st  ◀▶  Sunrise Pool 2nd'),
+          row('Third place', 'M19', 'Loser of M17  ◀▶  Loser of M18'),
+          row('Final', 'M20', 'Winner of M17  ◀▶  Winner of M18')
+        ], 'THE WIRING'), { bg: '#EBE3CF', border: '#C1A265', tagBg: NAVY, tagFg: '#C1A265' }),
+        B('Tiebreakers', 'Applied in this order, and stated on the standings screen so players can see it.', [row('1 · Head to head', ''), row('2 · Point differential', ''), row('3 · Points scored', ''), row('4 · Coin toss', '')])
+      ]],
+      A7: ['Schedule', '2 courts · no fixed times. Matches go out in order as courts free up.', [
+        B('Courts', '', [row('Court 1', 'ACTIVE', null, GREEN), row('Court 2', 'ACTIVE', null, GREEN), row('Add a court', '')]),
+        W(B('Conflict on M14', 'Lob Story plays M13 and M14 back to back with no rest. Minimum rest is set to 10 minutes.', [row('Move M14 down two slots', 'FIX')], 'CONFLICT')),
+        B('Order', 'Drag to reorder. Times are optional — leave them off and call matches as courts free.', this.matches.slice(11, 17).map(m => row(m.id + ' · ' + m.group, m.court)))
+      ]],
+      A12: ['Rules', 'Organizer summaries and links. Full rulebook text is never reproduced here.', [
+        B('Scoring by stage', 'The block players actually read.', [row('Pool stage', 'TO 11', 'sudden death at 11, no win by 2'), row('Semifinals & final', 'TO 15', 'win by 2, no cap')], 'MOST READ'),
+        B('Official rules', 'USA Pickleball Official Rules — 2026 edition.', [row('Read the official rules', 'LINK', null, GREEN)]),
+        B('Tournament rules', '', [row('Warm-up', '5 MIN'), row('Timeouts', '1 PER GAME'), row('Disputes', 'ORGANIZER DECIDES'), row('Dress code', 'NONE')])
+      ]],
+      A13: ['DUPR export', '11 of 20 matches ready. 4 blocked by 3 players missing a DUPR ID.', [
+        W(B('4 matches blocked', 'Add an ID for these players and the matches become eligible.', [row('Ben Ocampo', 'ADD ID', 'blocks M3, M6'), row('Toffee Lao', 'ADD ID', 'blocks M8'), row('Mae Ferrer', 'ADD ID', 'blocks M11')], 'ACTION NEEDED')),
+        B('11 matches ready', 'All four players have IDs.', [], 'READY'),
+        B('Export', 'CSV in the DUPR import template shape. Works whether or not DUPR is reachable.', [], null, 'Download CSV')
+      ]],
+      A14: ['Audit log', 'Every score change, who made it and when. Read-only.', [
+        B('Today', '', [
+          row('M11 · 6–11', '2:14PM', 'entered by Jes'),
+          row('M10 · 11–5', '2:09PM', 'entered by Jes'),
+          row('M9 · 11–7 (was 11–9)', '2:01PM', 'corrected by Marco'),
+          row('M8 · 8–11', '1:55PM', 'entered by Jes'),
+          row('M7 · 11–3', '1:48PM', 'entered by Marco')
+        ])
+      ]],
+      P4: ['Teams & players', 'Look up who you are about to face.', [
+        B('Sunrise Pool', '', TEAMS.filter(t => t.g === 0).map(t => row(t.name, 'SEED ' + t.seed, t.players))),
+        B('Sunset Pool', '', TEAMS.filter(t => t.g === 1).map(t => row(t.name, 'SEED ' + t.seed, t.players)))
+      ]],
+      P5: ['Rules', 'Is the semifinal to 11 or 15? Answered first, on purpose.', [
+        Object.assign(B('Scoring by stage', '', [row('Pool stage', 'TO 11', 'sudden death at 11, no win by 2'), row('Semifinals & final', 'TO 15', 'win by 2, no cap')], 'START HERE'), { bg: '#EBE3CF', border: '#C1A265', tagBg: NAVY, tagFg: '#C1A265' }),
+        B('Official rules', 'This tournament uses the USA Pickleball Official Rules, 2026 edition.', [row('Read the official rules', 'LINK', null, GREEN)]),
+        B('Tournament rules', '', [row('Warm-up', '5 MIN'), row('Timeouts', '1 PER GAME'), row('Disputes', 'ORGANIZER DECIDES')])
+      ]],
+      P2x: ['', '', []]
+    };
+    const d = maps[id] || ['', '', []];
+    void g0; void g1;
+    return { docTitle: d[0], docIntro: d[1], docBlocks: d[2] };
+  }
+
+  renderVals() {
+    const s = this.state, S = s.screen;
+    const scoreInput = s.scoreInput || this.props.scoreInput || 'keypad';
+    const layout = s.standingsLayout || this.props.standingsLayout || 'cards';
+    const pubDefault = s.pubDefault || this.props.publicDefault || 'now';
+    const isPub = S[0] === 'P';
+    const complete = !!s.results.M20;
+    const landing = complete ? 'P6' : (pubDefault === 'standings' ? 'P2' : 'P0');
+    const docScreens = ['A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A12', 'A13', 'A14', 'P4', 'P5'];
+
+    const navA = [['A0', 'Passcode unlock'], ['A1', 'Dashboard'], ['A2', 'Setup wizard'], ['A3', 'Players'], ['A4', 'Teams'], ['A5', 'Groups & draw'], ['A6', 'Stages & scoring'], ['A7', 'Schedule'], ['A8', 'Match list'], ['A9', 'Score entry'], ['A10', 'Standings'], ['A11', 'Bracket'], ['A12', 'Rules'], ['A13', 'DUPR export'], ['A14', 'Audit log']].map(x => this.navItem(x[0], x[1]));
+    const navP = [['P0', 'Now'], ['P1', 'Matches'], ['P2', 'Standings'], ['P3', 'Bracket'], ['P4', 'Teams & players'], ['P5', 'Rules'], ['P6', 'Final results']].map(x => this.navItem(x[0], x[1]));
+
+    const poolMs = this.matches.filter(m => m.stage === 'pool');
+    const donePool = poolMs.filter(m => s.results[m.id]).length;
+
+    const upcoming = this.matches.filter(m => !s.results[m.id] && this.resolved(m).a);
+    const nextUp = upcoming.slice(0, 3).map(m => this.matchCard(m));
+
+    const filtered = this.matches.filter(m => this.status(m) === s.filter);
+    const matchRows = (s.filter === 'Completed' ? filtered.slice().reverse() : filtered).map(m => this.matchCard(m));
+
+    const entryM = this.matches.find(m => m.id === (s.entryId || 'M12')) || this.matches[11];
+    const er = this.resolved(entryM);
+    const prior = s.results[entryM.id];
+    const sideCard = (k, t, sub) => ({
+      name: t ? t.name : sub, players: t ? t.players : 'awaiting result', score: s.draft[k] === '' ? '–' : s.draft[k],
+      border: s.side === k ? GREEN : 'rgba(70,50,32,.13)', numColor: s.draft[k] === '' ? 'rgba(70,50,32,.25)' : INK,
+      focus: () => this.setState({ side: k })
+    });
+
+    const padKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'del'].map(k => ({
+      label: k === 'clear' ? 'C' : k === 'del' ? '⌫' : k,
+      bg: k === 'clear' || k === 'del' ? 'rgba(70,50,32,.05)' : '#fff', fg: INK,
+      press: () => {
+        const d = Object.assign({}, s.draft); const cur = d[s.side];
+        if (k === 'clear') d[s.side] = ''; else if (k === 'del') d[s.side] = cur.slice(0, -1);
+        else { const nv = (cur + k); if (parseInt(nv, 10) <= 30) d[s.side] = nv; else d[s.side] = k; }
+        const nextSide = (k !== 'clear' && k !== 'del' && s.side === 'a' && d.a.length >= 2) ? 'b' : s.side;
+        this.setState({ draft: d, side: nextSide, err: null });
+      }
+    }));
+    const bump = (k, delta) => () => { const d = Object.assign({}, s.draft); const v = Math.max(0, (parseInt(d[k], 10) || 0) + delta); d[k] = String(v); this.setState({ draft: d, err: null }); };
+    const stepperBtns = [
+      { label: '−  ' + (er.a ? er.a.name.split(' ')[0] : 'A'), press: bump('a', -1) }, { label: '+  ' + (er.a ? er.a.name.split(' ')[0] : 'A'), press: bump('a', 1) },
+      { label: '−  ' + (er.b ? er.b.name.split(' ')[0] : 'B'), press: bump('b', -1) }, { label: '+  ' + (er.b ? er.b.name.split(' ')[0] : 'B'), press: bump('b', 1) }
+    ];
+
+    const table = layout === 'table';
+    const standings = [0, 1].map(gi => {
+      const rows = this.standingsFor(gi);
+      return {
+        name: GROUPS[gi], qualify: 2,
+        rows: rows.map((r, i) => {
+          const q = i < 2, open = s.open === r.t.n;
+          const diff = r.pf - r.pa;
+          const played = this.matches.filter(m => m.stage === 'pool' && m.gi === gi && (m.a === r.t.n || m.b === r.t.n) && s.results[m.id]);
+          return {
+            rank: i + 1, name: r.t.name, players: r.t.players,
+            w: r.w, l: r.l, pd: (diff > 0 ? '+' : '') + diff,
+            pdColor: diff >= 0 ? GREEN : LIVE,
+            diff: 'W–L–PD', diffColor: 'rgba(70,50,32,.45)',
+            q,
+            rankColor: q ? NAVY : 'rgba(70,50,32,.4)',
+            nameWeight: q ? 700 : 500,
+            bg: table ? (q ? 'rgba(193,162,101,.18)' : '#EBE3CF') : (q ? '#FFFFFF' : '#EBE3CF'),
+            border: table && q ? '#C1A265' : 'transparent',
+            borderW: table ? '2px' : '0px',
+            barW: table ? '2px' : (q ? '6px' : '0px'),
+            bar: table ? (q ? '#C1A265' : 'transparent') : '#C1A265',
+            shadow: !table && q ? '0 4px 12px rgba(70,50,32,.12)' : 'none',
+            dim: q ? 1 : .72,
+            line: i === 1, open,
+            stats: [{ k: 'W–L', v: r.w + '–' + r.l }, { k: 'DIFF', v: (diff > 0 ? '+' : '') + diff }, { k: 'PTS FOR', v: r.pf }, { k: 'PTS AGST', v: r.pa }],
+            matches: played.map(m => {
+              const res = s.results[m.id], me = m.a === r.t.n, mine = me ? res.a : res.b, theirs = me ? res.b : res.a;
+              const opp = this.team(me ? m.b : m.a);
+              return { label: 'v ' + opp.name, score: mine + '–' + theirs, color: mine > theirs ? GREEN : LIVE };
+            }),
+            toggle: () => this.setState({ open: open ? null : r.t.n })
+          };
+        })
+      };
+    });
+
+    const bracketRounds = ['Semifinals', 'Third place', 'Final'].map(rn => ({
+      name: rn.toUpperCase(),
+      matches: this.matches.filter(m => m.round === rn).map(m => {
+        const rr = this.resolved(m), r = s.results[m.id], st = this.status(m);
+        const slot = (t, sub, sc, win) => ({ name: t ? t.name : sub, sub: t ? t.players : 'not yet decided', score: sc === undefined ? '' : sc, weight: win ? 700 : 500, color: win ? INK : t ? 'rgba(70,50,32,.75)' : 'rgba(70,50,32,.45)' });
+        return {
+          code: m.id + ' · ' + m.group, status: st.toUpperCase(),
+          bg: m.round === 'Final' && r ? 'rgba(193,162,101,.1)' : '#fff',
+          border: m.round === 'Final' ? GOLD : 'rgba(70,50,32,.14)',
+          slots: [slot(rr.a, rr.subA, r ? r.a : undefined, r && r.a > r.b), slot(rr.b, rr.subB, r ? r.b : undefined, r && r.b > r.a)],
+          enter: () => { if (isPub) return; if (rr.a && rr.b) this.openEntry(m.id); }
+        };
+      })
+    }));
+
+    const liveMatches = this.matches.filter(m => this.status(m) === 'Live').map(m => this.matchCard(m));
+    const leaders = [0, 1].map(gi => ({ group: GROUPS[gi], rows: this.standingsFor(gi).slice(0, 2).map((r, i) => ({ rank: i + 1, name: r.t.name, wl: r.w + '–' + r.l })) }));
+
+    const champ = this.team(1), r1 = this.team(5), r2 = this.team(6), r3 = this.team(7);
+    const podium = [
+      { place: '1', title: 'CHAMPION', name: champ.name, players: champ.players, bg: GOLD, fg: INK },
+      { place: '2', title: '1ST RUNNER-UP', name: r1.name, players: r1.players, bg: 'rgba(245,238,220,.12)', fg: '#F5EEDC' },
+      { place: '3', title: '2ND RUNNER-UP', name: r2.name, players: r2.players, bg: 'rgba(245,238,220,.07)', fg: '#F5EEDC' },
+      { place: '4', title: '3RD RUNNER-UP', name: r3.name, players: r3.players, bg: 'rgba(245,238,220,.04)', fg: '#F5EEDC' }
+    ];
+
+    const pubTabs = [['P0', complete ? 'Results' : 'Now', 'home'], ['P1', 'Matches', 'matches'], ['P2', 'Standings', 'standings'], ['P3', 'Bracket', 'bracket'], ['P5', 'Info', 'profile']];
+    if (landing === 'P2') pubTabs.unshift(pubTabs.splice(2, 1)[0]);
+    const tabsDef = isPub
+      ? pubTabs
+      : [['A1', 'Home', 'home'], ['A8', 'Matches', 'matches'], ['A10', 'Standings', 'standings'], ['A11', 'Bracket', 'bracket'], ['A13', 'More', 'profile']];
+    const tabs = tabsDef.map(t => {
+      const dest = t[0] === 'P0' ? landing : t[0];
+      const on = S === dest || (t[0] === 'P0' && S === 'P6');
+      return { label: t[1], d: ICONS[t[2]], fg: on ? GOLD : '#7481A0', go: () => this.setState({ screen: dest, open: null }) };
+    });
+
+    const note = NOTES[S] || ['', '', []];
+    const vSwitch = (label, val, opts, key) => ({
+      label, opts: opts.map(o => ({
+        label: o[1], go: () => this.set(key, o[0]),
+        border: val === o[0] ? '#C1A265' : 'rgba(245,238,220,.18)',
+        bg: val === o[0] ? 'rgba(193,162,101,.16)' : 'transparent',
+        fg: val === o[0] ? '#C1A265' : 'rgba(245,238,220,.6)'
+      }))
+    });
+
+    const doc = this.docFor(S);
+
+    return Object.assign({
+      navA, navP, screenId: S, clock: '2:14', netLabel: '◐ SYNCED',
+      isA0: S === 'A0', isA1: S === 'A1', isA8: S === 'A8', isA9: S === 'A9',
+      isStandings: S === 'A10' || S === 'P2', isA10: S === 'A10',
+      isBracket: S === 'A11' || S === 'P3',
+      isP0: S === 'P0', isP1: S === 'P1', isP6: S === 'P6',
+      isDoc: docScreens.indexOf(S) >= 0,
+      showTabs: S !== 'A0' && S !== 'A9',
+      tabs, toast: s.toast,
+
+      pinCells: [0, 1, 2, 3].map(i => ({ ch: s.pin[i] ? '•' : '', border: s.pin.length === i ? '#C1A265' : '#EBE3CF' })),
+      pinError: s.pinError,
+      pinKeys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map(k => ({
+        label: k, bg: k === '' ? 'transparent' : '#FFFFFF', border: k === '' ? 'transparent' : 'rgba(27,41,75,.25)',
+        press: () => {
+          if (k === '') return;
+          if (k === '⌫') return this.setState({ pin: s.pin.slice(0, -1), pinError: false });
+          const np = (s.pin + k).slice(0, 4);
+          if (np.length === 4) { if (np === '1234') this.setState({ pin: '', pinError: false, screen: 'A1' }); else this.setState({ pin: '', pinError: true }); }
+          else this.setState({ pin: np, pinError: false });
+        }
+      })),
+
+      poolProgress: donePool + ' of ' + poolMs.length, poolPct: Math.round(donePool / poolMs.length * 100) + '%',
+      attention: [
+        donePool < poolMs.length ? { text: poolMs.length - donePool + ' pool matches still need a score before the knockout can be drawn.' } : null,
+        { text: 'Ben Ocampo has no DUPR ID — 2 completed matches can\u2019t be exported.' }
+      ].filter(Boolean),
+      hasAttention: true,
+      nextUp, quickLinks: [['A8', 'Matches'], ['A10', 'Standings'], ['A11', 'Bracket'], [landing, 'Public page']].map(q => ({ label: q[1], go: () => this.set('screen', q[0]) })),
+
+      filters: ['Live', 'Upcoming', 'Completed'].map(f => this.chip(f, s.filter === f, () => this.set('filter', f))),
+      matchRows,
+
+      entryCode: entryM.id + ' · ' + entryM.group, entryRule: this.rule(entryM),
+      entrySides: [sideCard('a', er.a, er.subA), sideCard('b', er.b, er.subB)],
+      showKeypad: scoreInput !== 'stepper', showSteppers: scoreInput !== 'keypad',
+      padKeys, stepperBtns, entryError: s.err,
+      entryPrior: prior ? 'Previously recorded as ' + prior.a + '–' + prior.b + ' by ' + prior.by + ' at ' + prior.at + '.' : null,
+      saveLabel: prior ? 'Update result' : 'Save result', saveBg: s.err ? 'rgba(70,50,32,.45)' : GREEN,
+      saveScore: () => this.save(), backToList: () => this.setState({ screen: 'A8', err: null }),
+      secondaryActions: [{ label: 'Forfeit' }, { label: 'Retired' }, { label: 'Default' }],
+
+      standings, bracket: bracketRounds,
+      liveMatches, hasLive: liveMatches.length > 0, leaders, goP2: () => this.set('screen', 'P2'),
+      podium, finalLine: 'Smash Bandits beat Paddle Pop 15–12 to take the first 1st Pakangers Exclusive Tournament.',
+
+      noteTitle: note[0], noteBody: note[1], notePoints: (note[2] || []).map(t => ({ text: t })),
+      variationSwitches: [
+        vSwitch('Score entry input (A9)', scoreInput, [['keypad', 'Keypad'], ['stepper', 'Steppers'], ['both', 'Both']], 'scoreInput'),
+        vSwitch('Standings layout', layout, [['cards', 'Cards'], ['table', 'Tinted table']], 'standingsLayout'),
+        vSwitch('Public landing default', pubDefault, [['now', 'Now'], ['standings', 'Standings']], 'pubDefault')
+      ]
+    }, doc);
+  }
+}
+
+</script>
+</body>
+</html>
