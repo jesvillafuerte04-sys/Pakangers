@@ -8,7 +8,7 @@
 |---|---|---|---|
 | **1** | **Engine** (pure TS, test-first): format registry, round robin, single elimination, standings with configurable tiebreakers, qualification resolver, stage wiring, validation suite | ✅ | **Done** — `packages/engine`, 46 tests |
 | **2** | **Data layer**: Supabase project, schema migrations, RLS policies, typed client, seed from template | ✅ | **Done** — `packages/db`, project `pakangers-tournament`, real tournament seeded in `draft` |
-| **3** | **Organizer console**: passcode gate, setup wizard, players, teams, groups, stages, lock | ✅ | Not started |
+| **3** | **Organizer console**: passcode gate, setup wizard, players, teams, groups, stages, lock | ✅ | **Done** — `apps/web`, live at pakangers-app.vercel.app |
 | **4** | **Score entry**: match list, per-game entry, derive → recompute → populate, edit with audit log, forfeits | ✅ | Not started |
 | **5** | **Public view**: live/upcoming/completed, standings, bracket, results, QR, realtime | ✅ | Not started |
 | 6 | **Scheduling**: courts, ordering, greedy auto-assign with conflict + rest checks, manual override | ❌ | Not started |
@@ -21,6 +21,15 @@
 Everything else can land afterward without disrupting a live event.
 
 Design work (this pass) sits ahead of Phase 3 and shapes Phases 3–5.
+
+**Scope note on the Phase 3 build:** the setup wizard's "Stages & scoring" step is read-only —
+it displays what the template pre-filled but doesn't yet let the organizer edit scoring, add
+stages, or rewire the crossover-semifinal slot references from the UI (that's the hardest screen
+flagged in `06-design-brief.md`, and it deserves dedicated design attention rather than a rushed
+first pass). Changes to stage configuration go through the database directly for now. Multi-division
+tournaments also aren't wired up yet — `instantiateFromTemplate` only reads `config.divisions[0]`.
+Both are natural Phase 3 follow-ups, not blockers for running the first tournament, since the
+seeded Pakangers config is already correct.
 
 ---
 

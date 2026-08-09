@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* Design tokens -- mirrors design/_ds/pakangers-design-system-.../tokens/*.css
+   so the real app matches the approved prototype exactly. */
+:root {
+  --color-navy: #1B294B;
+  --color-navy-hover: #263863;
+  --color-gold: #C1A265;
+  --color-gold-hover: #D9BB7D;
+  --color-brown: #463220;
+  --color-cream: #F5EEDC;
+  --color-cream-dark: #EBE3CF;
+  --color-white: #FFFFFF;
+
+  --color-success: #4A7C59;
+  --color-error: #9B3838;
+  --color-text-main: var(--color-brown);
+  --color-text-muted: #8A7B6B;
+  --color-text-inverse: var(--color-white);
+  --color-nav-inactive: #7481A0;
+
+  --surface-page: var(--color-cream);
+  --surface-card: var(--color-white);
+  --surface-sunken: var(--color-cream-dark);
+  --surface-inverse: var(--color-navy);
+  --border-subtle: var(--color-cream-dark);
+  --accent: var(--color-gold);
+  --focus-ring: rgba(193, 162, 101, 0.2);
+
+  --font-display: var(--font-roboto-slab, 'Roboto Slab', serif);
+  --font-ui: var(--font-inter, 'Inter', sans-serif);
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+  --radius-sheet: 30px;
+
+  --shadow-sm: 0 2px 4px rgba(70, 50, 32, 0.08);
+  --shadow-md: 0 4px 12px rgba(70, 50, 32, 0.12);
+  --shadow-lg: 0 12px 24px rgba(70, 50, 32, 0.15);
+  --shadow-nav: 0 -4px 16px rgba(27, 41, 75, 0.1);
+}
+
+@theme inline {
+  --color-navy: var(--color-navy);
+  --color-navy-hover: var(--color-navy-hover);
+  --color-gold: var(--color-gold);
+  --color-gold-hover: var(--color-gold-hover);
+  --color-brown: var(--color-brown);
+  --color-cream: var(--color-cream);
+  --color-cream-dark: var(--color-cream-dark);
+  --color-success: var(--color-success);
+  --color-error: var(--color-error);
+  --color-text-muted: var(--color-text-muted);
+  --color-nav-inactive: var(--color-nav-inactive);
+  --font-display: var(--font-display);
+  --font-ui: var(--font-ui);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-pill: var(--radius-pill);
+}
+
+body {
+  background: var(--surface-page);
+  color: var(--color-text-main);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
