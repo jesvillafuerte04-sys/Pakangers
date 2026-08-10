@@ -34,7 +34,17 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
   return (
     <div className="flex flex-col gap-5">
       {groups.map((g) => (
-        <Card key={`${g.stageKey}:${g.groupName}`} title={`${g.stageName} — ${g.groupName}`}>
+        <Card key={`${g.stageKey}:${g.groupName}`}>
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <h3 className="font-[family-name:var(--font-display)] text-xl font-bold uppercase text-[var(--color-navy)]">
+              {g.stageName} — {g.groupName}
+            </h3>
+            {g.qualifyCount !== null && (
+              <span className="whitespace-nowrap rounded-full bg-[var(--color-gold)] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-navy)]">
+                Top {g.qualifyCount} advance
+              </span>
+            )}
+          </div>
           <div className="flex flex-col gap-1">
             {g.standings.map((s, i) => (
               <div key={s.entrantId}>
@@ -51,7 +61,13 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
                   history={s.history}
                 />
                 {g.qualifyCount !== null && i === g.qualifyCount - 1 && i < g.standings.length - 1 && (
-                  <div className="my-1 border-t-2 border-dashed border-[var(--color-gold)]" />
+                  <div className="my-2 flex items-center gap-2">
+                    <div className="h-0 flex-1 border-t-2 border-dashed border-[var(--color-error)]" />
+                    <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide text-[var(--color-error)]">
+                      Eliminated teams below
+                    </span>
+                    <div className="h-0 flex-1 border-t-2 border-dashed border-[var(--color-error)]" />
+                  </div>
                 )}
               </div>
             ))}

@@ -36,36 +36,48 @@ export function StandingsRow({
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={`flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition ${
-          isQualifying ? "bg-white shadow-[var(--shadow-sm)]" : "bg-[var(--surface-sunken)]"
+          isQualifying ? "bg-[var(--color-navy)] shadow-[var(--shadow-sm)]" : "bg-[var(--surface-sunken)]"
         }`}
       >
         <span className="flex w-6 flex-none flex-col items-center gap-1 pt-0.5">
-          <span className={`text-lg font-bold ${isQualifying ? "text-[var(--color-navy)]" : "text-[var(--color-text-muted)]"}`}>
+          <span
+            className={`text-lg font-bold ${isQualifying ? "text-[var(--color-gold)]" : "text-[var(--color-text-muted)]"}`}
+          >
             {rank}
           </span>
           {isQualifying && <span className="h-0.5 w-4 rounded-full bg-[var(--color-gold)]" />}
         </span>
         <span className="flex flex-1 flex-col gap-1">
-          <TeamLine display={team} />
+          <TeamLine display={team} variant={isQualifying ? "light" : "dark"} />
           {isQualifying && (
             <span className="w-fit rounded-full bg-[var(--color-gold)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-navy)]">
               Advancing
             </span>
           )}
-          {unresolvedTie && <span className="text-xs text-[var(--color-text-muted)]">(tied)</span>}
+          {unresolvedTie && (
+            <span className={`text-xs ${isQualifying ? "text-[var(--color-cream-dark)] opacity-70" : "text-[var(--color-text-muted)]"}`}>
+              (tied)
+            </span>
+          )}
         </span>
         <span className="flex flex-none flex-col items-end gap-0.5 whitespace-nowrap">
           <span className="flex items-baseline gap-1 text-base font-bold">
-            <span className="text-[var(--color-success)]">{wins}</span>
-            <span className="text-[var(--color-text-muted)]">–</span>
-            <span className="text-[var(--color-error)]">{losses}</span>
-            <span className="text-[var(--color-text-muted)]">–</span>
-            <span className="text-[var(--color-navy)]">
+            <span className={isQualifying ? "text-emerald-300" : "text-[var(--color-success)]"}>{wins}</span>
+            <span className={isQualifying ? "text-[var(--color-cream-dark)] opacity-60" : "text-[var(--color-text-muted)]"}>–</span>
+            <span className={isQualifying ? "text-rose-300" : "text-[var(--color-error)]"}>{losses}</span>
+            <span className={isQualifying ? "text-[var(--color-cream-dark)] opacity-60" : "text-[var(--color-text-muted)]"}>–</span>
+            <span className={isQualifying ? "text-[var(--color-gold)]" : "text-[var(--color-navy)]"}>
               {pointDifferential >= 0 ? "+" : ""}
               {pointDifferential}
             </span>
           </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{pointsFor} pts</span>
+          <span
+            className={`text-[10px] font-semibold uppercase tracking-wide ${
+              isQualifying ? "text-[var(--color-cream-dark)] opacity-70" : "text-[var(--color-text-muted)]"
+            }`}
+          >
+            {pointsFor} pts
+          </span>
         </span>
       </button>
 

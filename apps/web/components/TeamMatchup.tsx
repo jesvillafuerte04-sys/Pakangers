@@ -1,10 +1,20 @@
 import type { TeamDisplay } from "@/lib/team-display";
 
-export function TeamLine({ display, className = "" }: { display: TeamDisplay; className?: string }) {
+export function TeamLine({
+  display,
+  className = "",
+  variant = "dark",
+}: {
+  display: TeamDisplay;
+  className?: string;
+  variant?: "dark" | "light";
+}) {
+  const headerColor = variant === "light" ? "text-[var(--color-cream)]" : "text-[var(--color-navy)]";
+  const subtextColor = variant === "light" ? "text-[var(--color-cream-dark)]" : "text-[var(--color-text-muted)]";
   return (
     <div className={className}>
-      <div className="font-medium text-[var(--color-navy)]">{display.header}</div>
-      {display.subtext && <div className="text-xs text-[var(--color-text-muted)]">{display.subtext}</div>}
+      <div className={`font-medium ${headerColor}`}>{display.header}</div>
+      {display.subtext && <div className={`text-xs ${subtextColor} opacity-70`}>{display.subtext}</div>}
     </div>
   );
 }
