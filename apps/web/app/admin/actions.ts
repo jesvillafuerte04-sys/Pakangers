@@ -269,3 +269,22 @@ export async function lockTournament(slug: string): Promise<void> {
   revalidatePath(`/admin/${slug}`);
   redirect(`/admin/${slug}`);
 }
+
+/** Reverts a locked/in-progress/completed tournament back to draft so its setup can be edited again. */
+export async function unlockTournament(slug: string): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+  const { error } = await supabase.from("tournament").update({ status: "draft" }).eq("slug", slug);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/${slug}`);
+}
+
+/** Permanently deletes a tournament and everything under it (players, teams, matches, audit log --
+ * every child table cascades from tournament_id per packages/db/migrations/0001_initial_schema.sql). */
+export async function deleteTournament(tournamentId: string): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+  const { error } = await supabase.from("tournament").delete().eq("id", tournamentId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin");
+}

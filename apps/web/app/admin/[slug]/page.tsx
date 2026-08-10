@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { startTournament } from "./matches/actions";
 import { PublicShareCard } from "./PublicShareCard";
+import { unlockTournament } from "@/app/admin/actions";
+import { DeleteTournamentButton } from "@/app/admin/DeleteTournamentButton";
 
 const STATUS_TONE: Record<string, "neutral" | "gold" | "success"> = {
   draft: "neutral",
@@ -105,6 +107,24 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
       )}
 
       {tournament.status !== "draft" && <PublicShareCard slug={slug} />}
+
+      <Card title="Manage tournament">
+        <div className="flex flex-col gap-3">
+          <Link href={`/admin/${slug}/setup/info`}>
+            <Button variant="outline" fullWidth>
+              Edit setup (info, players, teams, groups)
+            </Button>
+          </Link>
+          {tournament.status !== "draft" && (
+            <form action={unlockTournament.bind(null, slug)}>
+              <Button variant="outline" type="submit" fullWidth>
+                Unlock (back to draft)
+              </Button>
+            </form>
+          )}
+          <DeleteTournamentButton tournamentId={tournament.id} name={tournament.name} fullWidth />
+        </div>
+      </Card>
     </main>
   );
 }
