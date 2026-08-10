@@ -23,8 +23,11 @@ export function PublicNav({ slug }: { slug: string }) {
   ];
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 bg-[var(--color-navy)] shadow-[0_-4px_16px_rgba(27,41,75,0.15)]">
-      <div className="mx-auto flex max-w-2xl justify-around px-2 pb-4 pt-2">
+    <nav
+      className="fixed inset-x-0 bottom-0 z-50 bg-[var(--color-navy)] shadow-[0_-4px_16px_rgba(27,41,75,0.15)]"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      <div className="mx-auto flex max-w-2xl justify-around px-2 pb-3 pt-2">
         {items.map((item) => {
           const active = pathname === item.href;
           return (
