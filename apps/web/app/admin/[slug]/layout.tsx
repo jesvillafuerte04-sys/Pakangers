@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getTournamentBySlug } from "@/lib/tournament-data";
+import { BuiltByCredit } from "@/components/BuiltByCredit";
 
 export default async function TournamentLayout({
   children,
@@ -13,5 +14,10 @@ export default async function TournamentLayout({
   const tournament = await getTournamentBySlug(slug);
   if (!tournament) notFound();
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <BuiltByCredit />
+    </>
+  );
 }

@@ -1,4 +1,18 @@
-import type { MatchListRow } from "@/lib/match-data";
+import type { TeamDisplay } from "@/lib/team-display";
+
+/**
+ * The minimum a match needs to render as a card. Both MatchListRow and the
+ * bracket's PublicBracketMatch satisfy this, so the match list and the bracket
+ * share one visual treatment.
+ */
+export type MatchCardData = {
+  home: TeamDisplay;
+  away: TeamDisplay;
+  homePointsTotal: number | null;
+  awayPointsTotal: number | null;
+  winnerSide: "home" | "away" | null;
+  resultType: string | null;
+};
 
 /**
  * One side of a match: player names (and optional team name) on the left, that
@@ -33,7 +47,7 @@ function MatchSide({
   );
 }
 
-export function MatchCardBody({ match }: { match: MatchListRow }) {
+export function MatchCardBody({ match }: { match: MatchCardData }) {
   const decided = match.winnerSide !== null;
   const homeOutcome = decided ? (match.winnerSide === "home" ? "won" : "lost") : "undecided";
   const awayOutcome = decided ? (match.winnerSide === "away" ? "won" : "lost") : "undecided";

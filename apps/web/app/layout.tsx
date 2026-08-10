@@ -32,12 +32,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${inter.variable} ${robotoSlab.variable}`}>
-      <body className="min-h-full">
-        {children}
-        <footer className="py-6 text-center text-xs text-[var(--color-text-muted)] opacity-60">
-          Built by Jes Villafuerte
-        </footer>
-      </body>
+      {/* The credit lives in each layout (see components/BuiltByCredit) rather
+          than here, so the public pages' fixed bottom nav can't cover it. */}
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

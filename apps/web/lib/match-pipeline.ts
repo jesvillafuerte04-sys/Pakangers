@@ -645,13 +645,15 @@ function labelForSlotRef(ref: MatchSide, stageNameByKey: Map<string, string>): T
   return { header, subtext: null };
 }
 
+/** Field names match MatchListRow so both render through MatchCardBody. */
 export type PublicBracketMatch = {
   matchNumber: number;
   status: string | null;
   home: TeamDisplay;
   away: TeamDisplay;
-  homeScore: number | null;
-  awayScore: number | null;
+  homePointsTotal: number | null;
+  awayPointsTotal: number | null;
+  winnerSide: "home" | "away" | null;
   resultType: string | null;
 };
 
@@ -699,13 +701,15 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
       const match = existing.find((m) => m.match_number === num);
       if (match) {
         const result = resultByMatchId.get(match.id);
+        const winnerId = result?.winner_team_id ?? null;
         return {
           matchNumber: num,
           status: match.status,
           home: match.home_team_id ? teamDisplayById.get(match.home_team_id) ?? { header: "Unknown", subtext: null } : BYE_DISPLAY,
           away: match.away_team_id ? teamDisplayById.get(match.away_team_id) ?? { header: "Unknown", subtext: null } : BYE_DISPLAY,
-          homeScore: result?.home_points_total ?? null,
-          awayScore: result?.away_points_total ?? null,
+          homePointsTotal: result?.home_points_total ?? null,
+          awayPointsTotal: result?.away_points_total ?? null,
+          winnerSide: winnerId ? (winnerId === match.home_team_id ? ("home" as const) : ("away" as const)) : null,
           resultType: result?.result_type ?? null,
         };
       }
@@ -716,8 +720,9 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
         status: null,
         home: node ? labelForSlotRef(node.home_ref as unknown as MatchSide, stageNameByKey) : tbd,
         away: node ? labelForSlotRef(node.away_ref as unknown as MatchSide, stageNameByKey) : tbd,
-        homeScore: null,
-        awayScore: null,
+        homePointsTotal: null,
+        awayPointsTotal: null,
+        winnerSide: null,
         resultType: null,
       };
     });

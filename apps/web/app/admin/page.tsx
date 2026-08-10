@@ -4,6 +4,7 @@ import { getServiceSupabase } from "@/lib/supabase-server";
 import { PasscodeForm } from "./PasscodeForm";
 import { createTournament, signOutOrganizer } from "./actions";
 import { DeleteTournamentButton } from "./DeleteTournamentButton";
+import { BuiltByCredit } from "@/components/BuiltByCredit";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -14,8 +15,10 @@ export default async function AdminHomePage() {
 
   if (!session) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[var(--color-navy)] p-6">
+      <main className="relative flex min-h-screen items-center justify-center bg-[var(--color-navy)] p-6">
         <PasscodeForm />
+        {/* Light variant: the muted default is unreadable on the navy unlock screen. */}
+        <BuiltByCredit className="absolute inset-x-0 bottom-0 !text-[var(--color-cream)]" />
       </main>
     );
   }
@@ -91,6 +94,8 @@ export default async function AdminHomePage() {
           </div>
         ))}
       </div>
+
+      <BuiltByCredit />
     </main>
   );
 }
