@@ -11,6 +11,7 @@ export function PublicNav({ slug }: { slug: string }) {
     { href: `${base}/matches`, label: "Matches" },
     { href: `${base}/standings`, label: "Standings" },
     { href: `${base}/bracket`, label: "Bracket" },
+    { href: `${base}/info`, label: "Info" },
   ];
 
   return (

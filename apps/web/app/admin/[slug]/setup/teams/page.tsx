@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { formatTeamDisplay } from "@/lib/team-display";
 
 export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug]/setup/teams">) {
   const { slug } = await params;
@@ -39,7 +40,7 @@ export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug
       <Card title="Create team">
         <form action={createAction} className="flex gap-3">
           <div className="flex-1">
-            <Input name="name" placeholder="Team name" required />
+            <Input name="name" placeholder="Team name (optional)" />
           </div>
           <Button type="submit">Add</Button>
         </form>
@@ -52,12 +53,20 @@ export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug
         {teams?.map((team) => {
           const memberIds = membersByTeam.get(team.id) ?? [];
           const full = memberIds.length >= division.team_size;
+          const memberNames = memberIds.map((pid) => {
+            const p = playerById.get(pid);
+            return p ? `${p.first_name} ${p.last_name}`.trim() : null;
+          }).filter((n): n is string => Boolean(n));
+          const display = formatTeamDisplay(team.name, memberNames);
           return (
             <Card key={team.id} accent={false} className="border border-[var(--border-subtle)]">
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="font-[family-name:var(--font-display)] text-lg font-bold uppercase text-[var(--color-navy)]">
-                  {team.name}
-                </h3>
+                <div>
+                  <h3 className="font-[family-name:var(--font-display)] text-lg font-bold uppercase text-[var(--color-navy)]">
+                    {display.header}
+                  </h3>
+                  {display.subtext && <p className="text-xs text-[var(--color-text-muted)]">{display.subtext}</p>}
+                </div>
                 <div className="flex items-center gap-2">
                   <Badge tone={full ? "success" : "neutral"}>
                     {memberIds.length}/{division.team_size}

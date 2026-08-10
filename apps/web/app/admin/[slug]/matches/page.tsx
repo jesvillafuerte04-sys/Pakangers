@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { markMatchLive } from "./actions";
+import { TeamMatchup } from "@/components/TeamMatchup";
 
 const TABS: { key: MatchListFilter; label: string }[] = [
   { key: "upcoming", label: "Upcoming" },
@@ -82,9 +83,7 @@ export default async function MatchListPage({
                 <span className="text-xs font-semibold text-[var(--color-text-muted)]">
                   Match #{m.matchNumber} {m.groupName ? `· ${m.groupName}` : ""}
                 </span>
-                <span className="font-medium text-[var(--color-navy)]">
-                  {m.homeTeamName} vs {m.awayTeamName}
-                </span>
+                <TeamMatchup home={m.home} away={m.away} />
                 {m.homePointsTotal !== null && (
                   <span className="text-sm text-[var(--color-text-muted)]">
                     {m.homePointsTotal}–{m.awayPointsTotal} {m.resultType && m.resultType !== "normal" ? `(${m.resultType})` : ""}

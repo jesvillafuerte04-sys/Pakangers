@@ -3,6 +3,7 @@ import { getPublicTournament } from "@/lib/public-data";
 import { getPublicBracket } from "@/lib/match-pipeline";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { TeamMatchup } from "@/components/TeamMatchup";
 
 export default async function PublicBracketPage({ params }: PageProps<"/t/[slug]/bracket">) {
   const { slug } = await params;
@@ -31,9 +32,7 @@ export default async function PublicBracketPage({ params }: PageProps<"/t/[slug]
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex flex-col gap-1">
                     <span className="text-xs font-semibold text-[var(--color-text-muted)]">Match #{m.matchNumber}</span>
-                    <span className="font-medium text-[var(--color-navy)]">
-                      {m.homeLabel} vs {m.awayLabel}
-                    </span>
+                    <TeamMatchup home={m.home} away={m.away} />
                     {m.homeScore !== null && (
                       <span className="text-lg font-bold text-[var(--color-navy)]">
                         {m.homeScore}–{m.awayScore}

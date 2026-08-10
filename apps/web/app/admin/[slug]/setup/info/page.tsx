@@ -22,6 +22,13 @@ export default async function SetupInfoPage({ params }: PageProps<"/admin/[slug]
         </div>
         <Input label="Venue" name="venue" defaultValue={tournament.venue ?? ""} placeholder="Tanjay City, Negros Oriental" />
         <Input label="Organizer" name="organizer_name" defaultValue={tournament.organizer_name ?? ""} />
+        <Input
+          label="Logo URL (optional)"
+          name="logo_url"
+          type="url"
+          defaultValue={tournament.logo_url ?? ""}
+          placeholder="https://example.com/logo.png"
+        />
         <Textarea label="Description" name="description" defaultValue={tournament.description ?? ""} rows={3} />
         <Button type="submit">Save</Button>
       </form>

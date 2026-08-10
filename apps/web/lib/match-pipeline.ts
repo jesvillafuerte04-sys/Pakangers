@@ -19,6 +19,7 @@ import {
   type ResolutionContext,
   type Game,
 } from "@pakangers/engine";
+import { getTeamDisplayMap, type TeamDisplay } from "./team-display";
 
 type StageRow = Tables<"stage">;
 type GroupRow = Tables<"tournament_group">;
@@ -451,6 +452,9 @@ export async function writeMatchResult(params: {
   const { tournamentId, matchId, homeTeamId, awayTeamId, games, winnerTeamId, resultType, actorName } = params;
   const supabase = getServiceSupabase();
 
+  // Two sequential round trips (fetch, then the games delete that must precede
+  // the games insert), then everything independent runs together -- cuts this
+  // from ~7 sequential round trips to 3 before populateTournament's own reads.
   const [{ data: priorResult }, { data: priorGames }] = await Promise.all([
     supabase.from("match_result").select("*").eq("match_id", matchId).maybeSingle(),
     supabase.from("game").select("*").eq("match_id", matchId).order("game_number"),
@@ -458,13 +462,6 @@ export async function writeMatchResult(params: {
 
   const { error: deleteGamesError } = await supabase.from("game").delete().eq("match_id", matchId);
   if (deleteGamesError) throw new Error(deleteGamesError.message);
-
-  if (games.length > 0) {
-    const { error: insertGamesError } = await supabase.from("game").insert(
-      games.map((g) => ({ match_id: matchId, game_number: g.gameNumber, home_score: g.homeScore, away_score: g.awayScore })),
-    );
-    if (insertGamesError) throw new Error(insertGamesError.message);
-  }
 
   let homeGamesWon = 0;
   let awayGamesWon = 0;
@@ -478,41 +475,41 @@ export async function writeMatchResult(params: {
     else if (w === "away") awayGamesWon++;
   }
 
-  if (priorResult) {
-    const { error } = await supabase.from("match_result").delete().eq("match_id", matchId);
-    if (error) throw new Error(error.message);
-  }
-  const { error: resultError } = await supabase.from("match_result").insert({
-    match_id: matchId,
-    winner_team_id: winnerTeamId,
-    home_games_won: homeGamesWon,
-    away_games_won: awayGamesWon,
-    home_points_total: homePointsTotal,
-    away_points_total: awayPointsTotal,
-    result_type: resultType,
-    recorded_by: actorName,
-  });
-  if (resultError) throw new Error(resultError.message);
-
-  const { error: matchError } = await supabase
-    .from("match")
-    .update({ status: resultType === "normal" ? "completed" : "forfeit" })
-    .eq("id", matchId);
-  if (matchError) throw new Error(matchError.message);
-
-  const { error: auditError } = await supabase.from("audit_log").insert({
-    tournament_id: tournamentId,
-    entity_type: "match",
-    entity_id: matchId,
-    action: priorResult ? "score_edited" : "score_recorded",
-    before: priorResult ? ({ result: priorResult, games: priorGames ?? [] } as unknown as Json) : null,
-    after: ({
-      result: { winnerTeamId, homeTeamId, awayTeamId, homeGamesWon, awayGamesWon, homePointsTotal, awayPointsTotal, resultType },
-      games,
-    } as unknown as Json),
-    actor_name: actorName,
-  });
-  if (auditError) throw new Error(auditError.message);
+  const [insertGames, upsertResult, updateMatch, insertAudit] = await Promise.all([
+    games.length > 0
+      ? supabase.from("game").insert(games.map((g) => ({ match_id: matchId, game_number: g.gameNumber, home_score: g.homeScore, away_score: g.awayScore })))
+      : Promise.resolve({ error: null }),
+    supabase.from("match_result").upsert(
+      {
+        match_id: matchId,
+        winner_team_id: winnerTeamId,
+        home_games_won: homeGamesWon,
+        away_games_won: awayGamesWon,
+        home_points_total: homePointsTotal,
+        away_points_total: awayPointsTotal,
+        result_type: resultType,
+        recorded_by: actorName,
+      },
+      { onConflict: "match_id" },
+    ),
+    supabase.from("match").update({ status: resultType === "normal" ? "completed" : "forfeit" }).eq("id", matchId),
+    supabase.from("audit_log").insert({
+      tournament_id: tournamentId,
+      entity_type: "match",
+      entity_id: matchId,
+      action: priorResult ? "score_edited" : "score_recorded",
+      before: priorResult ? ({ result: priorResult, games: priorGames ?? [] } as unknown as Json) : null,
+      after: ({
+        result: { winnerTeamId, homeTeamId, awayTeamId, homeGamesWon, awayGamesWon, homePointsTotal, awayPointsTotal, resultType },
+        games,
+      } as unknown as Json),
+      actor_name: actorName,
+    }),
+  ]);
+  if (insertGames.error) throw new Error(insertGames.error.message);
+  if (upsertResult.error) throw new Error(upsertResult.error.message);
+  if (updateMatch.error) throw new Error(updateMatch.error.message);
+  if (insertAudit.error) throw new Error(insertAudit.error.message);
 
   await populateTournament(tournamentId);
 }
@@ -523,7 +520,7 @@ export type DisplayStandingsGroup = {
   groupName: string;
   tiebreakers: Tiebreaker[];
   qualifyCount: number | null;
-  standings: (Standing & { teamName: string })[];
+  standings: (Standing & { team: TeamDisplay })[];
 };
 
 /**
@@ -539,7 +536,6 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
   if (snapshot.stages.length === 0) return [];
 
   const groupNameById = new Map(snapshot.groups.map((g) => [g.id, g.name]));
-  const teamNameById = new Map(snapshot.teams.map((t) => [t.id, t.name]));
   const teamsByGroup = new Map<string, string[]>();
   for (const t of snapshot.teams) {
     if (!t.group_id) continue;
@@ -549,9 +545,12 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
   }
 
   const groupIds = snapshot.groups.map((g) => g.id);
-  const { data: qualRules } = groupIds.length
-    ? await supabase.from("qualification_rule").select("from_group_id, method, value").in("from_group_id", groupIds)
-    : { data: [] as { from_group_id: string | null; method: string; value: number }[] };
+  const [{ data: qualRules }, teamDisplayById] = await Promise.all([
+    groupIds.length
+      ? supabase.from("qualification_rule").select("from_group_id, method, value").in("from_group_id", groupIds)
+      : Promise.resolve({ data: [] as { from_group_id: string | null; method: string; value: number }[] }),
+    getTeamDisplayMap(snapshot.teams.map((t) => t.id)),
+  ]);
   const qualifyCountByGroupId = new Map<string, number>();
   for (const r of qualRules ?? []) {
     if (r.from_group_id && r.method === "top_n") qualifyCountByGroupId.set(r.from_group_id, r.value);
@@ -578,7 +577,7 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
         groupName: g.name,
         tiebreakers: cfg.tiebreakers,
         qualifyCount: qualifyCountByGroupId.get(groupRow.id) ?? null,
-        standings: standings.map((s) => ({ ...s, teamName: teamNameById.get(s.entrantId) ?? "Unknown" })),
+        standings: standings.map((s) => ({ ...s, team: teamDisplayById.get(s.entrantId) ?? { header: "Unknown", subtext: null } })),
       });
     }
   }
@@ -591,19 +590,22 @@ function ordinal(n: number): string {
   return `${n}${suffixes[(v - 20) % 10] ?? suffixes[v] ?? suffixes[0]}`;
 }
 
-function labelForSlotRef(ref: MatchSide, stageNameByKey: Map<string, string>): string {
-  if (ref.kind === "entrant") return "TBD";
-  if (ref.kind === "bye") return "Bye";
-  if (ref.kind === "group_rank") return `Pool ${ref.group} — ${ordinal(ref.rank)}`;
-  const stageName = stageNameByKey.get(ref.stage) ?? ref.stage;
-  return `${ref.outcome === "winner" ? "Winner" : "Loser"} of ${stageName} Match #${ref.match}`;
+function labelForSlotRef(ref: MatchSide, stageNameByKey: Map<string, string>): TeamDisplay {
+  const header = (() => {
+    if (ref.kind === "entrant") return "TBD";
+    if (ref.kind === "bye") return "Bye";
+    if (ref.kind === "group_rank") return `Pool ${ref.group} — ${ordinal(ref.rank)}`;
+    const stageName = stageNameByKey.get(ref.stage) ?? ref.stage;
+    return `${ref.outcome === "winner" ? "Winner" : "Loser"} of ${stageName} Match #${ref.match}`;
+  })();
+  return { header, subtext: null };
 }
 
 export type PublicBracketMatch = {
   matchNumber: number;
   status: string | null;
-  homeLabel: string;
-  awayLabel: string;
+  home: TeamDisplay;
+  away: TeamDisplay;
   homeScore: number | null;
   awayScore: number | null;
   resultType: string | null;
@@ -625,13 +627,14 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
   const snapshot = await loadTournamentSnapshot(supabase, tournamentId);
   if (snapshot.stages.length === 0) return [];
 
-  const teamNameById = new Map(snapshot.teams.map((t) => [t.id, t.name]));
   const stageNameByKey = new Map(snapshot.stages.map((s) => [s.key, s.name]));
   const matchIds = snapshot.matches.map((m) => m.id);
-  const { data: results } = matchIds.length
-    ? await supabase.from("match_result").select("*").in("match_id", matchIds)
-    : { data: [] as Tables<"match_result">[] };
+  const [{ data: results }, teamDisplayById] = await Promise.all([
+    matchIds.length ? supabase.from("match_result").select("*").in("match_id", matchIds) : Promise.resolve({ data: [] as Tables<"match_result">[] }),
+    getTeamDisplayMap(snapshot.teams.map((t) => t.id)),
+  ]);
   const resultByMatchId = new Map((results ?? []).map((r) => [r.match_id, r]));
+  const BYE_DISPLAY: TeamDisplay = { header: "Bye", subtext: null };
 
   const bracketStages: PublicBracketStage[] = [];
   for (const stage of snapshot.stages) {
@@ -655,19 +658,20 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
         return {
           matchNumber: num,
           status: match.status,
-          homeLabel: match.home_team_id ? teamNameById.get(match.home_team_id) ?? "Unknown" : "Bye",
-          awayLabel: match.away_team_id ? teamNameById.get(match.away_team_id) ?? "Unknown" : "Bye",
+          home: match.home_team_id ? teamDisplayById.get(match.home_team_id) ?? { header: "Unknown", subtext: null } : BYE_DISPLAY,
+          away: match.away_team_id ? teamDisplayById.get(match.away_team_id) ?? { header: "Unknown", subtext: null } : BYE_DISPLAY,
           homeScore: result?.home_points_total ?? null,
           awayScore: result?.away_points_total ?? null,
           resultType: result?.result_type ?? null,
         };
       }
       const node = nodesByPosition.get(num);
+      const tbd: TeamDisplay = { header: "TBD", subtext: null };
       return {
         matchNumber: num,
         status: null,
-        homeLabel: node ? labelForSlotRef(node.home_ref as unknown as MatchSide, stageNameByKey) : "TBD",
-        awayLabel: node ? labelForSlotRef(node.away_ref as unknown as MatchSide, stageNameByKey) : "TBD",
+        home: node ? labelForSlotRef(node.home_ref as unknown as MatchSide, stageNameByKey) : tbd,
+        away: node ? labelForSlotRef(node.away_ref as unknown as MatchSide, stageNameByKey) : tbd,
         homeScore: null,
         awayScore: null,
         resultType: null,

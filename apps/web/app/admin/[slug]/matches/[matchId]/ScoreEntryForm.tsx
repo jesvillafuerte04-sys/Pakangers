@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { validateGameScore, matchWinner, type Game } from "@pakangers/engine";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { TeamLine } from "@/components/TeamMatchup";
 import { saveMatchScore, type ScorePayload, type SaveScoreResult } from "../actions";
 import type { MatchDetail } from "@/lib/match-data";
 import type { AffectedDownstreamMatch } from "@/lib/match-pipeline";
@@ -141,14 +142,20 @@ export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDeta
             onClick={() => setForfeitWinner("home")}
             fullWidth
           >
-            {match.homeTeamName}
+            <span className="flex flex-col leading-tight">
+              <span>{match.home.header}</span>
+              {match.home.subtext && <span className="text-xs font-normal opacity-75">{match.home.subtext}</span>}
+            </span>
           </Button>
           <Button
             variant={forfeitWinner === "away" ? "primary" : "outline"}
             onClick={() => setForfeitWinner("away")}
             fullWidth
           >
-            {match.awayTeamName}
+            <span className="flex flex-col leading-tight">
+              <span>{match.away.header}</span>
+              {match.away.subtext && <span className="text-xs font-normal opacity-75">{match.away.subtext}</span>}
+            </span>
           </Button>
         </div>
 
@@ -183,7 +190,7 @@ export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDeta
           {cfg.bestOf > 1 && <p className="text-xs font-bold uppercase text-[var(--color-text-muted)]">Game {i + 1}</p>}
           <div className="flex items-center gap-3">
             <div className="flex flex-1 items-center justify-between gap-2">
-              <span className="font-medium text-[var(--color-navy)]">{match.homeTeamName}</span>
+              <TeamLine display={match.home} />
               <input
                 type="number"
                 inputMode="numeric"
@@ -193,7 +200,7 @@ export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDeta
               />
             </div>
             <div className="flex flex-1 items-center justify-between gap-2">
-              <span className="font-medium text-[var(--color-navy)]">{match.awayTeamName}</span>
+              <TeamLine display={match.away} />
               <input
                 type="number"
                 inputMode="numeric"

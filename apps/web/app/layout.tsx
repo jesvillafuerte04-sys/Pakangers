@@ -22,7 +22,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${inter.variable} ${robotoSlab.variable}`}>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <footer className="py-6 text-center text-xs text-[var(--color-text-muted)] opacity-60">
+          Built by Jes Villafuerte
+        </footer>
+      </body>
     </html>
   );
 }

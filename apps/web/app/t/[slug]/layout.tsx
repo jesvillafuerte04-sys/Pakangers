@@ -32,16 +32,22 @@ export default async function PublicTournamentLayout({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-5 p-5">
-      <header className="flex flex-col gap-1.5">
-        <Badge tone={tournament.status === "completed" ? "success" : "gold"}>
-          {STATUS_LABEL[tournament.status] ?? tournament.status}
-        </Badge>
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-black uppercase text-[var(--color-navy)]">
-          {tournament.name}
-        </h1>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {tournament.venue ?? "Venue TBA"} {tournament.date_start ? `· ${tournament.date_start}` : ""}
-        </p>
+      <header className="flex items-start gap-3">
+        {tournament.logo_url && (
+          // eslint-disable-next-line @next/next/no-img-element -- organizer-supplied URL, arbitrary host, can't use next/image's fixed remotePatterns
+          <img src={tournament.logo_url} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+        )}
+        <div className="flex flex-col gap-1.5">
+          <Badge tone={tournament.status === "completed" ? "success" : "gold"}>
+            {STATUS_LABEL[tournament.status] ?? tournament.status}
+          </Badge>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-black uppercase text-[var(--color-navy)]">
+            {tournament.name}
+          </h1>
+          <p className="text-sm text-[var(--color-text-muted)]">
+            {tournament.venue ?? "Venue TBA"} {tournament.date_start ? `· ${tournament.date_start}` : ""}
+          </p>
+        </div>
       </header>
 
       <PublicNav slug={slug} />

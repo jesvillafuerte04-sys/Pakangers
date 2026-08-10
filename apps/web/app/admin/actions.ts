@@ -169,12 +169,14 @@ export async function updateTournamentInfo(slug: string, formData: FormData): Pr
       date_end: (formData.get("date_end") as string) || null,
       venue: (formData.get("venue") as string) || null,
       organizer_name: (formData.get("organizer_name") as string) || null,
+      logo_url: (formData.get("logo_url") as string) || null,
       description: (formData.get("description") as string) || null,
     })
     .eq("slug", slug);
   if (error) throw new Error(error.message);
 
   revalidatePath(`/admin/${slug}`);
+  revalidatePath(`/t/${slug}`);
 }
 
 export async function addPlayers(slug: string, tournamentId: string, formData: FormData): Promise<void> {
@@ -211,7 +213,6 @@ export async function createTeam(slug: string, tournamentId: string, divisionId:
   const supabase = getServiceSupabase();
 
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) throw new Error("Team name is required");
 
   const { error } = await supabase.from("team").insert({ tournament_id: tournamentId, division_id: divisionId, name });
   if (error) throw new Error(error.message);

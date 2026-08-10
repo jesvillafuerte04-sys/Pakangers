@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getPublicTournament } from "@/lib/public-data";
 import { getDisplayStandings } from "@/lib/match-pipeline";
 import { Card } from "@/components/ui/Card";
+import { TeamLine } from "@/components/TeamMatchup";
 import type { Tiebreaker } from "@pakangers/engine";
 
 const TIEBREAKER_LABEL: Record<Tiebreaker, string> = {
@@ -37,18 +38,18 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
           <ol className="flex flex-col">
             {g.standings.map((s, i) => (
               <li key={s.entrantId}>
-                <div className="flex items-center justify-between gap-3 py-2">
-                  <div className="flex items-baseline gap-2">
-                    <span className="w-5 text-sm font-bold text-[var(--color-text-muted)]">{s.rank}</span>
-                    <span className="font-medium text-[var(--color-navy)]">
-                      {s.teamName}
-                      {s.unresolvedTie && <span className="ml-1 text-xs text-[var(--color-text-muted)]">(tied)</span>}
+                <div className="flex items-start gap-2 py-2">
+                  <span className="w-5 pt-0.5 text-sm font-bold text-[var(--color-text-muted)]">{s.rank}</span>
+                  <div className="flex flex-1 items-center justify-between gap-3">
+                    <div>
+                      <TeamLine display={s.team} />
+                      {s.unresolvedTie && <span className="text-xs text-[var(--color-text-muted)]">(tied)</span>}
+                    </div>
+                    <span className="whitespace-nowrap text-right text-sm text-[var(--color-text-muted)]">
+                      {s.wins}-{s.losses} · {s.pointDifferential >= 0 ? "+" : ""}
+                      {s.pointDifferential} diff · {s.pointsFor} pts
                     </span>
                   </div>
-                  <span className="whitespace-nowrap text-right text-sm text-[var(--color-text-muted)]">
-                    {s.wins}-{s.losses} · {s.pointDifferential >= 0 ? "+" : ""}
-                    {s.pointDifferential} diff · {s.pointsFor} pts
-                  </span>
                 </div>
                 {g.qualifyCount !== null && i === g.qualifyCount - 1 && i < g.standings.length - 1 && (
                   <div className="my-1 border-t-2 border-dashed border-[var(--color-gold)]" />
