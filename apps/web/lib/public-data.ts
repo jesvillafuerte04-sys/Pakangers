@@ -1,16 +1,21 @@
 import "server-only";
+import { cache } from "react";
 import { getServiceSupabase } from "./supabase-server";
 import { getMatchList, type MatchListRow } from "./match-data";
 import { getDisplayStandings, type DisplayStandingsGroup } from "./match-pipeline";
-import { getTeamDisplayMap, type TeamDisplay } from "./team-display";
+import { getTournamentTeamDisplays, type TeamDisplay } from "./team-display";
 
-/** Like getTournamentBySlug, but mirrors the RLS policy: drafts are never public. */
-export async function getPublicTournament(slug: string) {
+/**
+ * Like getTournamentBySlug, but mirrors the RLS policy: drafts are never public.
+ * cache()d because generateMetadata, the layout, and the page each ask for it --
+ * three identical round trips per navigation before this.
+ */
+export const getPublicTournament = cache(async (slug: string) => {
   const supabase = getServiceSupabase();
   const { data, error } = await supabase.from("tournament").select("*").eq("slug", slug).single();
   if (error || !data || data.status === "draft") return null;
   return data;
-}
+});
 
 export type LandingSnapshot = {
   live: MatchListRow[];
@@ -19,6 +24,7 @@ export type LandingSnapshot = {
 };
 
 export async function getLandingSnapshot(tournamentId: string): Promise<LandingSnapshot> {
+  // Both getMatchList calls share one cached fetch of the underlying rows.
   const [live, upcoming, standings] = await Promise.all([
     getMatchList(tournamentId, "live"),
     getMatchList(tournamentId, "upcoming"),
@@ -52,8 +58,13 @@ export type PublicRules = {
 
 export async function getPublicRules(tournamentId: string): Promise<PublicRules> {
   const supabase = getServiceSupabase();
+  // rule_set comes back nested on the tournament row rather than as a follow-up query.
   const [{ data: tournament }, { data: stages }, { data: rules }] = await Promise.all([
-    supabase.from("tournament").select("rule_set_id").eq("id", tournamentId).single(),
+    supabase
+      .from("tournament")
+      .select("rule_set(name, governing_body, edition_year, source_url)")
+      .eq("id", tournamentId)
+      .single(),
     supabase.from("stage").select("name, sequence, scoring_config").eq("tournament_id", tournamentId).order("sequence"),
     supabase
       .from("tournament_rule")
@@ -62,47 +73,39 @@ export async function getPublicRules(tournamentId: string): Promise<PublicRules>
       .order("display_order"),
   ]);
 
-  const { data: ruleSetRow } = tournament?.rule_set_id
-    ? await supabase.from("rule_set").select("name, governing_body, edition_year, source_url").eq("id", tournament.rule_set_id).single()
-    : { data: null };
+  const rs = tournament?.rule_set ? (Array.isArray(tournament.rule_set) ? tournament.rule_set[0] : tournament.rule_set) : null;
 
   return {
     scoringByStage: (stages ?? []).map((s) => {
       const cfg = s.scoring_config as unknown as { pointsToWin: number; winBy: string; bestOf: number; cap?: number };
       return { stageName: s.name, pointsToWin: cfg.pointsToWin, winBy: cfg.winBy, bestOf: cfg.bestOf, cap: cfg.cap ?? null };
     }),
-    ruleSet: ruleSetRow
-      ? { name: ruleSetRow.name, governingBody: ruleSetRow.governing_body, editionYear: ruleSetRow.edition_year, sourceUrl: ruleSetRow.source_url }
-      : null,
+    ruleSet: rs ? { name: rs.name, governingBody: rs.governing_body, editionYear: rs.edition_year, sourceUrl: rs.source_url } : null,
     tournamentRules: (rules ?? []).map((r) => ({ category: r.category, title: r.title, summaryText: r.summary_text })),
   };
 }
 
 export async function getFinalResults(tournamentId: string): Promise<FinalResults> {
   const supabase = getServiceSupabase();
-  const [standings, allMatches, { data: stages }] = await Promise.all([
+  // The podium needs both sides of the championship and third-place matches.
+  // One nested query replaces the previous stage -> match -> match_result chain.
+  const [standings, allMatches, { data: finalStages }, teamDisplayById] = await Promise.all([
     getDisplayStandings(tournamentId),
     getMatchList(tournamentId, "all"),
-    supabase.from("stage").select("id, key").eq("tournament_id", tournamentId).in("key", ["championship", "third_place"]),
+    supabase
+      .from("stage")
+      .select("key, match(id, home_team_id, away_team_id, match_result(winner_team_id))")
+      .eq("tournament_id", tournamentId)
+      .in("key", ["championship", "third_place"]),
+    getTournamentTeamDisplays(tournamentId),
   ]);
 
-  const stageIdByKey = new Map((stages ?? []).map((s) => [s.key, s.id]));
-  const stageIds = [...stageIdByKey.values()];
-  const { data: finalMatches } = stageIds.length
-    ? await supabase.from("match").select("id, stage_id, home_team_id, away_team_id").in("stage_id", stageIds)
-    : { data: [] as { id: string; stage_id: string; home_team_id: string | null; away_team_id: string | null }[] };
-
-  const matchIds = (finalMatches ?? []).map((m) => m.id);
-  const { data: results } = matchIds.length
-    ? await supabase.from("match_result").select("match_id, winner_team_id").in("match_id", matchIds)
-    : { data: [] as { match_id: string; winner_team_id: string | null }[] };
-  const resultByMatchId = new Map((results ?? []).map((r) => [r.match_id, r]));
-
   function resolveStage(key: string): { winnerId: string | null; loserId: string | null } {
-    const stageId = stageIdByKey.get(key);
-    const match = (finalMatches ?? []).find((m) => m.stage_id === stageId);
+    const stage = (finalStages ?? []).find((s) => s.key === key);
+    const match = stage?.match?.[0];
     if (!match) return { winnerId: null, loserId: null };
-    const winnerId = resultByMatchId.get(match.id)?.winner_team_id ?? null;
+    const result = Array.isArray(match.match_result) ? match.match_result[0] : match.match_result;
+    const winnerId = result?.winner_team_id ?? null;
     if (!winnerId) return { winnerId: null, loserId: null };
     const loserId = winnerId === match.home_team_id ? match.away_team_id : match.home_team_id;
     return { winnerId, loserId };
@@ -110,15 +113,13 @@ export async function getFinalResults(tournamentId: string): Promise<FinalResult
 
   const champ = resolveStage("championship");
   const third = resolveStage("third_place");
-  const teamDisplayById = await getTeamDisplayMap(
-    [champ.winnerId, champ.loserId, third.winnerId, third.loserId].filter((id): id is string => Boolean(id)),
-  );
+  const display = (id: string | null) => (id ? teamDisplayById.get(id) ?? null : null);
 
   return {
-    champion: champ.winnerId ? teamDisplayById.get(champ.winnerId) ?? null : null,
-    firstRunnerUp: champ.loserId ? teamDisplayById.get(champ.loserId) ?? null : null,
-    secondRunnerUp: third.winnerId ? teamDisplayById.get(third.winnerId) ?? null : null,
-    thirdRunnerUp: third.loserId ? teamDisplayById.get(third.loserId) ?? null : null,
+    champion: display(champ.winnerId),
+    firstRunnerUp: display(champ.loserId),
+    secondRunnerUp: display(third.winnerId),
+    thirdRunnerUp: display(third.loserId),
     standings,
     allMatches,
   };

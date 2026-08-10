@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { markMatchLive } from "./actions";
-import { TeamMatchup } from "@/components/TeamMatchup";
+import { MatchCardBody } from "@/components/MatchCard";
 
 const TABS: { key: MatchListFilter; label: string }[] = [
   { key: "upcoming", label: "Upcoming" },
@@ -35,12 +35,6 @@ export default async function MatchListPage({
   if (!tournament) notFound();
 
   const matches = await getMatchList(tournament.id, filter);
-  const byStage = new Map<string, typeof matches>();
-  for (const m of matches) {
-    const list = byStage.get(m.stageName) ?? [];
-    list.push(m);
-    byStage.set(m.stageName, list);
-  }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-6">
@@ -74,35 +68,34 @@ export default async function MatchListPage({
         </Card>
       )}
 
-      {[...byStage.entries()].map(([stageName, stageMatches]) => (
-        <div key={stageName} className="flex flex-col gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{stageName}</h2>
-          {stageMatches.map((m) => (
-            <Card key={m.id} className="flex items-center justify-between gap-3">
-              <Link href={`/admin/${slug}/matches/${m.id}`} className="flex flex-1 flex-col gap-1">
-                <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                  Match #{m.matchNumber} {m.groupName ? `· ${m.groupName}` : ""}
-                </span>
-                <TeamMatchup home={m.home} away={m.away} />
-                {m.homePointsTotal !== null && (
-                  <span className="text-sm text-[var(--color-text-muted)]">
-                    {m.homePointsTotal}–{m.awayPointsTotal} {m.resultType && m.resultType !== "normal" ? `(${m.resultType})` : ""}
-                  </span>
-                )}
-              </Link>
-              <div className="flex flex-col items-end gap-2">
-                <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>{m.status.replace("_", " ")}</Badge>
-                {m.status === "pending" && (
-                  <form action={markMatchLive.bind(null, slug, m.id)}>
-                    <Button type="submit" variant="outline" size="sm">
-                      Mark live
-                    </Button>
-                  </form>
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
+      {matches.map((m) => (
+        <Card key={m.id} className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+              M{m.matchNumber} · {m.groupName ? `${m.stageName} · ${m.groupName}` : m.stageName}
+            </span>
+            <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>{m.status.replace("_", " ")}</Badge>
+          </div>
+
+          <Link href={`/admin/${slug}/matches/${m.id}`} className="block">
+            <MatchCardBody match={m} />
+          </Link>
+
+          <div className="flex items-center gap-2 border-t border-[var(--border-subtle)] pt-2">
+            <Link href={`/admin/${slug}/matches/${m.id}`} className="flex-1">
+              <Button variant="outline" size="sm" fullWidth>
+                {m.winnerSide ? "Correct score" : "Enter score"}
+              </Button>
+            </Link>
+            {m.status === "pending" && (
+              <form action={markMatchLive.bind(null, slug, m.id)}>
+                <Button type="submit" variant="outline" size="sm">
+                  Mark live
+                </Button>
+              </form>
+            )}
+          </div>
+        </Card>
       ))}
     </main>
   );

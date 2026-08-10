@@ -1,7 +1,8 @@
 import "server-only";
+import { cache } from "react";
 import { getServiceSupabase } from "./supabase-server";
 import type { ScoringConfig } from "@pakangers/engine";
-import { formatTeamDisplay, getTeamDisplayMap, type TeamDisplay } from "./team-display";
+import { getTeamDisplayMap, getTournamentTeamDisplays, type TeamDisplay } from "./team-display";
 
 export type MatchListFilter = "live" | "upcoming" | "completed" | "all";
 
@@ -18,48 +19,46 @@ export type MatchListRow = {
   homePointsTotal: number | null;
   awayPointsTotal: number | null;
   resultType: string | null;
+  /** Which side won, once a result exists -- drives winner/loser emphasis in the UI. */
+  winnerSide: "home" | "away" | null;
 };
 
 const TBD: TeamDisplay = { header: "TBD", subtext: null };
 const BYE: TeamDisplay = { header: "Bye", subtext: null };
 
-export async function getMatchList(tournamentId: string, filter: MatchListFilter = "upcoming"): Promise<MatchListRow[]> {
+const RESOLVED = ["completed", "forfeit", "bye"];
+
+/**
+ * Every match in a tournament with its result folded in. Four parallel,
+ * tournament-scoped round trips -- note the group query filters through
+ * stage!inner rather than reading the whole tournament_group table.
+ */
+const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow[]> => {
   const supabase = getServiceSupabase();
 
-  const [{ data: matches, error }, { data: stages }, { data: groups }, { data: teams }, { data: results }, { data: players }] = await Promise.all([
-    supabase.from("match").select("*").eq("tournament_id", tournamentId).order("match_number"),
+  const [{ data: matches, error }, { data: stages }, { data: groups }, teamDisplayById] = await Promise.all([
+    supabase
+      .from("match")
+      .select(
+        "id, match_number, status, stage_id, group_id, home_team_id, away_team_id, match_result(winner_team_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type)",
+      )
+      .eq("tournament_id", tournamentId)
+      .order("match_number"),
     supabase.from("stage").select("id, name").eq("tournament_id", tournamentId),
-    supabase.from("tournament_group").select("id, name"),
-    supabase.from("team").select("id, name").eq("tournament_id", tournamentId),
-    supabase.from("match_result").select("match_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type"),
-    supabase.from("player").select("id, first_name, last_name").eq("tournament_id", tournamentId),
+    supabase.from("tournament_group").select("id, name, stage!inner(tournament_id)").eq("stage.tournament_id", tournamentId),
+    getTournamentTeamDisplays(tournamentId),
   ]);
   if (error) throw new Error(error.message);
 
-  const teamIds = (teams ?? []).map((t) => t.id);
-  const { data: members } = teamIds.length
-    ? await supabase.from("team_member").select("team_id, position, player_id").in("team_id", teamIds).order("position")
-    : { data: [] as { team_id: string; position: number; player_id: string }[] };
-
-  const playerNameById = new Map((players ?? []).map((p) => [p.id, `${p.first_name} ${p.last_name}`.trim()]));
-  const playerNamesByTeam = new Map<string, string[]>();
-  for (const m of members ?? []) {
-    const name = playerNameById.get(m.player_id);
-    if (!name) continue;
-    const list = playerNamesByTeam.get(m.team_id) ?? [];
-    list.push(name);
-    playerNamesByTeam.set(m.team_id, list);
-  }
-  const teamDisplayById = new Map((teams ?? []).map((t) => [t.id, formatTeamDisplay(t.name, playerNamesByTeam.get(t.id) ?? [])]));
-
   const stageNameById = new Map((stages ?? []).map((s) => [s.id, s.name]));
   const groupNameById = new Map((groups ?? []).map((g) => [g.id, g.name]));
-  const resultByMatchId = new Map((results ?? []).map((r) => [r.match_id, r]));
 
-  const rows: MatchListRow[] = (matches ?? [])
-    .filter((m) => m.home_team_id) // the pipeline only ever creates a row once at least the home slot resolves (away is null only for a bye)
+  return (matches ?? [])
+    .filter((m) => m.home_team_id) // the pipeline only creates a row once the home slot resolves (away is null only for a bye)
     .map((m) => {
-      const result = resultByMatchId.get(m.id);
+      // match_result is one-to-one, but the nested select types it as an array.
+      const result = Array.isArray(m.match_result) ? m.match_result[0] : m.match_result;
+      const winnerId = result?.winner_team_id ?? null;
       return {
         id: m.id,
         matchNumber: m.match_number,
@@ -73,11 +72,15 @@ export async function getMatchList(tournamentId: string, filter: MatchListFilter
         homePointsTotal: result?.home_points_total ?? null,
         awayPointsTotal: result?.away_points_total ?? null,
         resultType: result?.result_type ?? null,
+        winnerSide: winnerId ? (winnerId === m.home_team_id ? "home" : "away") : null,
       };
     });
+});
 
+export async function getMatchList(tournamentId: string, filter: MatchListFilter = "upcoming"): Promise<MatchListRow[]> {
+  const rows = await getAllMatchRows(tournamentId);
   if (filter === "all") return rows;
-  if (filter === "completed") return rows.filter((r) => ["completed", "forfeit", "bye"].includes(r.status));
+  if (filter === "completed") return rows.filter((r) => RESOLVED.includes(r.status));
   if (filter === "live") return rows.filter((r) => r.status === "in_progress");
   return rows.filter((r) => r.status === "pending" || r.status === "scheduled");
 }
@@ -99,16 +102,19 @@ export type MatchDetail = {
 
 export async function getMatchDetail(matchId: string): Promise<MatchDetail | null> {
   const supabase = getServiceSupabase();
-  const { data: match } = await supabase.from("match").select("*").eq("id", matchId).single();
+  const { data: match } = await supabase
+    .from("match")
+    .select(
+      "id, match_number, status, stage_id, group_id, home_team_id, away_team_id, scoring_config, stage(name), tournament_group(name), game(game_number, home_score, away_score), match_result(result_type, recorded_by, recorded_at)",
+    )
+    .eq("id", matchId)
+    .single();
   if (!match || !match.home_team_id || !match.away_team_id) return null;
 
-  const [{ data: stage }, { data: group }, { data: games }, { data: result }, teamDisplayById] = await Promise.all([
-    supabase.from("stage").select("name").eq("id", match.stage_id).single(),
-    match.group_id ? supabase.from("tournament_group").select("name").eq("id", match.group_id).single() : Promise.resolve({ data: null }),
-    supabase.from("game").select("*").eq("match_id", matchId).order("game_number"),
-    supabase.from("match_result").select("*").eq("match_id", matchId).maybeSingle(),
-    getTeamDisplayMap([match.home_team_id, match.away_team_id]),
-  ]);
+  const teamDisplayById = await getTeamDisplayMap([match.home_team_id, match.away_team_id]);
+  const stage = Array.isArray(match.stage) ? match.stage[0] : match.stage;
+  const group = Array.isArray(match.tournament_group) ? match.tournament_group[0] : match.tournament_group;
+  const result = Array.isArray(match.match_result) ? match.match_result[0] : match.match_result;
 
   return {
     id: match.id,
@@ -121,20 +127,14 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail | nul
     home: teamDisplayById.get(match.home_team_id) ?? TBD,
     away: teamDisplayById.get(match.away_team_id) ?? TBD,
     scoringConfig: match.scoring_config as unknown as MatchDetail["scoringConfig"],
-    existingGames: (games ?? []).map((g) => ({ gameNumber: g.game_number, homeScore: g.home_score, awayScore: g.away_score })),
+    existingGames: (match.game ?? [])
+      .map((g) => ({ gameNumber: g.game_number, homeScore: g.home_score, awayScore: g.away_score }))
+      .sort((a, b) => a.gameNumber - b.gameNumber),
     priorResult: result ? { resultType: result.result_type, recordedBy: result.recorded_by, recordedAt: result.recorded_at } : null,
   };
 }
 
 export async function getMatchProgress(tournamentId: string): Promise<{ completed: number; total: number }> {
-  const supabase = getServiceSupabase();
-  const [{ count: total }, { count: completed }] = await Promise.all([
-    supabase.from("match").select("id", { count: "exact", head: true }).eq("tournament_id", tournamentId),
-    supabase
-      .from("match")
-      .select("id", { count: "exact", head: true })
-      .eq("tournament_id", tournamentId)
-      .in("status", ["completed", "forfeit", "bye"]),
-  ]);
-  return { completed: completed ?? 0, total: total ?? 0 };
+  const rows = await getAllMatchRows(tournamentId);
+  return { completed: rows.filter((r) => RESOLVED.includes(r.status)).length, total: rows.length };
 }

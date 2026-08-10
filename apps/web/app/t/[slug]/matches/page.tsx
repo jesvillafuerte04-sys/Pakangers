@@ -4,7 +4,7 @@ import { getPublicTournament } from "@/lib/public-data";
 import { getMatchList, type MatchListFilter } from "@/lib/match-data";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { TeamMatchup } from "@/components/TeamMatchup";
+import { MatchCardBody } from "@/components/MatchCard";
 
 const TABS: { key: MatchListFilter; label: string }[] = [
   { key: "live", label: "Live" },
@@ -33,12 +33,6 @@ export default async function PublicMatchesPage({
   if (!tournament) notFound();
 
   const matches = await getMatchList(tournament.id, filter);
-  const byStage = new Map<string, typeof matches>();
-  for (const m of matches) {
-    const list = byStage.get(m.stageName) ?? [];
-    list.push(m);
-    byStage.set(m.stageName, list);
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -64,26 +58,18 @@ export default async function PublicMatchesPage({
         </Card>
       )}
 
-      {[...byStage.entries()].map(([stageName, stageMatches]) => (
-        <div key={stageName} className="flex flex-col gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{stageName}</h2>
-          {stageMatches.map((m) => (
-            <Card key={m.id} className="flex items-center justify-between gap-3">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                  Match #{m.matchNumber} {m.groupName ? `· ${m.groupName}` : ""}
-                </span>
-                <TeamMatchup home={m.home} away={m.away} />
-                {m.homePointsTotal !== null && (
-                  <span className="text-lg font-bold text-[var(--color-navy)]">
-                    {m.homePointsTotal}–{m.awayPointsTotal}
-                  </span>
-                )}
-              </div>
-              <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>{m.status === "in_progress" ? "Live" : m.status.replace("_", " ")}</Badge>
-            </Card>
-          ))}
-        </div>
+      {matches.map((m) => (
+        <Card key={m.id}>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+              M{m.matchNumber} · {m.groupName ? `${m.stageName} · ${m.groupName}` : m.stageName}
+            </span>
+            <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>
+              {m.status === "in_progress" ? "Live" : m.status.replace("_", " ")}
+            </Badge>
+          </div>
+          <MatchCardBody match={m} />
+        </Card>
       ))}
     </div>
   );

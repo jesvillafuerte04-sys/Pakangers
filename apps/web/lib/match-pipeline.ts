@@ -20,7 +20,7 @@ import {
   type ResolutionContext,
   type Game,
 } from "@pakangers/engine";
-import { getTeamDisplayMap, type TeamDisplay } from "./team-display";
+import { getTournamentTeamDisplays, type TeamDisplay } from "./team-display";
 
 type StageRow = Tables<"stage">;
 type GroupRow = Tables<"tournament_group">;
@@ -583,7 +583,7 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
     groupIds.length
       ? supabase.from("qualification_rule").select("from_group_id, method, value").in("from_group_id", groupIds)
       : Promise.resolve({ data: [] as { from_group_id: string | null; method: string; value: number }[] }),
-    getTeamDisplayMap(snapshot.teams.map((t) => t.id)),
+    getTournamentTeamDisplays(tournamentId),
   ]);
   const qualifyCountByGroupId = new Map<string, number>();
   for (const r of qualRules ?? []) {
@@ -675,7 +675,7 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
   const matchIds = snapshot.matches.map((m) => m.id);
   const [{ data: results }, teamDisplayById] = await Promise.all([
     matchIds.length ? supabase.from("match_result").select("*").in("match_id", matchIds) : Promise.resolve({ data: [] as Tables<"match_result">[] }),
-    getTeamDisplayMap(snapshot.teams.map((t) => t.id)),
+    getTournamentTeamDisplays(tournamentId),
   ]);
   const resultByMatchId = new Map((results ?? []).map((r) => [r.match_id, r]));
   const BYE_DISPLAY: TeamDisplay = { header: "Bye", subtext: null };
