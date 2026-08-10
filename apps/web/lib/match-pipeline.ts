@@ -6,6 +6,7 @@ import {
   computeStandings as engineComputeStandings,
   resolveSlotRef,
   gameWinner,
+  matchWinner,
   type Match as EngineMatch,
   type MatchStatus,
   type MatchSide,
@@ -514,14 +515,47 @@ export async function writeMatchResult(params: {
   await populateTournament(tournamentId);
 }
 
+export type StandingStat = { k: string; v: string | number };
+export type StandingHistoryEntry = { opponent: TeamDisplay; score: string; isWin: boolean };
+
 export type DisplayStandingsGroup = {
   stageKey: string;
   stageName: string;
   groupName: string;
   tiebreakers: Tiebreaker[];
   qualifyCount: number | null;
-  standings: (Standing & { team: TeamDisplay })[];
+  standings: (Standing & { team: TeamDisplay; stats: StandingStat[]; history: StandingHistoryEntry[] })[];
 };
+
+/** Every resolved match a given entrant played within a group, for the standings drill-down. */
+function matchHistoryForEntrant(
+  entrantId: string,
+  groupMatches: EngineMatch[],
+  teamDisplayById: Map<string, TeamDisplay>,
+): StandingHistoryEntry[] {
+  const history: StandingHistoryEntry[] = [];
+  for (const m of groupMatches) {
+    if (!RESOLVED_STATUSES.includes(m.status)) continue;
+    if (m.homeEntrantId !== entrantId && m.awayEntrantId !== entrantId) continue;
+    const isHome = m.homeEntrantId === entrantId;
+    const opponentId = isHome ? m.awayEntrantId : m.homeEntrantId;
+    if (!opponentId) continue; // a bye has no opponent to show
+
+    let myPoints = 0;
+    let theirPoints = 0;
+    for (const g of m.games) {
+      myPoints += isHome ? g.homeScore : g.awayScore;
+      theirPoints += isHome ? g.awayScore : g.homeScore;
+    }
+    const winnerSide = matchWinner(m.scoringConfig, m.games);
+    history.push({
+      opponent: teamDisplayById.get(opponentId) ?? { header: "Unknown", subtext: null },
+      score: `${myPoints}–${theirPoints}`,
+      isWin: (winnerSide === "home") === isHome,
+    });
+  }
+  return history;
+}
 
 /**
  * Standings for the public/organizer display -- unlike the internal
@@ -577,7 +611,17 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
         groupName: g.name,
         tiebreakers: cfg.tiebreakers,
         qualifyCount: qualifyCountByGroupId.get(groupRow.id) ?? null,
-        standings: standings.map((s) => ({ ...s, team: teamDisplayById.get(s.entrantId) ?? { header: "Unknown", subtext: null } })),
+        standings: standings.map((s) => ({
+          ...s,
+          team: teamDisplayById.get(s.entrantId) ?? { header: "Unknown", subtext: null },
+          stats: [
+            { k: "W–L", v: `${s.wins}-${s.losses}` },
+            { k: "DIFF", v: `${s.pointDifferential >= 0 ? "+" : ""}${s.pointDifferential}` },
+            { k: "PTS FOR", v: s.pointsFor },
+            { k: "PTS AGST", v: s.pointsAgainst },
+          ],
+          history: matchHistoryForEntrant(s.entrantId, groupMatches, teamDisplayById),
+        })),
       });
     }
   }

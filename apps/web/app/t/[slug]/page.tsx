@@ -22,16 +22,22 @@ export default async function PublicLandingPage({ params }: PageProps<"/t/[slug]
                 <TeamLine display={results.champion} className="text-right" />
               </div>
             )}
-            {results.runnerUp && (
+            {results.firstRunnerUp && (
               <div className="flex items-center justify-between gap-3 rounded-lg bg-[var(--surface-sunken)] px-4 py-3">
-                <span className="font-semibold text-[var(--color-text-muted)]">Runner-up</span>
-                <TeamLine display={results.runnerUp} className="text-right" />
+                <span className="font-semibold text-[var(--color-text-muted)]">1st Runner-up</span>
+                <TeamLine display={results.firstRunnerUp} className="text-right" />
               </div>
             )}
-            {results.thirdPlace && (
+            {results.secondRunnerUp && (
               <div className="flex items-center justify-between gap-3 rounded-lg bg-[var(--surface-sunken)] px-4 py-3">
-                <span className="font-semibold text-[var(--color-text-muted)]">Third place</span>
-                <TeamLine display={results.thirdPlace} className="text-right" />
+                <span className="font-semibold text-[var(--color-text-muted)]">2nd Runner-up</span>
+                <TeamLine display={results.secondRunnerUp} className="text-right" />
+              </div>
+            )}
+            {results.thirdRunnerUp && (
+              <div className="flex items-center justify-between gap-3 rounded-lg bg-[var(--surface-sunken)] px-4 py-3">
+                <span className="font-semibold text-[var(--color-text-muted)]">3rd Runner-up</span>
+                <TeamLine display={results.thirdRunnerUp} className="text-right" />
               </div>
             )}
           </div>

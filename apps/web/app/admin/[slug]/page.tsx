@@ -9,6 +9,7 @@ import { startTournament } from "./matches/actions";
 import { PublicShareCard } from "./PublicShareCard";
 import { unlockTournament } from "@/app/admin/actions";
 import { DeleteTournamentButton } from "@/app/admin/DeleteTournamentButton";
+import { PakangersLogo } from "@/components/PakangersLogo";
 
 const STATUS_TONE: Record<string, "neutral" | "gold" | "success"> = {
   draft: "neutral",
@@ -49,10 +50,7 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
       </Link>
 
       <header className="flex items-start gap-3">
-        {tournament.logo_url && (
-          // eslint-disable-next-line @next/next/no-img-element -- organizer-supplied URL, arbitrary host
-          <img src={tournament.logo_url} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
-        )}
+        <PakangersLogo size={64} />
         <div className="flex flex-col gap-2">
           <Badge tone={STATUS_TONE[tournament.status] ?? "neutral"}>{tournament.status.replace("_", " ")}</Badge>
           <h1 className="font-[family-name:var(--font-display)] text-3xl font-black uppercase text-[var(--color-navy)]">

@@ -4,6 +4,7 @@ import { getPublicTournament } from "@/lib/public-data";
 import { PublicNav } from "@/components/PublicNav";
 import { RealtimeRefresher } from "@/components/RealtimeRefresher";
 import { Badge } from "@/components/ui/Badge";
+import { PakangersLogo } from "@/components/PakangersLogo";
 
 export async function generateMetadata({ params }: LayoutProps<"/t/[slug]">): Promise<Metadata> {
   const { slug } = await params;
@@ -31,12 +32,9 @@ export default async function PublicTournamentLayout({
   if (!tournament) notFound();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-5 p-5">
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-5 p-5 pb-28">
       <header className="flex items-start gap-3">
-        {tournament.logo_url && (
-          // eslint-disable-next-line @next/next/no-img-element -- organizer-supplied URL, arbitrary host, can't use next/image's fixed remotePatterns
-          <img src={tournament.logo_url} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
-        )}
+        <PakangersLogo size={56} />
         <div className="flex flex-col gap-1.5">
           <Badge tone={tournament.status === "completed" ? "success" : "gold"}>
             {STATUS_LABEL[tournament.status] ?? tournament.status}
@@ -50,9 +48,9 @@ export default async function PublicTournamentLayout({
         </div>
       </header>
 
-      <PublicNav slug={slug} />
-
       {children}
+
+      <PublicNav slug={slug} />
 
       <RealtimeRefresher tournamentId={tournament.id} />
     </main>

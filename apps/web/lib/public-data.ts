@@ -37,8 +37,9 @@ export async function getLandingSnapshot(tournamentId: string): Promise<LandingS
 
 export type FinalResults = {
   champion: TeamDisplay | null;
-  runnerUp: TeamDisplay | null;
-  thirdPlace: TeamDisplay | null;
+  firstRunnerUp: TeamDisplay | null;
+  secondRunnerUp: TeamDisplay | null;
+  thirdRunnerUp: TeamDisplay | null;
   standings: DisplayStandingsGroup[];
   allMatches: MatchListRow[];
 };
@@ -110,13 +111,14 @@ export async function getFinalResults(tournamentId: string): Promise<FinalResult
   const champ = resolveStage("championship");
   const third = resolveStage("third_place");
   const teamDisplayById = await getTeamDisplayMap(
-    [champ.winnerId, champ.loserId, third.winnerId].filter((id): id is string => Boolean(id)),
+    [champ.winnerId, champ.loserId, third.winnerId, third.loserId].filter((id): id is string => Boolean(id)),
   );
 
   return {
     champion: champ.winnerId ? teamDisplayById.get(champ.winnerId) ?? null : null,
-    runnerUp: champ.loserId ? teamDisplayById.get(champ.loserId) ?? null : null,
-    thirdPlace: third.winnerId ? teamDisplayById.get(third.winnerId) ?? null : null,
+    firstRunnerUp: champ.loserId ? teamDisplayById.get(champ.loserId) ?? null : null,
+    secondRunnerUp: third.winnerId ? teamDisplayById.get(third.winnerId) ?? null : null,
+    thirdRunnerUp: third.loserId ? teamDisplayById.get(third.loserId) ?? null : null,
     standings,
     allMatches,
   };

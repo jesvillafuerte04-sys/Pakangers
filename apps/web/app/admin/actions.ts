@@ -169,7 +169,6 @@ export async function updateTournamentInfo(slug: string, formData: FormData): Pr
       date_end: (formData.get("date_end") as string) || null,
       venue: (formData.get("venue") as string) || null,
       organizer_name: (formData.get("organizer_name") as string) || null,
-      logo_url: (formData.get("logo_url") as string) || null,
       description: (formData.get("description") as string) || null,
     })
     .eq("slug", slug);
