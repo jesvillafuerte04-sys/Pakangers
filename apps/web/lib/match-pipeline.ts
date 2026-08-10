@@ -290,6 +290,7 @@ export async function populateTournament(tournamentId: string): Promise<void> {
     }
   }
 
+  let allStagesComplete = snapshot.stages.length > 0;
   for (const stage of snapshot.stages) {
     const plannedCount = plannedByStageKey.get(stage.key)?.length ?? 0;
     const stageMatches = [...ctx.matchesByStageAndNumber.entries()]
@@ -304,9 +305,20 @@ export async function populateTournament(tournamentId: string): Promise<void> {
     } else {
       status = "in_progress";
     }
+    if (status !== "completed") allStagesComplete = false;
 
     if (status !== stage.status) {
       const { error } = await supabase.from("stage").update({ status }).eq("id", stage.id);
+      if (error) throw new Error(error.message);
+    }
+  }
+
+  // The tournament itself is complete once every one of its stages is -- this is what
+  // switches the public page from the live "Now" view to the P6 podium/final-results view.
+  if (allStagesComplete) {
+    const { data: tournamentRow } = await supabase.from("tournament").select("status").eq("id", tournamentId).single();
+    if (tournamentRow && tournamentRow.status === "in_progress") {
+      const { error } = await supabase.from("tournament").update({ status: "completed" }).eq("id", tournamentId);
       if (error) throw new Error(error.message);
     }
   }
@@ -503,4 +515,166 @@ export async function writeMatchResult(params: {
   if (auditError) throw new Error(auditError.message);
 
   await populateTournament(tournamentId);
+}
+
+export type DisplayStandingsGroup = {
+  stageKey: string;
+  stageName: string;
+  groupName: string;
+  tiebreakers: Tiebreaker[];
+  qualifyCount: number | null;
+  standings: (Standing & { teamName: string })[];
+};
+
+/**
+ * Standings for the public/organizer display -- unlike the internal
+ * standingsByGroup used by populateTournament, this is never gated on the
+ * group being fully resolved. A pool at 0-0 has entirely legitimate
+ * standings to show (everyone tied); that's normal mid-event, not something
+ * to hide until the last match finishes.
+ */
+export async function getDisplayStandings(tournamentId: string): Promise<DisplayStandingsGroup[]> {
+  const supabase = getServiceSupabase();
+  const snapshot = await loadTournamentSnapshot(supabase, tournamentId);
+  if (snapshot.stages.length === 0) return [];
+
+  const groupNameById = new Map(snapshot.groups.map((g) => [g.id, g.name]));
+  const teamNameById = new Map(snapshot.teams.map((t) => [t.id, t.name]));
+  const teamsByGroup = new Map<string, string[]>();
+  for (const t of snapshot.teams) {
+    if (!t.group_id) continue;
+    const list = teamsByGroup.get(t.group_id) ?? [];
+    list.push(t.id);
+    teamsByGroup.set(t.group_id, list);
+  }
+
+  const groupIds = snapshot.groups.map((g) => g.id);
+  const { data: qualRules } = groupIds.length
+    ? await supabase.from("qualification_rule").select("from_group_id, method, value").in("from_group_id", groupIds)
+    : { data: [] as { from_group_id: string | null; method: string; value: number }[] };
+  const qualifyCountByGroupId = new Map<string, number>();
+  for (const r of qualRules ?? []) {
+    if (r.from_group_id && r.method === "top_n") qualifyCountByGroupId.set(r.from_group_id, r.value);
+  }
+
+  const result: DisplayStandingsGroup[] = [];
+  for (const stage of snapshot.stages) {
+    const groupsForStage = snapshot.groups.filter((g) => g.stage_id === stage.id);
+    if (groupsForStage.length === 0) continue;
+    const cfg = buildStageConfig(stage, groupsForStage, teamsByGroup);
+    if (!cfg.groups) continue;
+
+    const stageMatches = snapshot.matches
+      .filter((m) => m.stage_id === stage.id)
+      .map((m) => toEngineMatch(m, snapshot.games, groupNameById));
+
+    for (const g of cfg.groups) {
+      const groupRow = groupsForStage.find((gr) => gr.name === g.name)!;
+      const groupMatches = stageMatches.filter((m) => m.group === g.name);
+      const standings = engineComputeStandings(g.entrantIds, groupMatches, cfg.tiebreakers);
+      result.push({
+        stageKey: stage.key,
+        stageName: stage.name,
+        groupName: g.name,
+        tiebreakers: cfg.tiebreakers,
+        qualifyCount: qualifyCountByGroupId.get(groupRow.id) ?? null,
+        standings: standings.map((s) => ({ ...s, teamName: teamNameById.get(s.entrantId) ?? "Unknown" })),
+      });
+    }
+  }
+  return result;
+}
+
+function ordinal(n: number): string {
+  const suffixes = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return `${n}${suffixes[(v - 20) % 10] ?? suffixes[v] ?? suffixes[0]}`;
+}
+
+function labelForSlotRef(ref: MatchSide, stageNameByKey: Map<string, string>): string {
+  if (ref.kind === "entrant") return "TBD";
+  if (ref.kind === "bye") return "Bye";
+  if (ref.kind === "group_rank") return `Pool ${ref.group} — ${ordinal(ref.rank)}`;
+  const stageName = stageNameByKey.get(ref.stage) ?? ref.stage;
+  return `${ref.outcome === "winner" ? "Winner" : "Loser"} of ${stageName} Match #${ref.match}`;
+}
+
+export type PublicBracketMatch = {
+  matchNumber: number;
+  status: string | null;
+  homeLabel: string;
+  awayLabel: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  resultType: string | null;
+};
+
+export type PublicBracketStage = {
+  stageKey: string;
+  stageName: string;
+  matches: PublicBracketMatch[];
+};
+
+/**
+ * Per knockout stage, every planned match -- resolved (real teams, scores if
+ * played) or not (a human-readable source label built from the bracket_node's
+ * stored ref, e.g. "Pool A -- 1st", never a bare "TBD").
+ */
+export async function getPublicBracket(tournamentId: string): Promise<PublicBracketStage[]> {
+  const supabase = getServiceSupabase();
+  const snapshot = await loadTournamentSnapshot(supabase, tournamentId);
+  if (snapshot.stages.length === 0) return [];
+
+  const teamNameById = new Map(snapshot.teams.map((t) => [t.id, t.name]));
+  const stageNameByKey = new Map(snapshot.stages.map((s) => [s.key, s.name]));
+  const matchIds = snapshot.matches.map((m) => m.id);
+  const { data: results } = matchIds.length
+    ? await supabase.from("match_result").select("*").in("match_id", matchIds)
+    : { data: [] as Tables<"match_result">[] };
+  const resultByMatchId = new Map((results ?? []).map((r) => [r.match_id, r]));
+
+  const bracketStages: PublicBracketStage[] = [];
+  for (const stage of snapshot.stages) {
+    if (stage.format_key !== "single_elimination") continue;
+
+    const existing = snapshot.matches
+      .filter((m) => m.stage_id === stage.id)
+      .sort((a, b) => a.match_number - b.match_number);
+    const nodesByPosition = new Map(
+      snapshot.bracketNodes.filter((n) => n.stage_id === stage.id).map((n) => [n.position, n]),
+    );
+
+    const numbers = new Set<number>();
+    existing.forEach((m) => numbers.add(m.match_number));
+    nodesByPosition.forEach((_, pos) => numbers.add(pos));
+
+    const matches: PublicBracketMatch[] = [...numbers].sort((a, b) => a - b).map((num) => {
+      const match = existing.find((m) => m.match_number === num);
+      if (match) {
+        const result = resultByMatchId.get(match.id);
+        return {
+          matchNumber: num,
+          status: match.status,
+          homeLabel: match.home_team_id ? teamNameById.get(match.home_team_id) ?? "Unknown" : "Bye",
+          awayLabel: match.away_team_id ? teamNameById.get(match.away_team_id) ?? "Unknown" : "Bye",
+          homeScore: result?.home_points_total ?? null,
+          awayScore: result?.away_points_total ?? null,
+          resultType: result?.result_type ?? null,
+        };
+      }
+      const node = nodesByPosition.get(num);
+      return {
+        matchNumber: num,
+        status: null,
+        homeLabel: node ? labelForSlotRef(node.home_ref as unknown as MatchSide, stageNameByKey) : "TBD",
+        awayLabel: node ? labelForSlotRef(node.away_ref as unknown as MatchSide, stageNameByKey) : "TBD",
+        homeScore: null,
+        awayScore: null,
+        resultType: null,
+      };
+    });
+
+    bracketStages.push({ stageKey: stage.key, stageName: stage.name, matches });
+  }
+  return bracketStages;
 }

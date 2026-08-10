@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { startTournament } from "./matches/actions";
+import { PublicShareCard } from "./PublicShareCard";
 
 const STATUS_TONE: Record<string, "neutral" | "gold" | "success"> = {
   draft: "neutral",
@@ -102,6 +103,8 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
           </div>
         </Card>
       )}
+
+      {tournament.status !== "draft" && <PublicShareCard slug={slug} />}
     </main>
   );
 }

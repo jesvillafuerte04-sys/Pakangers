@@ -14,6 +14,8 @@ export type MatchListRow = {
   awayTeamName: string;
   homeGamesWon: number | null;
   awayGamesWon: number | null;
+  homePointsTotal: number | null;
+  awayPointsTotal: number | null;
   resultType: string | null;
 };
 
@@ -25,7 +27,7 @@ export async function getMatchList(tournamentId: string, filter: MatchListFilter
     supabase.from("stage").select("id, name").eq("tournament_id", tournamentId),
     supabase.from("tournament_group").select("id, name"),
     supabase.from("team").select("id, name").eq("tournament_id", tournamentId),
-    supabase.from("match_result").select("match_id, home_games_won, away_games_won, result_type"),
+    supabase.from("match_result").select("match_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type"),
   ]);
   if (error) throw new Error(error.message);
 
@@ -48,6 +50,8 @@ export async function getMatchList(tournamentId: string, filter: MatchListFilter
         awayTeamName: m.away_team_id ? teamNameById.get(m.away_team_id) ?? "TBD" : "Bye",
         homeGamesWon: result?.home_games_won ?? null,
         awayGamesWon: result?.away_games_won ?? null,
+        homePointsTotal: result?.home_points_total ?? null,
+        awayPointsTotal: result?.away_points_total ?? null,
         resultType: result?.result_type ?? null,
       };
     });

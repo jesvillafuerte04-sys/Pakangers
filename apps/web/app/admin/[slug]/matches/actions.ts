@@ -23,6 +23,15 @@ export async function startTournament(slug: string): Promise<void> {
   revalidatePath(`/admin/${slug}/matches`);
 }
 
+/** Flags a match as on-court right now, so it shows under the public Live tab (P1). */
+export async function markMatchLive(slug: string, matchId: string): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+  const { error } = await supabase.from("match").update({ status: "in_progress" }).eq("id", matchId).eq("status", "pending");
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/${slug}/matches`);
+}
+
 export type ScorePayload =
   | { kind: "score"; games: { homeScore: number; awayScore: number }[] }
   | { kind: "forfeit"; winningTeamId: string; resultType: "forfeit" | "default" | "retired"; reason?: string };
