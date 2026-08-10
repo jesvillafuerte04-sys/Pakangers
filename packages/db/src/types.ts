@@ -285,6 +285,7 @@ export type Database = {
           bracket_node_id: string | null
           court_id: string | null
           created_at: string
+          display_order: number | null
           group_id: string | null
           home_team_id: string | null
           id: string
@@ -302,6 +303,7 @@ export type Database = {
           bracket_node_id?: string | null
           court_id?: string | null
           created_at?: string
+          display_order?: number | null
           group_id?: string | null
           home_team_id?: string | null
           id?: string
@@ -319,6 +321,7 @@ export type Database = {
           bracket_node_id?: string | null
           court_id?: string | null
           created_at?: string
+          display_order?: number | null
           group_id?: string | null
           home_team_id?: string | null
           id?: string
@@ -736,6 +739,7 @@ export type Database = {
           name: string
           organizer_name: string | null
           rule_set_id: string | null
+          schedule_config: Json
           slug: string
           status: string
           timezone: string
@@ -753,6 +757,7 @@ export type Database = {
           name: string
           organizer_name?: string | null
           rule_set_id?: string | null
+          schedule_config?: Json
           slug: string
           status?: string
           timezone?: string
@@ -770,6 +775,7 @@ export type Database = {
           name?: string
           organizer_name?: string | null
           rule_set_id?: string | null
+          schedule_config?: Json
           slug?: string
           status?: string
           timezone?: string

@@ -73,6 +73,8 @@ export default async function MatchListPage({
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-semibold text-[var(--color-text-muted)]">
               M{m.matchNumber} · {m.groupName ? `${m.stageName} · ${m.groupName}` : m.stageName}
+              {m.courtName && ` · ${m.courtName}`}
+              {m.round !== null && ` · Round ${m.round + 1}`}
             </span>
             <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>{m.status.replace("_", " ")}</Badge>
           </div>

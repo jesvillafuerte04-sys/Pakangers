@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { verifyPasscode, createSession, destroySession, requireSession } from "@/lib/session";
 import { getServiceSupabase } from "@/lib/supabase-server";
 import type { TypedSupabaseClient, Json } from "@pakangers/db";
+import { getTournamentBySlug } from "@/lib/tournament-data";
+import { serializeTournamentAsTemplate, type TemplateConfig } from "@/lib/template-config";
 
 export type UnlockState = { error?: string };
 
@@ -31,23 +33,6 @@ function slugify(name: string): string {
   const base = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   return `${base || "tournament"}-${Date.now().toString(36)}`;
 }
-
-type TemplateStageConfig = {
-  key: string;
-  name: string;
-  formatKey: string;
-  sequence: number;
-  scoring: Record<string, unknown>;
-  tiebreakers: string[];
-  groups?: { name: string; size: number }[];
-  entrants?: unknown[];
-};
-
-type TemplateConfig = {
-  divisions: { key: string; name: string; teamSize: number }[];
-  stages: TemplateStageConfig[];
-  qualification: { fromStage: string; fromGroup?: string; method: string; value: number; toStage: string }[];
-};
 
 /**
  * Reads a template's config JSON and builds the real structure underneath a
@@ -287,4 +272,36 @@ export async function deleteTournament(tournamentId: string): Promise<void> {
   const { error } = await supabase.from("tournament").delete().eq("id", tournamentId);
   if (error) throw new Error(error.message);
   revalidatePath("/admin");
+}
+
+/**
+ * The other half of reuse (docs/04-organizer-ui.md A1/A7): stores this
+ * tournament's *configuration* as a new template so next year can start from
+ * what actually worked, rather than only from the generic starters. Copies no
+ * players, teams, or scores -- serializeTournamentAsTemplate reads structure
+ * only. source_tournament_id records where it came from.
+ */
+export async function saveAsTemplate(slug: string, formData: FormData): Promise<void> {
+  await requireSession();
+  const tournament = await getTournamentBySlug(slug);
+  if (!tournament) throw new Error("Tournament not found");
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) throw new Error("Give the template a name");
+  const description = String(formData.get("description") ?? "").trim();
+
+  const config = await serializeTournamentAsTemplate(tournament.id);
+  if (config.stages.length === 0) throw new Error("This tournament has no stages to save");
+
+  const supabase = getServiceSupabase();
+  const { error } = await supabase.from("tournament_template").insert({
+    name,
+    description: description || null,
+    config: config as unknown as Json,
+    source_tournament_id: tournament.id,
+  });
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin");
+  revalidatePath(`/admin/${slug}/setup/stages`);
 }

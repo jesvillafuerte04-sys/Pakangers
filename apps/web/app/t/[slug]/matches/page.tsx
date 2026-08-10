@@ -63,6 +63,8 @@ export default async function PublicMatchesPage({
           <div className="mb-2 flex items-center justify-between gap-2">
             <span className="text-xs font-semibold text-[var(--color-text-muted)]">
               M{m.matchNumber} · {m.groupName ? `${m.stageName} · ${m.groupName}` : m.stageName}
+              {m.courtName && ` · ${m.courtName}`}
+              {m.round !== null && ` · Round ${m.round + 1}`}
             </span>
             <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>
               {m.status === "in_progress" ? "Live" : m.status.replace("_", " ")}

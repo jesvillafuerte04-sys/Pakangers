@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import { getTournamentBySlug } from "@/lib/tournament-data";
 import { getServiceSupabase } from "@/lib/supabase-server";
+import { saveAsTemplate } from "@/app/admin/actions";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input, Textarea } from "@/components/ui/Input";
 
 type ScoringConfig = { pointsToWin?: number; winBy?: string; bestOf?: number; scoringType?: string };
 
@@ -40,6 +43,26 @@ export default async function SetupStagesPage({ params }: PageProps<"/admin/[slu
           </Card>
         );
       })}
+
+      <Card title="Save as template">
+        <p className="mb-4 text-sm text-[var(--color-text-muted)]">
+          Stores this tournament&apos;s setup — stages, scoring, groups, bracket wiring and qualification — as a
+          reusable template, so next year can start from what actually worked. Players, teams and scores are never
+          copied.
+        </p>
+        <form action={saveAsTemplate.bind(null, slug)} className="flex flex-col gap-3">
+          <Input
+            label="Template name"
+            name="name"
+            required
+            placeholder={`${tournament.name} — ${new Date().getFullYear()} edition`}
+          />
+          <Textarea label="Description (optional)" name="description" rows={2} />
+          <Button type="submit" variant="outline">
+            Save as template
+          </Button>
+        </form>
+      </Card>
     </div>
   );
 }

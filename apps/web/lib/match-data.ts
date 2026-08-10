@@ -21,6 +21,9 @@ export type MatchListRow = {
   resultType: string | null;
   /** Which side won, once a result exists -- drives winner/loser emphasis in the UI. */
   winnerSide: "home" | "away" | null;
+  courtName: string | null;
+  /** Position in that court's queue; round N+1 is what players see. */
+  round: number | null;
 };
 
 const TBD: TeamDisplay = { header: "TBD", subtext: null };
@@ -40,7 +43,7 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
     supabase
       .from("match")
       .select(
-        "id, match_number, status, stage_id, group_id, home_team_id, away_team_id, match_result(winner_team_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type)",
+        "id, match_number, status, stage_id, group_id, home_team_id, away_team_id, display_order, court(name), match_result(winner_team_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type)",
       )
       .eq("tournament_id", tournamentId)
       .order("match_number"),
@@ -58,6 +61,7 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
     .map((m) => {
       // match_result is one-to-one, but the nested select types it as an array.
       const result = Array.isArray(m.match_result) ? m.match_result[0] : m.match_result;
+      const court = Array.isArray(m.court) ? m.court[0] : m.court;
       const winnerId = result?.winner_team_id ?? null;
       return {
         id: m.id,
@@ -73,6 +77,8 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
         awayPointsTotal: result?.away_points_total ?? null,
         resultType: result?.result_type ?? null,
         winnerSide: winnerId ? (winnerId === m.home_team_id ? "home" : "away") : null,
+        courtName: court?.name ?? null,
+        round: m.display_order,
       };
     });
 });

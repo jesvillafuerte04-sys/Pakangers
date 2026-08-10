@@ -9,12 +9,12 @@
 | **1** | **Engine** (pure TS, test-first): format registry, round robin, single elimination, standings with configurable tiebreakers, qualification resolver, stage wiring, validation suite | ✅ | **Done** — `packages/engine`, 46 tests |
 | **2** | **Data layer**: Supabase project, schema migrations, RLS policies, typed client, seed from template | ✅ | **Done** — `packages/db`, project `pakangers-tournament`, real tournament seeded in `draft` |
 | **3** | **Organizer console**: passcode gate, setup wizard, players, teams, groups, stages, lock | ✅ | **Done** — `apps/web`, live at pakangers-app.vercel.app |
-| **4** | **Score entry**: match list, per-game entry, derive → recompute → populate, edit with audit log, forfeits | ✅ | Not started |
-| **5** | **Public view**: live/upcoming/completed, standings, bracket, results, QR, realtime | ✅ | Not started |
-| 6 | **Scheduling**: courts, ordering, greedy auto-assign with conflict + rest checks, manual override | ❌ | Not started |
-| 7 | **Rules module**: rule sets, per-tournament selection, curated summaries with links | ❌ | Not started |
-| 8 | **DUPR export**: CSV in DUPR template shape, eligibility flags, submission records | ❌ | Not started |
-| 9 | **Templates**: save-as-template, create-from-template, seed the three starter templates | ❌ | Partial — 3 starter templates seeded; save-as-template UI not built |
+| **4** | **Score entry**: match list, per-game entry, derive → recompute → populate, edit with audit log, forfeits | ✅ | **Done** — `apps/web/lib/match-pipeline.ts`, A9/A10 screens, downstream-invalidation guard |
+| **5** | **Public view**: live/upcoming/completed, standings, bracket, results, QR, realtime | ✅ | **Done** — `/t/[slug]` with Now/Matches/Standings/Bracket/Info, Supabase Realtime, QR on the dashboard |
+| 6 | **Scheduling**: courts, ordering, greedy auto-assign with conflict + rest checks, manual override | ❌ | **Done** — `packages/engine/src/scheduling.ts` + `/admin/[slug]/schedule`. Courts and running order, **no clock times** (see note below) |
+| 7 | **Rules module**: rule sets, per-tournament selection, curated summaries with links | ❌ | **Done** — `/admin/[slug]/rules`; tournament-specific rules only (see note below) |
+| 8 | **DUPR export**: CSV in DUPR template shape, eligibility flags, submission records | ❌ | Not started — **deferred as a future feature** |
+| 9 | **Templates**: save-as-template, create-from-template, seed the three starter templates | ❌ | **Done** — `apps/web/lib/template-config.ts` serializes a live tournament back to template config; save action on A7 |
 | 10 | **Hardening**: offline score queue, full dry run, printable standings and bracket | ✅ (partial) | Not started |
 
 **Phases 1–5 plus the offline queue and a dry run are what the first tournament actually requires.**
@@ -30,6 +30,27 @@ first pass). Changes to stage configuration go through the database directly for
 tournaments also aren't wired up yet — `instantiateFromTemplate` only reads `config.divisions[0]`.
 Both are natural Phase 3 follow-ups, not blockers for running the first tournament, since the
 seeded Pakangers config is already correct.
+
+**Scope note on the Phase 6 build:** scheduling is **courts plus running order, with no clock
+times**, which is what A8 in `04-organizer-ui.md` recommends ("many club tournaments genuinely work
+that way"). Each court owns an ordered queue; position *n* across courts is round *n*, and rest is
+therefore measured in **rounds rather than minutes** (`match.display_order`,
+`tournament.schedule_config.minRestRounds`). Conflict detection covers a team double-booked in one
+round, insufficient rest, a match left on an unavailable court, and unscheduled matches — all as
+`ValidationIssue`s rendered inline on the offending match. `match.scheduled_at` remains unused; if
+timed scheduling is ever wanted, that column is where it goes.
+
+**Scope note on the Phase 7 build:** the organizer picks the tournament's `rule_set` and authors
+**tournament-specific rules only**. Authoring the shared, rule-set-level summary rows (the ones
+with `rule_set_id` set and `tournament_id` null) is deliberately not exposed, because per
+`03-data-model.md` those are shared across every tournament using that rule set and editing them
+would rewrite past tournaments' displayed rules. The public Info tab already renders them if they
+are ever seeded.
+
+**Scope note on the Phase 9 build:** `serializeTournamentAsTemplate` records each group's `size`
+from the live team count, but `instantiateFromTemplate` still ignores `size` — group membership
+comes from assigning teams by hand. The field is carried for fidelity with the seeded templates
+rather than because it drives anything.
 
 ---
 

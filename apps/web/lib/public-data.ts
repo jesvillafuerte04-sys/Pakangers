@@ -53,7 +53,7 @@ export type FinalResults = {
 export type PublicRules = {
   scoringByStage: { stageName: string; pointsToWin: number; winBy: string; bestOf: number; cap: number | null }[];
   ruleSet: { name: string; governingBody: string; editionYear: number; sourceUrl: string } | null;
-  tournamentRules: { category: string; title: string; summaryText: string }[];
+  tournamentRules: { category: string; title: string; summaryText: string; sourceRef: string | null }[];
 };
 
 export async function getPublicRules(tournamentId: string): Promise<PublicRules> {
@@ -68,7 +68,7 @@ export async function getPublicRules(tournamentId: string): Promise<PublicRules>
     supabase.from("stage").select("name, sequence, scoring_config").eq("tournament_id", tournamentId).order("sequence"),
     supabase
       .from("tournament_rule")
-      .select("category, title, summary_text, display_order")
+      .select("category, title, summary_text, source_ref, display_order")
       .or(`tournament_id.eq.${tournamentId},tournament_id.is.null`)
       .order("display_order"),
   ]);
@@ -81,7 +81,12 @@ export async function getPublicRules(tournamentId: string): Promise<PublicRules>
       return { stageName: s.name, pointsToWin: cfg.pointsToWin, winBy: cfg.winBy, bestOf: cfg.bestOf, cap: cfg.cap ?? null };
     }),
     ruleSet: rs ? { name: rs.name, governingBody: rs.governing_body, editionYear: rs.edition_year, sourceUrl: rs.source_url } : null,
-    tournamentRules: (rules ?? []).map((r) => ({ category: r.category, title: r.title, summaryText: r.summary_text })),
+    tournamentRules: (rules ?? []).map((r) => ({
+      category: r.category,
+      title: r.title,
+      summaryText: r.summary_text,
+      sourceRef: r.source_ref ?? null,
+    })),
   };
 }
 

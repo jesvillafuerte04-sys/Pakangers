@@ -102,9 +102,14 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
           <p className="text-sm text-[var(--color-text-muted)]">
             {matchProgress?.completed ?? 0} of {matchProgress?.total ?? 0} matches complete
           </p>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-col gap-2">
             <Link href={`/admin/${slug}/matches`}>
               <Button fullWidth>Go to matches</Button>
+            </Link>
+            <Link href={`/admin/${slug}/schedule`}>
+              <Button variant="outline" fullWidth>
+                Courts & schedule
+              </Button>
             </Link>
           </div>
         </Card>
@@ -117,6 +122,11 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
           <Link href={`/admin/${slug}/setup/info`}>
             <Button variant="outline" fullWidth>
               Edit setup (info, players, teams, groups)
+            </Button>
+          </Link>
+          <Link href={`/admin/${slug}/rules`}>
+            <Button variant="outline" fullWidth>
+              Rules
             </Button>
           </Link>
           {tournament.status !== "draft" && (
