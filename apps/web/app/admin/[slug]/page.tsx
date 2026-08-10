@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTournamentBySlug, getSetupProgress } from "@/lib/tournament-data";
+import { getMatchProgress } from "@/lib/match-data";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { startTournament } from "./matches/actions";
 
 const STATUS_TONE: Record<string, "neutral" | "gold" | "success"> = {
   draft: "neutral",
@@ -20,6 +22,10 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
   if (!tournament) notFound();
 
   const progress = await getSetupProgress(tournament.id);
+  const matchProgress =
+    tournament.status === "in_progress" || tournament.status === "completed"
+      ? await getMatchProgress(tournament.id)
+      : null;
 
   const checklist = [
     { label: "Tournament info", done: Boolean(tournament.venue && tournament.date_start), href: `/admin/${slug}/setup/info` },
@@ -71,11 +77,29 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
         </Card>
       )}
 
-      {tournament.status !== "draft" && (
-        <Card title="Tournament is locked">
-          <p className="text-sm text-[var(--color-text-muted)]">
-            Setup is complete. Score entry, standings, and the public page come in the next phase of the build.
+      {tournament.status === "locked" && (
+        <Card title="Ready to start">
+          <p className="mb-4 text-sm text-[var(--color-text-muted)]">
+            Setup is complete and teams are locked in. Starting the tournament generates every pool match.
           </p>
+          <form action={startTournament.bind(null, slug)}>
+            <Button type="submit" fullWidth size="lg">
+              Start tournament
+            </Button>
+          </form>
+        </Card>
+      )}
+
+      {(tournament.status === "in_progress" || tournament.status === "completed") && (
+        <Card title={tournament.status === "completed" ? "Tournament complete" : "In progress"}>
+          <p className="text-sm text-[var(--color-text-muted)]">
+            {matchProgress?.completed ?? 0} of {matchProgress?.total ?? 0} matches complete
+          </p>
+          <div className="mt-4">
+            <Link href={`/admin/${slug}/matches`}>
+              <Button fullWidth>Go to matches</Button>
+            </Link>
+          </div>
         </Card>
       )}
     </main>
