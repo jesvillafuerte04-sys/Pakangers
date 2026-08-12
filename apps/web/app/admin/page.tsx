@@ -2,8 +2,9 @@ import Link from "next/link";
 import { getSession } from "@/lib/session";
 import { getServiceSupabase } from "@/lib/supabase-server";
 import { PasscodeForm } from "./PasscodeForm";
-import { createTournament, signOutOrganizer } from "./actions";
+import { createTournament, signOutOrganizer, ensurePakangersCopyExists } from "./actions";
 import { DeleteTournamentButton } from "./DeleteTournamentButton";
+import { DuplicateTournamentButton } from "./DuplicateTournamentButton";
 import { BuiltByCredit } from "@/components/BuiltByCredit";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -23,6 +24,8 @@ export default async function AdminHomePage() {
     );
   }
 
+  await ensurePakangersCopyExists();
+
   const supabase = getServiceSupabase();
   const [{ data: tournaments }, { data: templates }] = await Promise.all([
     supabase
@@ -31,6 +34,7 @@ export default async function AdminHomePage() {
       .order("created_at", { ascending: false }),
     supabase.from("tournament_template").select("id, name, description").order("name"),
   ]);
+
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 p-6">
@@ -90,10 +94,12 @@ export default async function AdminHomePage() {
             <Badge tone={t.status === "draft" ? "neutral" : t.status === "completed" ? "success" : "gold"}>
               {t.status.replace("_", " ")}
             </Badge>
+            <DuplicateTournamentButton tournamentId={t.id} />
             <DeleteTournamentButton tournamentId={t.id} name={t.name} />
           </div>
         ))}
       </div>
+
 
       <BuiltByCredit />
     </main>

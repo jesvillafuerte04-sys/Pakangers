@@ -9,6 +9,8 @@ import { startTournament } from "./matches/actions";
 import { PublicShareCard } from "./PublicShareCard";
 import { unlockTournament } from "@/app/admin/actions";
 import { DeleteTournamentButton } from "@/app/admin/DeleteTournamentButton";
+import { DuplicateTournamentButton } from "@/app/admin/DuplicateTournamentButton";
+
 
 const STATUS_TONE: Record<string, "neutral" | "gold" | "success"> = {
   draft: "neutral",
@@ -132,9 +134,11 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
               </Button>
             </form>
           )}
+          <DuplicateTournamentButton tournamentId={tournament.id} fullWidth />
           <DeleteTournamentButton tournamentId={tournament.id} name={tournament.name} fullWidth />
         </div>
       </Card>
+
     </main>
   );
 }

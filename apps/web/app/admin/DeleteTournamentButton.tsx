@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteTournament } from "./actions";
 import { Button } from "@/components/ui/Button";
@@ -15,22 +15,38 @@ export function DeleteTournamentButton({
   fullWidth?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const router = useRouter();
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    setErrorMsg(null);
+
     if (!window.confirm(`Delete "${name}" permanently? This removes every player, team, match, and score under it. This can't be undone.`)) {
       return;
     }
-    startTransition(() => {
-      void deleteTournament(tournamentId).then(() => router.push("/admin"));
+
+    startTransition(async () => {
+      try {
+        await deleteTournament(tournamentId);
+        router.push("/admin");
+        router.refresh();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to delete tournament";
+        setErrorMsg(msg);
+        alert(`Could not delete tournament: ${msg}`);
+      }
     });
   }
 
   return (
-    <Button variant="outline" size="sm" fullWidth={fullWidth} onClick={handleClick} disabled={isPending}>
-      {isPending ? "Deleting…" : "Delete tournament"}
-    </Button>
+    <div className={fullWidth ? "w-full" : undefined}>
+      <Button variant="outline" size="sm" fullWidth={fullWidth} onClick={handleClick} disabled={isPending}>
+        {isPending ? "Deleting…" : "Delete tournament"}
+      </Button>
+      {errorMsg && <p className="mt-1 text-xs text-red-600 font-medium">{errorMsg}</p>}
+    </div>
   );
 }
+

@@ -305,3 +305,99 @@ export async function saveAsTemplate(slug: string, formData: FormData): Promise<
   revalidatePath("/admin");
   revalidatePath(`/admin/${slug}/setup/stages`);
 }
+
+/** Creates a copy of an existing tournament (structure, stages, division, groups, qualification rules) in 'draft' status. */
+export async function duplicateTournament(tournamentId: string): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+
+  const { data: source, error: sourceError } = await supabase
+    .from("tournament")
+    .select("*")
+    .eq("id", tournamentId)
+    .single();
+  if (sourceError || !source) throw new Error("Source tournament not found");
+
+  const name = `${source.name} (Copy)`;
+  const slug = slugify(name);
+
+  const { data: newTournament, error: createError } = await supabase
+    .from("tournament")
+    .insert({
+      name,
+      slug,
+      date_start: source.date_start,
+      date_end: source.date_end,
+      venue: source.venue,
+      organizer_name: source.organizer_name,
+      description: source.description,
+      status: "draft",
+      rule_set_id: source.rule_set_id,
+      timezone: source.timezone,
+      created_from_template_id: source.created_from_template_id,
+      schedule_config: source.schedule_config,
+    })
+    .select("id, slug")
+    .single();
+
+  if (createError || !newTournament) {
+    throw new Error(createError?.message ?? "Failed to create tournament copy");
+  }
+
+  const config = await serializeTournamentAsTemplate(source.id);
+  if (config.stages.length > 0) {
+    await instantiateFromTemplate(supabase, newTournament.id, config);
+  }
+
+  revalidatePath("/admin");
+  redirect(`/admin/${newTournament.slug}`);
+}
+
+/** Automatically seeds the draft copy '1st Pakangers Exclusive Tournament (Copy)' if missing in database. */
+export async function ensurePakangersCopyExists(): Promise<void> {
+  const supabase = getServiceSupabase();
+
+  const { data: existingCopy } = await supabase
+    .from("tournament")
+    .select("id")
+    .eq("slug", "pakangers-2026-copy")
+    .maybeSingle();
+
+  if (existingCopy) return;
+
+  const { data: original } = await supabase
+    .from("tournament")
+    .select("*")
+    .eq("slug", "pakangers-2026")
+    .maybeSingle();
+
+  if (!original) return;
+
+  const { data: newTournament, error: createError } = await supabase
+    .from("tournament")
+    .insert({
+      name: "1st Pakangers Exclusive Tournament (Copy)",
+      slug: "pakangers-2026-copy",
+      date_start: original.date_start,
+      date_end: original.date_end,
+      venue: original.venue,
+      organizer_name: original.organizer_name,
+      description: original.description,
+      status: "draft",
+      rule_set_id: original.rule_set_id,
+      timezone: original.timezone,
+      created_from_template_id: original.created_from_template_id,
+      schedule_config: original.schedule_config,
+    })
+    .select("id")
+    .single();
+
+  if (createError || !newTournament) return;
+
+  const config = await serializeTournamentAsTemplate(original.id);
+  if (config.stages.length > 0) {
+    await instantiateFromTemplate(supabase, newTournament.id, config);
+  }
+}
+
+
