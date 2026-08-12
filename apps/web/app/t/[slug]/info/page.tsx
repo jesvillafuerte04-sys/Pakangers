@@ -52,19 +52,29 @@ export default async function PublicInfoPage({ params }: PageProps<"/t/[slug]/in
         <Card title="Tournament rules">
           <div className="flex flex-col divide-y divide-[var(--border-subtle)]">
             {rules.tournamentRules.map((r, i) => (
-              <div key={i} className="flex items-start justify-between gap-3 py-2">
-                <div className="min-w-0">
-                  <div className="font-medium text-[var(--color-navy)]">{r.title}</div>
-                  {r.sourceRef && (
-                    <div className="text-xs text-[var(--color-text-muted)] opacity-80">{r.sourceRef}</div>
-                  )}
+              <div key={i} className={`flex items-start gap-3.5 ${i > 0 ? "pt-4" : ""} ${i < rules.tournamentRules.length - 1 ? "pb-4" : "pb-1"}`}>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--color-navy)] text-xs font-bold text-white mt-0.5">
+                  {i + 1}
+                </span>
+                <div className="flex flex-col gap-1 min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <h3 className="font-bold text-base text-[var(--color-navy)]">{r.title}</h3>
+                    {r.sourceRef && (
+                      <span className="text-xs font-medium bg-[var(--surface-sunken)] px-2 py-0.5 rounded text-[var(--color-text-muted)]">
+                        {r.sourceRef}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm leading-relaxed text-[var(--color-text-muted)] whitespace-pre-line">
+                    {r.summaryText}
+                  </p>
                 </div>
-                <span className="text-right text-sm text-[var(--color-text-muted)]">{r.summaryText}</span>
               </div>
             ))}
           </div>
         </Card>
       )}
+
 
       {rules.scoringByStage.length === 0 && !rules.ruleSet && rules.tournamentRules.length === 0 && (
         <Card>
