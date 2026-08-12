@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/Button";
 export function DeleteTournamentButton({
   tournamentId,
   name,
+  label = "Delete",
   fullWidth = false,
 }: {
   tournamentId: string;
   name: string;
+  label?: string;
   fullWidth?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -43,7 +45,7 @@ export function DeleteTournamentButton({
   return (
     <div className={fullWidth ? "w-full" : undefined}>
       <Button variant="outline" size="sm" fullWidth={fullWidth} onClick={handleClick} disabled={isPending}>
-        {isPending ? "Deleting…" : "Delete tournament"}
+        {isPending ? "Deleting…" : label}
       </Button>
       {errorMsg && <p className="mt-1 text-xs text-red-600 font-medium">{errorMsg}</p>}
     </div>

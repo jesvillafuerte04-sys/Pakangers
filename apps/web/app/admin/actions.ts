@@ -306,7 +306,242 @@ export async function saveAsTemplate(slug: string, formData: FormData): Promise<
   revalidatePath(`/admin/${slug}/setup/stages`);
 }
 
-/** Creates a copy of an existing tournament (structure, stages, division, groups, qualification rules) in 'draft' status. */
+/** Deeply duplicates a tournament: Info, Custom Rules, Courts, Divisions, Stages, Groups, Qualification Rules, Players, Teams, and Team Members. */
+async function deepDuplicateTournament(
+  supabase: TypedSupabaseClient,
+  sourceId: string,
+  targetId: string,
+): Promise<void> {
+  // 1. Copy tournament_rule
+  const { data: rules } = await supabase
+    .from("tournament_rule")
+    .select("category, title, summary_text, source_ref, display_order")
+    .eq("tournament_id", sourceId);
+
+  if (rules && rules.length > 0) {
+    await supabase.from("tournament_rule").insert(
+      rules.map((r) => ({
+        ...r,
+        tournament_id: targetId,
+      })),
+    );
+  }
+
+  // 2. Copy court
+  const { data: courts } = await supabase
+    .from("court")
+    .select("id, name, is_available")
+    .eq("tournament_id", sourceId);
+
+  if (courts && courts.length > 0) {
+    await supabase.from("court").insert(
+      courts.map((c) => ({
+        tournament_id: targetId,
+        name: c.name,
+        is_available: c.is_available,
+      })),
+    );
+  }
+
+  // 3. Copy division
+  const { data: divisions } = await supabase
+    .from("division")
+    .select("id, name, skill_level, team_size, gender_category")
+    .eq("tournament_id", sourceId);
+
+  const divisionIdMap = new Map<string, string>();
+  if (divisions) {
+    for (const div of divisions) {
+      const { data: newDiv } = await supabase
+        .from("division")
+        .insert({
+          tournament_id: targetId,
+          name: div.name,
+          skill_level: div.skill_level,
+          team_size: div.team_size,
+          gender_category: div.gender_category,
+        })
+        .select("id")
+        .single();
+      if (newDiv) {
+        divisionIdMap.set(div.id, newDiv.id);
+      }
+    }
+  }
+
+  // 4. Copy stage & tournament_group
+  const { data: stages } = await supabase
+    .from("stage")
+    .select("id, division_id, key, name, format_key, sequence, scoring_config, tiebreaker_config, entrant_config")
+    .eq("tournament_id", sourceId);
+
+  const stageIdMap = new Map<string, string>();
+  const groupIdMap = new Map<string, string>();
+
+  if (stages) {
+    for (const stg of stages) {
+      const newDivId = divisionIdMap.get(stg.division_id);
+      if (!newDivId) continue;
+
+      const { data: newStage } = await supabase
+        .from("stage")
+        .insert({
+          tournament_id: targetId,
+          division_id: newDivId,
+          key: stg.key,
+          name: stg.name,
+          format_key: stg.format_key,
+          sequence: stg.sequence,
+          scoring_config: stg.scoring_config,
+          tiebreaker_config: stg.tiebreaker_config,
+          entrant_config: stg.entrant_config,
+        })
+        .select("id")
+        .single();
+
+      if (newStage) {
+        stageIdMap.set(stg.id, newStage.id);
+
+        const { data: groups } = await supabase
+          .from("tournament_group")
+          .select("id, name, display_order")
+          .eq("stage_id", stg.id);
+
+        if (groups) {
+          for (const grp of groups) {
+            const { data: newGrp } = await supabase
+              .from("tournament_group")
+              .insert({
+                stage_id: newStage.id,
+                name: grp.name,
+                display_order: grp.display_order,
+              })
+              .select("id")
+              .single();
+            if (newGrp) {
+              groupIdMap.set(grp.id, newGrp.id);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 5. Copy qualification_rule
+  if (stageIdMap.size > 0) {
+    const oldStageIds = Array.from(stageIdMap.keys());
+    const { data: qualRules } = await supabase
+      .from("qualification_rule")
+      .select("from_stage_id, from_group_id, method, value, to_stage_id, seeding_policy")
+      .in("from_stage_id", oldStageIds);
+
+    if (qualRules && qualRules.length > 0) {
+      const newRules = qualRules
+        .map((r) => {
+          const newFromStage = stageIdMap.get(r.from_stage_id);
+          const newToStage = stageIdMap.get(r.to_stage_id);
+          if (!newFromStage || !newToStage) return null;
+
+          return {
+            from_stage_id: newFromStage,
+            from_group_id: r.from_group_id ? groupIdMap.get(r.from_group_id) ?? null : null,
+            method: r.method,
+            value: r.value,
+            to_stage_id: newToStage,
+            seeding_policy: r.seeding_policy,
+          };
+        })
+        .filter(Boolean);
+
+      if (newRules.length > 0) {
+        await supabase.from("qualification_rule").insert(newRules as any);
+      }
+    }
+  }
+
+  // 6. Copy player
+  const { data: players } = await supabase
+    .from("player")
+    .select("id, first_name, last_name, contact, dupr_id, skill_rating, notes")
+    .eq("tournament_id", sourceId);
+
+  const playerIdMap = new Map<string, string>();
+  if (players && players.length > 0) {
+    for (const p of players) {
+      const { data: newP } = await supabase
+        .from("player")
+        .insert({
+          tournament_id: targetId,
+          first_name: p.first_name,
+          last_name: p.last_name,
+          contact: p.contact,
+          dupr_id: p.dupr_id,
+          skill_rating: p.skill_rating,
+          notes: p.notes,
+        })
+        .select("id")
+        .single();
+      if (newP) {
+        playerIdMap.set(p.id, newP.id);
+      }
+    }
+  }
+
+  // 7. Copy team & team_member
+  const { data: teams } = await supabase
+    .from("team")
+    .select("id, division_id, name, team_number, seed, group_id")
+    .eq("tournament_id", sourceId);
+
+  if (teams && teams.length > 0) {
+    for (const t of teams) {
+      const newDivId = divisionIdMap.get(t.division_id);
+      if (!newDivId) continue;
+
+      const newGrpId = t.group_id ? groupIdMap.get(t.group_id) ?? null : null;
+
+      const { data: newTeam } = await supabase
+        .from("team")
+        .insert({
+          tournament_id: targetId,
+          division_id: newDivId,
+          name: t.name,
+          team_number: t.team_number,
+          seed: t.seed,
+          group_id: newGrpId,
+        })
+        .select("id")
+        .single();
+
+      if (newTeam) {
+        const { data: members } = await supabase
+          .from("team_member")
+          .select("player_id, position")
+          .eq("team_id", t.id);
+
+        if (members && members.length > 0) {
+          const newMembers = members
+            .map((m) => {
+              const newPlayerId = playerIdMap.get(m.player_id);
+              if (!newPlayerId) return null;
+              return {
+                team_id: newTeam.id,
+                player_id: newPlayerId,
+                position: m.position,
+              };
+            })
+            .filter(Boolean);
+
+          if (newMembers.length > 0) {
+            await supabase.from("team_member").insert(newMembers as any);
+          }
+        }
+      }
+    }
+  }
+}
+
+/** Creates a deep copy of an existing tournament (Info, Players, Teams, Groups, Stages, Rules) in 'draft' status. */
 export async function duplicateTournament(tournamentId: string): Promise<void> {
   await requireSession();
   const supabase = getServiceSupabase();
@@ -344,10 +579,7 @@ export async function duplicateTournament(tournamentId: string): Promise<void> {
     throw new Error(createError?.message ?? "Failed to create tournament copy");
   }
 
-  const config = await serializeTournamentAsTemplate(source.id);
-  if (config.stages.length > 0) {
-    await instantiateFromTemplate(supabase, newTournament.id, config);
-  }
+  await deepDuplicateTournament(supabase, source.id, newTournament.id);
 
   revalidatePath("/admin");
   redirect(`/admin/${newTournament.slug}`);
@@ -394,10 +626,8 @@ export async function ensurePakangersCopyExists(): Promise<void> {
 
   if (createError || !newTournament) return;
 
-  const config = await serializeTournamentAsTemplate(original.id);
-  if (config.stages.length > 0) {
-    await instantiateFromTemplate(supabase, newTournament.id, config);
-  }
+  await deepDuplicateTournament(supabase, original.id, newTournament.id);
 }
+
 
 

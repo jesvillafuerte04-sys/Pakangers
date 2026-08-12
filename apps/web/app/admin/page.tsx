@@ -83,21 +83,27 @@ export default async function AdminHomePage() {
         {tournaments?.map((t) => (
           <div
             key={t.id}
-            className="flex items-center justify-between gap-4 rounded-2xl border-t-4 border-[var(--color-gold)] bg-white p-4 shadow-[var(--shadow-sm)] transition hover:shadow-[var(--shadow-md)]"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border-t-4 border-[var(--color-gold)] bg-white p-4 shadow-[var(--shadow-sm)] transition hover:shadow-[var(--shadow-md)]"
           >
-            <Link href={`/admin/${t.slug}`} className="flex-1">
-              <div className="font-semibold text-[var(--color-navy)]">{t.name}</div>
+            <Link href={`/admin/${t.slug}`} className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="font-bold text-base text-[var(--color-navy)]">{t.name}</span>
+                <Badge tone={t.status === "draft" ? "neutral" : t.status === "completed" ? "success" : "gold"}>
+                  {t.status.replace("_", " ")}
+                </Badge>
+              </div>
               <div className="text-sm text-[var(--color-text-muted)]">
                 {t.venue ?? "Venue TBD"} {t.date_start ? `· ${t.date_start}` : ""}
               </div>
             </Link>
-            <Badge tone={t.status === "draft" ? "neutral" : t.status === "completed" ? "success" : "gold"}>
-              {t.status.replace("_", " ")}
-            </Badge>
-            <DuplicateTournamentButton tournamentId={t.id} />
-            <DeleteTournamentButton tournamentId={t.id} name={t.name} />
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <DuplicateTournamentButton tournamentId={t.id} label="Duplicate" />
+              <DeleteTournamentButton tournamentId={t.id} name={t.name} label="Delete" />
+            </div>
           </div>
         ))}
+
       </div>
 
 

@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/Button";
 
 export function DuplicateTournamentButton({
   tournamentId,
+  label = "Duplicate",
   fullWidth = false,
 }: {
   tournamentId: string;
+  label?: string;
   fullWidth?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -27,7 +29,8 @@ export function DuplicateTournamentButton({
 
   return (
     <Button variant="outline" size="sm" fullWidth={fullWidth} onClick={handleClick} disabled={isPending}>
-      {isPending ? "Creating copy…" : "Duplicate tournament"}
+      {isPending ? "Duplicating…" : label}
     </Button>
   );
 }
+

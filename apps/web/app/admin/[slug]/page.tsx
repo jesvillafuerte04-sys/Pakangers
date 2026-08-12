@@ -134,8 +134,9 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
               </Button>
             </form>
           )}
-          <DuplicateTournamentButton tournamentId={tournament.id} fullWidth />
-          <DeleteTournamentButton tournamentId={tournament.id} name={tournament.name} fullWidth />
+          <DuplicateTournamentButton tournamentId={tournament.id} label="Duplicate" fullWidth />
+          <DeleteTournamentButton tournamentId={tournament.id} name={tournament.name} label="Delete" fullWidth />
+
         </div>
       </Card>
 
