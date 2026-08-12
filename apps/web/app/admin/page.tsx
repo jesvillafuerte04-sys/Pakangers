@@ -83,34 +83,41 @@ export default async function AdminHomePage() {
         {tournaments?.map((t) => (
           <div
             key={t.id}
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border-t-4 border-[var(--color-gold)] bg-white p-4 shadow-[var(--shadow-sm)] transition hover:shadow-[var(--shadow-md)]"
+            className="flex flex-col gap-3 rounded-2xl border-t-4 border-[var(--color-gold)] bg-white p-4 shadow-[var(--shadow-sm)] transition hover:shadow-[var(--shadow-md)]"
           >
-            <Link href={`/admin/${t.slug}`} className="flex-1 min-w-0">
-              <div className="font-bold text-base text-[var(--color-navy)] hover:underline mb-1">{t.name}</div>
-              <div className="text-sm text-[var(--color-text-muted)]">
-                {t.venue ?? "Venue TBD"} {t.date_start ? `· ${t.date_start}` : ""}
-              </div>
-            </Link>
-
-            {/* Single Unified Pill Container: Status | Edit | Duplicate | Delete */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-3 py-1.5 self-start sm:self-center shrink-0">
+            {/* Top row: Title & Venue on left, Status Badge on right */}
+            <div className="flex items-start justify-between gap-3">
+              <Link href={`/admin/${t.slug}`} className="flex-1 min-w-0">
+                <h2 className="font-bold text-base text-[var(--color-navy)] hover:underline leading-snug">
+                  {t.name}
+                </h2>
+                <p className="text-sm text-[var(--color-text-muted)] mt-1">
+                  {t.venue ?? "Venue TBD"} {t.date_start ? `· ${t.date_start}` : ""}
+                </p>
+              </Link>
               <Badge tone={t.status === "draft" ? "neutral" : t.status === "completed" ? "success" : "gold"}>
                 {t.status.replace("_", " ")}
               </Badge>
-              <span className="text-[var(--border-subtle)] font-light select-none">|</span>
-              <Link
-                href={`/admin/${t.slug}`}
-                className="text-xs font-semibold text-[var(--color-navy)] hover:text-[var(--color-gold-dark)] hover:underline px-1"
-              >
-                Edit
-              </Link>
-              <span className="text-[var(--border-subtle)] font-light select-none">|</span>
-              <DuplicateTournamentButton tournamentId={t.id} label="Duplicate" variant="ghost" />
-              <span className="text-[var(--border-subtle)] font-light select-none">|</span>
-              <DeleteTournamentButton tournamentId={t.id} name={t.name} label="Delete" variant="ghost" />
+            </div>
+
+            {/* Bottom row: Perfectly balanced segmented action pill bar [ Edit | Duplicate | Delete ] */}
+            <div className="flex justify-end pt-2 border-t border-[var(--border-subtle)]/60">
+              <div className="inline-flex items-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-sunken)] p-1 gap-1">
+                <Link
+                  href={`/admin/${t.slug}`}
+                  className="px-3 py-1 text-xs font-bold text-[var(--color-navy)] hover:bg-white hover:shadow-xs rounded transition"
+                >
+                  Edit
+                </Link>
+                <span className="text-[var(--border-subtle)] text-xs select-none">|</span>
+                <DuplicateTournamentButton tournamentId={t.id} label="Duplicate" variant="ghost" />
+                <span className="text-[var(--border-subtle)] text-xs select-none">|</span>
+                <DeleteTournamentButton tournamentId={t.id} name={t.name} label="Delete" variant="ghost" />
+              </div>
             </div>
           </div>
         ))}
+
 
 
       </div>

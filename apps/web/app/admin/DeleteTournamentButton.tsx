@@ -50,12 +50,13 @@ export function DeleteTournamentButton({
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline disabled:opacity-50 transition px-1"
+        className="px-3 py-1 text-xs font-bold text-red-600 hover:bg-white hover:shadow-xs hover:text-red-700 rounded disabled:opacity-50 transition"
       >
         {isPending ? "Deleting…" : label}
       </button>
     );
   }
+
 
   return (
     <div className={fullWidth ? "w-full" : undefined}>

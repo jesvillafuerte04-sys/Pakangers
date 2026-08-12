@@ -35,12 +35,13 @@ export function DuplicateTournamentButton({
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        className="text-xs font-semibold text-[var(--color-navy)] hover:text-[var(--color-gold-dark)] hover:underline disabled:opacity-50 transition px-1"
+        className="px-3 py-1 text-xs font-bold text-[var(--color-navy)] hover:bg-white hover:shadow-xs rounded disabled:opacity-50 transition"
       >
         {isPending ? "Duplicating…" : label}
       </button>
     );
   }
+
 
   return (
     <Button variant="outline" size="sm" fullWidth={fullWidth} onClick={handleClick} disabled={isPending}>
