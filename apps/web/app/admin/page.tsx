@@ -86,23 +86,32 @@ export default async function AdminHomePage() {
             className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border-t-4 border-[var(--color-gold)] bg-white p-4 shadow-[var(--shadow-sm)] transition hover:shadow-[var(--shadow-md)]"
           >
             <Link href={`/admin/${t.slug}`} className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <span className="font-bold text-base text-[var(--color-navy)]">{t.name}</span>
-                <Badge tone={t.status === "draft" ? "neutral" : t.status === "completed" ? "success" : "gold"}>
-                  {t.status.replace("_", " ")}
-                </Badge>
-              </div>
+              <div className="font-bold text-base text-[var(--color-navy)] hover:underline mb-1">{t.name}</div>
               <div className="text-sm text-[var(--color-text-muted)]">
                 {t.venue ?? "Venue TBD"} {t.date_start ? `· ${t.date_start}` : ""}
               </div>
             </Link>
 
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-              <DuplicateTournamentButton tournamentId={t.id} label="Duplicate" />
-              <DeleteTournamentButton tournamentId={t.id} name={t.name} label="Delete" />
+            {/* Single Unified Pill Container: Status | Edit | Duplicate | Delete */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-3 py-1.5 self-start sm:self-center shrink-0">
+              <Badge tone={t.status === "draft" ? "neutral" : t.status === "completed" ? "success" : "gold"}>
+                {t.status.replace("_", " ")}
+              </Badge>
+              <span className="text-[var(--border-subtle)] font-light select-none">|</span>
+              <Link
+                href={`/admin/${t.slug}`}
+                className="text-xs font-semibold text-[var(--color-navy)] hover:text-[var(--color-gold-dark)] hover:underline px-1"
+              >
+                Edit
+              </Link>
+              <span className="text-[var(--border-subtle)] font-light select-none">|</span>
+              <DuplicateTournamentButton tournamentId={t.id} label="Duplicate" variant="ghost" />
+              <span className="text-[var(--border-subtle)] font-light select-none">|</span>
+              <DeleteTournamentButton tournamentId={t.id} name={t.name} label="Delete" variant="ghost" />
             </div>
           </div>
         ))}
+
 
       </div>
 

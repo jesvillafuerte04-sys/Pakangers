@@ -10,11 +10,13 @@ export function DeleteTournamentButton({
   name,
   label = "Delete",
   fullWidth = false,
+  variant = "outline",
 }: {
   tournamentId: string;
   name: string;
   label?: string;
   fullWidth?: boolean;
+  variant?: "outline" | "ghost";
 }) {
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -42,6 +44,19 @@ export function DeleteTournamentButton({
     });
   }
 
+  if (variant === "ghost") {
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={isPending}
+        className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline disabled:opacity-50 transition px-1"
+      >
+        {isPending ? "Deleting…" : label}
+      </button>
+    );
+  }
+
   return (
     <div className={fullWidth ? "w-full" : undefined}>
       <Button variant="outline" size="sm" fullWidth={fullWidth} onClick={handleClick} disabled={isPending}>
@@ -51,4 +66,5 @@ export function DeleteTournamentButton({
     </div>
   );
 }
+
 
