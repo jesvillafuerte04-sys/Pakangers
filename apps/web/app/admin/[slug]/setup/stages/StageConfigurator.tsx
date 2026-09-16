@@ -126,14 +126,9 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
   return (
     <div className="rounded-2xl border-2 border-[var(--color-navy)] bg-white p-5 shadow-sm md:p-6">
       <div className="flex flex-col gap-1 border-b border-[var(--border-subtle)] pb-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-[family-name:var(--font-display)] text-lg font-black uppercase tracking-wide text-[var(--color-navy)]">
-            Stage & Playoff Configurator
-          </h2>
-          <span className="rounded-full bg-[var(--color-gold)]/20 px-3 py-0.5 text-xs font-bold text-[var(--color-navy)]">
-            Spec 3 Active
-          </span>
-        </div>
+        <h2 className="font-[family-name:var(--font-display)] text-lg font-black uppercase tracking-wide text-[var(--color-navy)]">
+          Stage & Playoff Configurator
+        </h2>
         <p className="text-xs text-[var(--color-text-muted)]">
           Configure round-robin pools, playoff bracket sizes (Top 16, Quarters, Semis, Finals), 3rd place match, and scoring.
         </p>
@@ -257,7 +252,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
               {playoffFormat !== "none" && (
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
-                    Advance per Pool ({poolCount * advancePerPool} Total advancing)
+                    Advance per Pool ({poolCount * advancePerPool} Teams)
                   </label>
                   <div className="flex gap-2">
                     {[1, 2].map((adv) => {
@@ -326,10 +321,10 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
                 }`}
               >
                 <span className={`text-sm font-bold ${crossoverStyle === "adjacent" ? "text-[var(--color-gold)]" : "text-[var(--color-navy)]"}`}>
-                  Adjacent Pools (A1 vs B2, C1 vs D2)
+                  Adjacent Pools (A1 vs B2)
                 </span>
                 <span className={`mt-0.5 text-xs ${crossoverStyle === "adjacent" ? "text-gray-200" : "text-[var(--color-text-muted)]"}`}>
-                  Standard consecutive pairing (A1 vs B2, C1 vs D2, E1 vs F2, G1 vs H2).
+                  Standard consecutive pairing (A1 vs B2, C1 vs D2, etc.).
                 </span>
               </button>
             </div>
@@ -371,12 +366,12 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
 
           <div className="grid grid-cols-1 gap-3 pt-1 md:grid-cols-3">
             {/* Round 1: Pools & Early Knockout */}
-            <div className="flex flex-col gap-2.5 rounded-xl border border-gray-200 bg-white p-3 shadow-xs">
-              <div className="flex items-center justify-between border-b pb-2">
+            <div className="flex flex-col gap-2.5 rounded-xl border border-[var(--border-subtle)] bg-white p-3.5 shadow-xs">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
                 <span className="text-xs font-bold text-[var(--color-navy)]">
                   {includePools ? "Pools & Early Bracket" : "Early Knockout (R16, QF)"}
                 </span>
-                <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase text-blue-700">
+                <span className="rounded-full bg-[var(--surface-sunken)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-navy)]">
                   Rounds 1–2
                 </span>
               </div>
@@ -408,10 +403,10 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
             </div>
 
             {/* Round 2: Semifinals */}
-            <div className="flex flex-col gap-2.5 rounded-xl border border-gray-200 bg-white p-3 shadow-xs">
-              <div className="flex items-center justify-between border-b pb-2">
+            <div className="flex flex-col gap-2.5 rounded-xl border border-[var(--border-subtle)] bg-white p-3.5 shadow-xs">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
                 <span className="text-xs font-bold text-[var(--color-navy)]">Semifinals</span>
-                <span className="rounded bg-purple-50 px-2 py-0.5 text-[10px] font-bold uppercase text-purple-700">
+                <span className="rounded-full bg-[var(--surface-sunken)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-navy)]">
                   Top 4
                 </span>
               </div>
@@ -443,11 +438,11 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
             </div>
 
             {/* Round 3: Finals & 3rd Place Match */}
-            <div className="flex flex-col gap-2.5 rounded-xl border-2 border-[var(--color-gold)] bg-amber-50/40 p-3 shadow-xs">
-              <div className="flex items-center justify-between border-b border-amber-200 pb-2">
+            <div className="flex flex-col gap-2.5 rounded-xl border-2 border-[var(--color-gold)] bg-white p-3.5 shadow-xs">
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
                 <span className="text-xs font-bold text-[var(--color-navy)]">Finals & 3rd Place</span>
-                <span className="rounded bg-amber-200/80 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-800">
-                  Podium / Medals
+                <span className="rounded-full bg-[var(--color-navy)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-gold)]">
+                  Medal Matches
                 </span>
               </div>
               <div className="flex flex-col gap-1">
@@ -509,15 +504,15 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
         </div>
 
         {/* 5. Live Flow Preview */}
-        <div className="rounded-xl border border-[var(--color-gold)] bg-[var(--color-gold)]/10 p-4">
+        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-sunken)] p-4">
           <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
             ⚡ Resulting Tournament Flow
           </span>
           <div className="mt-3 flex flex-col items-center gap-1.5 text-xs font-semibold">
             {includePools && (
               <>
-                <div className="w-full rounded-lg bg-[var(--color-navy)] px-3 py-2 text-center text-[var(--color-gold)] shadow-xs">
-                  {poolLettersDisplay} · Round-Robin (Top {advancePerPool} advance{playoffFormat !== "none" ? ` = ${poolCount * advancePerPool} teams` : ""})
+                <div className="w-full rounded-lg bg-[var(--color-navy)] px-3 py-2 text-center font-bold text-[var(--color-gold)] shadow-xs">
+                  {poolLettersDisplay} · Round-Robin (Top {advancePerPool} advance = {poolCount * advancePerPool} teams)
                 </div>
                 {playoffFormat !== "none" && <span className="text-sm font-black text-[var(--color-navy)]">↓</span>}
               </>
@@ -525,7 +520,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
 
             {playoffFormat === "round_of_16" && (
               <>
-                <div className="w-full rounded-lg bg-blue-700 px-3 py-2 text-center text-white shadow-xs">
+                <div className="w-full rounded-lg border border-[var(--border-subtle)] bg-white px-3 py-2 text-center font-bold text-[var(--color-navy)] shadow-xs">
                   Round of 16 (8 matches)
                 </div>
                 <span className="text-sm font-black text-[var(--color-navy)]">↓</span>
@@ -534,7 +529,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
 
             {(playoffFormat === "round_of_16" || playoffFormat === "quarterfinals") && (
               <>
-                <div className="w-full rounded-lg bg-indigo-700 px-3 py-2 text-center text-white shadow-xs">
+                <div className="w-full rounded-lg border border-[var(--border-subtle)] bg-white px-3 py-2 text-center font-bold text-[var(--color-navy)] shadow-xs">
                   Quarterfinals (4 matches)
                 </div>
                 <span className="text-sm font-black text-[var(--color-navy)]">↓</span>
@@ -545,7 +540,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
               playoffFormat === "quarterfinals" ||
               playoffFormat === "semifinals") && (
               <>
-                <div className="w-full rounded-lg bg-purple-700 px-3 py-2 text-center text-white shadow-xs">
+                <div className="w-full rounded-lg border border-[var(--border-subtle)] bg-white px-3 py-2 text-center font-bold text-[var(--color-navy)] shadow-xs">
                   Semifinals (2 matches)
                 </div>
                 <span className="text-sm font-black text-[var(--color-navy)]">↓</span>
@@ -553,13 +548,13 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
             )}
 
             {playoffFormat !== "none" && (
-              <div className="w-full rounded-lg bg-amber-600 px-3 py-2 text-center text-white shadow-xs">
+              <div className="w-full rounded-lg bg-[var(--color-navy)] border-2 border-[var(--color-gold)] px-3 py-2 text-center font-bold text-[var(--color-gold)] shadow-xs">
                 Championship {includeThirdPlace && "& 3rd Place Match"}
               </div>
             )}
           </div>
 
-          <p className="mt-3 border-t border-[var(--color-gold)]/30 pt-2 text-center text-xs text-[var(--color-text-muted)]">
+          <p className="mt-3 border-t border-[var(--border-subtle)] pt-2 text-center text-xs text-[var(--color-text-muted)]">
             Scoring: Pools ({poolPointsToWin} pts {poolWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Semis ({semisPointsToWin} pts {semisWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Finals & 3rd ({finalsPointsToWin} pts {finalsWinBy === "win_by_two" ? "win by 2 deuce" : "sudden death"}) · {scoringType === "side_out" ? "Side-out" : "Rally"} · {bestOf === 1 ? "1 game" : "Best of 3"}
           </p>
         </div>
