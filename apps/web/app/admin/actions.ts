@@ -844,7 +844,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
   const crossoverStyle = String(formData.get("crossover_style") ?? "opposite");
   const includePools = formData.get("include_pools") === "true";
   const poolCount = Math.min(16, Math.max(1, parseInt(String(formData.get("pool_count") ?? "2"), 10)));
-  const advancePerPool = Math.min(8, Math.max(1, parseInt(String(formData.get("advance_per_pool") ?? "2"), 10)));
+  const advancePerPool = Math.min(2, Math.max(1, parseInt(String(formData.get("advance_per_pool") ?? "2"), 10)));
   const includeThirdPlace = formData.get("include_third_place") === "true";
 
   const pointsToWin = parseInt(String(formData.get("points_to_win") ?? "15"), 10) || 15;
@@ -852,8 +852,23 @@ export async function configureTournamentStages(slug: string, formData: FormData
   const bestOf = parseInt(String(formData.get("best_of") ?? "1"), 10) || 1;
   const scoringType = String(formData.get("scoring_type") ?? "side_out");
 
-  const standardScoring = { pointsToWin, winBy, bestOf, scoringType };
-  const poolScoring = { pointsToWin: 11, winBy: "sudden_death", bestOf: 1, scoringType: "side_out" };
+  // Round-specific scoring rules
+  const poolPoints = parseInt(String(formData.get("pool_points_to_win") ?? String(pointsToWin)), 10) || pointsToWin;
+  const poolWinBy = String(formData.get("pool_win_by") ?? winBy);
+
+  const earlyPoints = pointsToWin;
+  const earlyWinBy = winBy;
+
+  const semisPoints = parseInt(String(formData.get("semis_points_to_win") ?? String(pointsToWin)), 10) || pointsToWin;
+  const semisWinBy = String(formData.get("semis_win_by") ?? "sudden_death");
+
+  const finalsPoints = parseInt(String(formData.get("finals_points_to_win") ?? String(pointsToWin)), 10) || pointsToWin;
+  const finalsWinBy = String(formData.get("finals_win_by") ?? "win_by_two");
+
+  const poolScoring = { pointsToWin: poolPoints, winBy: poolWinBy, bestOf, scoringType };
+  const earlyScoring = { pointsToWin: earlyPoints, winBy: earlyWinBy, bestOf, scoringType };
+  const semisScoring = { pointsToWin: semisPoints, winBy: semisWinBy, bestOf, scoringType };
+  const finalsScoring = { pointsToWin: finalsPoints, winBy: finalsWinBy, bestOf, scoringType };
 
   // 1. Unassign all teams from groups first
   await supabase.from("team").update({ group_id: null }).eq("tournament_id", tournament.id);
@@ -1022,7 +1037,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         name: "Round of 16",
         format_key: "single_elimination",
         sequence: currentSequence++,
-        scoring_config: standardScoring as unknown as Json,
+        scoring_config: earlyScoring as unknown as Json,
         tiebreaker_config: [] as unknown as Json,
         entrant_config: r16EntrantConfig as unknown as Json,
       })
@@ -1052,7 +1067,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
       name: "Quarterfinals",
       format_key: "single_elimination",
       sequence: currentSequence++,
-      scoring_config: standardScoring as unknown as Json,
+      scoring_config: earlyScoring as unknown as Json,
       tiebreaker_config: [] as unknown as Json,
       entrant_config: {
         entrants: [
@@ -1072,7 +1087,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
       name: "Semifinals",
       format_key: "single_elimination",
       sequence: currentSequence++,
-      scoring_config: standardScoring as unknown as Json,
+      scoring_config: semisScoring as unknown as Json,
       tiebreaker_config: [] as unknown as Json,
       entrant_config: {
         entrants: [
@@ -1090,7 +1105,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         name: "Third Place",
         format_key: "single_elimination",
         sequence: currentSequence++,
-        scoring_config: standardScoring as unknown as Json,
+        scoring_config: finalsScoring as unknown as Json,
         tiebreaker_config: [] as unknown as Json,
         entrant_config: {
           entrants: [
@@ -1108,7 +1123,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
       name: "Championship",
       format_key: "single_elimination",
       sequence: currentSequence++,
-      scoring_config: standardScoring as unknown as Json,
+      scoring_config: finalsScoring as unknown as Json,
       tiebreaker_config: [] as unknown as Json,
       entrant_config: {
         entrants: [
@@ -1188,7 +1203,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         name: "Quarterfinals",
         format_key: "single_elimination",
         sequence: currentSequence++,
-        scoring_config: standardScoring as unknown as Json,
+        scoring_config: earlyScoring as unknown as Json,
         tiebreaker_config: [] as unknown as Json,
         entrant_config: qfEntrantConfig as unknown as Json,
       })
@@ -1218,7 +1233,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
       name: "Semifinals",
       format_key: "single_elimination",
       sequence: currentSequence++,
-      scoring_config: standardScoring as unknown as Json,
+      scoring_config: semisScoring as unknown as Json,
       tiebreaker_config: [] as unknown as Json,
       entrant_config: {
         entrants: [
@@ -1236,7 +1251,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         name: "Third Place",
         format_key: "single_elimination",
         sequence: currentSequence++,
-        scoring_config: standardScoring as unknown as Json,
+        scoring_config: finalsScoring as unknown as Json,
         tiebreaker_config: [] as unknown as Json,
         entrant_config: {
           entrants: [
@@ -1254,7 +1269,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
       name: "Championship",
       format_key: "single_elimination",
       sequence: currentSequence++,
-      scoring_config: standardScoring as unknown as Json,
+      scoring_config: finalsScoring as unknown as Json,
       tiebreaker_config: [] as unknown as Json,
       entrant_config: {
         entrants: [
@@ -1297,7 +1312,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         name: "Semifinals",
         format_key: "single_elimination",
         sequence: currentSequence++,
-        scoring_config: standardScoring as unknown as Json,
+        scoring_config: semisScoring as unknown as Json,
         tiebreaker_config: [] as unknown as Json,
         entrant_config: semiEntrantConfig as unknown as Json,
       })
@@ -1327,7 +1342,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         name: "Third Place",
         format_key: "single_elimination",
         sequence: currentSequence++,
-        scoring_config: standardScoring as unknown as Json,
+        scoring_config: finalsScoring as unknown as Json,
         tiebreaker_config: [] as unknown as Json,
         entrant_config: {
           entrants: [
@@ -1345,7 +1360,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
       name: "Championship",
       format_key: "single_elimination",
       sequence: currentSequence++,
-      scoring_config: standardScoring as unknown as Json,
+      scoring_config: finalsScoring as unknown as Json,
       tiebreaker_config: [] as unknown as Json,
       entrant_config: {
         entrants: [
@@ -1378,7 +1393,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         name: "Championship",
         format_key: "single_elimination",
         sequence: currentSequence++,
-        scoring_config: standardScoring as unknown as Json,
+        scoring_config: finalsScoring as unknown as Json,
         tiebreaker_config: [] as unknown as Json,
         entrant_config: finalsEntrantConfig as unknown as Json,
       })

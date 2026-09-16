@@ -21,9 +21,17 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
   const [advancePerPool, setAdvancePerPool] = useState(2);
   const [includeThirdPlace, setIncludeThirdPlace] = useState(true);
 
-  // Scoring
-  const [pointsToWin, setPointsToWin] = useState(15);
-  const [winBy, setWinBy] = useState("sudden_death");
+  // Round-specific scoring rules (Defaults: Pools & Semis = 15 Sudden Death, Finals/3rd = 15 Win by 2)
+  const [poolPointsToWin, setPoolPointsToWin] = useState(15);
+  const [poolWinBy, setPoolWinBy] = useState("sudden_death");
+
+  const [semisPointsToWin, setSemisPointsToWin] = useState(15);
+  const [semisWinBy, setSemisWinBy] = useState("sudden_death");
+
+  const [finalsPointsToWin, setFinalsPointsToWin] = useState(15);
+  const [finalsWinBy, setFinalsWinBy] = useState("win_by_two");
+
+  // Shared match settings
   const [bestOf, setBestOf] = useState(1);
   const [scoringType, setScoringType] = useState("side_out");
 
@@ -56,11 +64,11 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
   const handlePoolCountChange = (count: number) => {
     setPoolCount(count);
     if (playoffFormat === "quarterfinals") {
-      setAdvancePerPool(count === 8 ? 1 : count === 4 ? 2 : 4);
+      setAdvancePerPool(count >= 8 ? 1 : 2);
     } else if (playoffFormat === "semifinals") {
-      setAdvancePerPool(count === 4 ? 1 : 2);
+      setAdvancePerPool(count >= 4 ? 1 : 2);
     } else if (playoffFormat === "round_of_16") {
-      setAdvancePerPool(count === 16 ? 1 : count === 8 ? 2 : count === 2 ? 8 : 4);
+      setAdvancePerPool(count >= 16 ? 1 : 2);
     } else if (playoffFormat === "finals_only") {
       setAdvancePerPool(1);
     }
@@ -131,8 +139,15 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
         <input type="hidden" name="pool_count" value={poolCount} />
         <input type="hidden" name="advance_per_pool" value={advancePerPool} />
         <input type="hidden" name="include_third_place" value={includeThirdPlace ? "true" : "false"} />
-        <input type="hidden" name="points_to_win" value={pointsToWin} />
-        <input type="hidden" name="win_by" value={winBy} />
+        <input type="hidden" name="pool_points_to_win" value={poolPointsToWin} />
+        <input type="hidden" name="pool_win_by" value={poolWinBy} />
+        <input type="hidden" name="semis_points_to_win" value={semisPointsToWin} />
+        <input type="hidden" name="semis_win_by" value={semisWinBy} />
+        <input type="hidden" name="finals_points_to_win" value={finalsPointsToWin} />
+        <input type="hidden" name="finals_win_by" value={finalsWinBy} />
+        {/* Fallback legacy fields */}
+        <input type="hidden" name="points_to_win" value={poolPointsToWin} />
+        <input type="hidden" name="win_by" value={poolWinBy} />
         <input type="hidden" name="best_of" value={bestOf} />
         <input type="hidden" name="scoring_type" value={scoringType} />
 
@@ -223,10 +238,10 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
               {playoffFormat !== "none" && (
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
-                    Advance per Pool ({poolCount * advancePerPool} Total)
+                    Advance per Pool ({poolCount * advancePerPool} Total advancing)
                   </label>
                   <div className="flex gap-2">
-                    {[1, 2, 4, 8].map((adv) => (
+                    {[1, 2].map((adv) => (
                       <button
                         type="button"
                         key={adv}
@@ -238,7 +253,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
                             : "border-[var(--border-subtle)] bg-white text-[var(--color-navy)] hover:bg-gray-50"
                         }`}
                       >
-                        Top {adv}
+                        Top {adv} {adv === 1 ? "(Winner only)" : "(1st & 2nd)"}
                       </button>
                     ))}
                   </div>
@@ -319,46 +334,140 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
           </div>
         )}
 
-        {/* 4. Match Scoring Presets */}
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
-            2. Match Scoring Rules
-          </label>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-[var(--color-text-muted)]">Points to Win</span>
-              <select
-                value={pointsToWin}
-                onChange={(e) => setPointsToWin(Number(e.target.value))}
-                disabled={!isDraft || isPending}
-                className="rounded-lg border-2 border-[var(--border-subtle)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-navy)]"
-              >
-                <option value={11}>11 Points</option>
-                <option value={15}>15 Points</option>
-                <option value={21}>21 Points</option>
-              </select>
+        {/* 4. Match Scoring Presets & Customizer */}
+        <div className="flex flex-col gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-sunken)] p-4">
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
+                2. Match Scoring Rules by Round
+              </label>
+              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+                Preset Active: Semis Sudden Death · Finals Win by 2 (Deuce)
+              </span>
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              Defaults to 15 pts sudden death for Pools & Semis, and 15 pts win-by-two for Finals & 3rd Place. You can manually adjust the points and win condition for each round below.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 pt-1 md:grid-cols-3">
+            {/* Round 1: Pools & Early Knockout */}
+            <div className="flex flex-col gap-2.5 rounded-xl border border-gray-200 bg-white p-3 shadow-xs">
+              <div className="flex items-center justify-between border-b pb-2">
+                <span className="text-xs font-bold text-[var(--color-navy)]">
+                  {includePools ? "Pools & Early Bracket" : "Early Knockout (R16, QF)"}
+                </span>
+                <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase text-blue-700">
+                  Rounds 1–2
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">Points to Win</span>
+                <select
+                  value={poolPointsToWin}
+                  onChange={(e) => setPoolPointsToWin(Number(e.target.value))}
+                  disabled={!isDraft || isPending}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-white px-2.5 py-1.5 text-xs font-bold text-[var(--color-navy)]"
+                >
+                  <option value={11}>11 Points</option>
+                  <option value={15}>15 Points</option>
+                  <option value={21}>21 Points</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">Win Condition</span>
+                <select
+                  value={poolWinBy}
+                  onChange={(e) => setPoolWinBy(e.target.value)}
+                  disabled={!isDraft || isPending}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-white px-2.5 py-1.5 text-xs font-bold text-[var(--color-navy)]"
+                >
+                  <option value="sudden_death">Sudden Death (1st to point)</option>
+                  <option value="win_by_two">Win by 2 (Deuce)</option>
+                </select>
+              </div>
             </div>
 
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-[var(--color-text-muted)]">Win Condition</span>
-              <select
-                value={winBy}
-                onChange={(e) => setWinBy(e.target.value)}
-                disabled={!isDraft || isPending}
-                className="rounded-lg border-2 border-[var(--border-subtle)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-navy)]"
-              >
-                <option value="sudden_death">Sudden Death (1st to point)</option>
-                <option value="win_by_two">Win by 2 (Deuce)</option>
-              </select>
+            {/* Round 2: Semifinals */}
+            <div className="flex flex-col gap-2.5 rounded-xl border border-gray-200 bg-white p-3 shadow-xs">
+              <div className="flex items-center justify-between border-b pb-2">
+                <span className="text-xs font-bold text-[var(--color-navy)]">Semifinals</span>
+                <span className="rounded bg-purple-50 px-2 py-0.5 text-[10px] font-bold uppercase text-purple-700">
+                  Top 4
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">Points to Win</span>
+                <select
+                  value={semisPointsToWin}
+                  onChange={(e) => setSemisPointsToWin(Number(e.target.value))}
+                  disabled={!isDraft || isPending}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-white px-2.5 py-1.5 text-xs font-bold text-[var(--color-navy)]"
+                >
+                  <option value={11}>11 Points</option>
+                  <option value={15}>15 Points</option>
+                  <option value={21}>21 Points</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">Win Condition</span>
+                <select
+                  value={semisWinBy}
+                  onChange={(e) => setSemisWinBy(e.target.value)}
+                  disabled={!isDraft || isPending}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-white px-2.5 py-1.5 text-xs font-bold text-[var(--color-navy)]"
+                >
+                  <option value="sudden_death">Sudden Death (1st to point)</option>
+                  <option value="win_by_two">Win by 2 (Deuce)</option>
+                </select>
+              </div>
             </div>
 
+            {/* Round 3: Finals & 3rd Place Match */}
+            <div className="flex flex-col gap-2.5 rounded-xl border-2 border-[var(--color-gold)] bg-amber-50/40 p-3 shadow-xs">
+              <div className="flex items-center justify-between border-b border-amber-200 pb-2">
+                <span className="text-xs font-bold text-[var(--color-navy)]">Finals & 3rd Place</span>
+                <span className="rounded bg-amber-200/80 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-800">
+                  Podium / Medals
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">Points to Win</span>
+                <select
+                  value={finalsPointsToWin}
+                  onChange={(e) => setFinalsPointsToWin(Number(e.target.value))}
+                  disabled={!isDraft || isPending}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-white px-2.5 py-1.5 text-xs font-bold text-[var(--color-navy)]"
+                >
+                  <option value={11}>11 Points</option>
+                  <option value={15}>15 Points</option>
+                  <option value={21}>21 Points</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">Win Condition</span>
+                <select
+                  value={finalsWinBy}
+                  onChange={(e) => setFinalsWinBy(e.target.value)}
+                  disabled={!isDraft || isPending}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-white px-2.5 py-1.5 text-xs font-bold text-[var(--color-navy)]"
+                >
+                  <option value="win_by_two">Win by 2 (Deuce)</option>
+                  <option value="sudden_death">Sudden Death (1st to point)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Shared Match Format Options */}
+          <div className="mt-2 grid grid-cols-1 gap-3 border-t border-[var(--border-subtle)] pt-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1">
-              <span className="text-xs text-[var(--color-text-muted)]">Game Structure</span>
+              <span className="text-xs font-semibold text-[var(--color-text-muted)]">Game Structure</span>
               <select
                 value={bestOf}
                 onChange={(e) => setBestOf(Number(e.target.value))}
                 disabled={!isDraft || isPending}
-                className="rounded-lg border-2 border-[var(--border-subtle)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-navy)]"
+                className="rounded-lg border-2 border-[var(--border-subtle)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-navy)]"
               >
                 <option value={1}>1 Game Match</option>
                 <option value={3}>Best of 3 Games</option>
@@ -366,15 +475,15 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
             </div>
 
             <div className="flex flex-col gap-1">
-              <span className="text-xs text-[var(--color-text-muted)]">Scoring Mode</span>
+              <span className="text-xs font-semibold text-[var(--color-text-muted)]">Scoring Mode</span>
               <select
                 value={scoringType}
                 onChange={(e) => setScoringType(e.target.value)}
                 disabled={!isDraft || isPending}
-                className="rounded-lg border-2 border-[var(--border-subtle)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-navy)]"
+                className="rounded-lg border-2 border-[var(--border-subtle)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-navy)]"
               >
-                <option value="side_out">Side-out (Traditional)</option>
-                <option value="rally">Rally Scoring</option>
+                <option value="side_out">Side-out (Traditional: serve to score)</option>
+                <option value="rally">Rally Scoring (point every rally)</option>
               </select>
             </div>
           </div>
@@ -426,8 +535,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
           </div>
 
           <p className="mt-2.5 text-xs text-[var(--color-text-muted)]">
-            Scoring: First to {pointsToWin} ({winBy.replace("_", " ")}) · {bestOf === 1 ? "1 game" : "Best of 3"} ·{" "}
-            {scoringType === "side_out" ? "Side-out" : "Rally"}
+            Scoring: Pools ({poolPointsToWin} pts {poolWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Semis ({semisPointsToWin} pts {semisWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Finals & 3rd ({finalsPointsToWin} pts {finalsWinBy === "win_by_two" ? "win by 2 deuce" : "sudden death"}) · {scoringType === "side_out" ? "Side-out" : "Rally"} · {bestOf === 1 ? "1 game" : "Best of 3"}
           </p>
         </div>
 
@@ -454,9 +562,14 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
         )}
 
         {!confirmOpen && (
-          <Button type="submit" size="lg" disabled={!isDraft || isPending} fullWidth>
-            {isPending ? "Configuring Stages..." : "⚡ Generate & Apply Stage Configuration"}
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button type="submit" size="lg" disabled={!isDraft || isPending} fullWidth>
+              {isPending ? "Configuring Stages..." : "⚡ Generate & Apply Stage Configuration"}
+            </Button>
+            <p className="text-center text-[11px] text-[var(--color-text-muted)]">
+              ℹ️ <strong>What this button does:</strong> Creates the tournament structure in the database — builds pool groups (Pools A–H), sets advancement rules (Top 1 or Top 2), generates playoff brackets with crossover pairings (e.g. A1 vs H2), and attaches your scoring rules to every round.
+            </p>
+          </div>
         )}
       </form>
     </div>
