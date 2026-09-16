@@ -79,8 +79,9 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
               Ties broken by: {g.tiebreakers.map((tb) => TIEBREAKER_LABEL[tb]).join(", then ")}.
             </p>
           )}
-        </Card>
-      ))}
+          </Card>
+        );
+      })}
     </div>
   );
 }

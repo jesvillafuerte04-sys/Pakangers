@@ -110,7 +110,8 @@ export default async function MatchListPage({
             )}
           </div>
         </Card>
-      ))}
+      );
+    })}
     </main>
   );
 }
