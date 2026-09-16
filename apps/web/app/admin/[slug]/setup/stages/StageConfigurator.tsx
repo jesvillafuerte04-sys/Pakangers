@@ -33,12 +33,12 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
   const handlePlayoffChange = (format: PlayoffFormat) => {
     setPlayoffFormat(format);
     if (format === "round_of_16") {
-      setPoolCount(4);
-      setAdvancePerPool(4);
+      setPoolCount(8);
+      setAdvancePerPool(2);
       setIncludeThirdPlace(true);
     } else if (format === "quarterfinals") {
-      setPoolCount(2);
-      setAdvancePerPool(4);
+      setPoolCount(4);
+      setAdvancePerPool(2);
       setIncludeThirdPlace(true);
     } else if (format === "semifinals") {
       setPoolCount(2);
@@ -143,9 +143,9 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
           </label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {[
-              { id: "round_of_16", label: "Round of 16 (Top 16)", desc: "16 teams · 4 rounds to champion" },
-              { id: "quarterfinals", label: "Quarterfinals (Top 8)", desc: "8 teams · 3 rounds to champion" },
-              { id: "semifinals", label: "Semifinals (Top 4)", desc: "4 teams · 2 rounds to champion" },
+              { id: "round_of_16", label: "Round of 16 (Top 16)", desc: "16 teams · 8 Pools (Top 2) or 4 Pools (Top 4)" },
+              { id: "quarterfinals", label: "Quarterfinals (Top 8)", desc: "8 teams · 4 Pools (Top 2) or 2 Pools (Top 4)" },
+              { id: "semifinals", label: "Semifinals (Top 4)", desc: "4 teams · 2 Pools (Top 2) or 4 Pools (Top 1)" },
               { id: "finals_only", label: "Championship Only", desc: "Top 2 teams · 1 final match" },
               { id: "none", label: "Pure Round Robin", desc: "Pools only · No knockout bracket" },
             ].map((opt) => {
@@ -389,7 +389,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
             {includePools && (
               <>
                 <span className="rounded-lg bg-[var(--color-navy)] px-2.5 py-1 text-[var(--color-gold)]">
-                  {poolLettersDisplay} (Round-Robin)
+                  {poolLettersDisplay} (Round-Robin · Top {advancePerPool} advance{playoffFormat !== "none" ? ` = ${poolCount * advancePerPool} teams` : ""})
                 </span>
                 {playoffFormat !== "none" && <span className="text-[var(--color-navy)] font-black">➔</span>}
               </>
