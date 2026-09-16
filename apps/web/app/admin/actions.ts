@@ -880,6 +880,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
     await supabase.from("qualification_rule").delete().in("from_stage_id", oldStageIds);
     await supabase.from("qualification_rule").delete().in("to_stage_id", oldStageIds);
     await supabase.from("tournament_group").delete().in("stage_id", oldStageIds);
+    await supabase.from("bracket_node").delete().in("stage_id", oldStageIds);
     await supabase.from("match").delete().in("stage_id", oldStageIds);
     await supabase.from("stage").delete().eq("tournament_id", tournament.id);
   }
@@ -1280,7 +1281,23 @@ export async function configureTournamentStages(slug: string, formData: FormData
   } else if (playoffFormat === "semifinals") {
     // Semifinals (Top 4)
     let semiEntrantConfig: Record<string, unknown> = {};
-    if (includePools && poolCount >= 2 && advancePerPool >= 2) {
+    if (includePools && poolCount === 4 && advancePerPool >= 1) {
+      if (crossoverStyle === "opposite") {
+        semiEntrantConfig = {
+          entrants: [
+            { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 1 } },
+            { match: 2, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 1 } },
+          ],
+        };
+      } else {
+        semiEntrantConfig = {
+          entrants: [
+            { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 1 } },
+            { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 1 } },
+          ],
+        };
+      }
+    } else if (includePools && poolCount >= 2 && advancePerPool >= 2) {
       semiEntrantConfig = {
         entrants: [
           { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
@@ -1292,13 +1309,6 @@ export async function configureTournamentStages(slug: string, formData: FormData
         entrants: [
           { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 4 } },
           { match: 2, home: { kind: "group_rank", group: "A", rank: 2 }, away: { kind: "group_rank", group: "A", rank: 3 } },
-        ],
-      };
-    } else if (includePools && poolCount === 4 && advancePerPool >= 1) {
-      semiEntrantConfig = {
-        entrants: [
-          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 1 } },
-          { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 1 } },
         ],
       };
     }
@@ -1558,9 +1568,40 @@ export async function setBracketCount(slug: string, stageId: string, targetCount
     if (delErr) throw new Error(delErr.message);
   }
 
+  // Synchronize qualification rules for all current groups in this stage
+  const { data: existingRules } = await supabase
+    .from("qualification_rule")
+    .select("to_stage_id, method, value")
+    .eq("from_stage_id", stageId);
+
+  if (existingRules && existingRules.length > 0) {
+    const toStageId = existingRules[0]!.to_stage_id;
+    const method = existingRules[0]!.method;
+    const value = existingRules[0]!.value;
+
+    await supabase.from("qualification_rule").delete().eq("from_stage_id", stageId);
+
+    const { data: allGroups } = await supabase
+      .from("tournament_group")
+      .select("id")
+      .eq("stage_id", stageId);
+
+    for (const g of allGroups ?? []) {
+      await supabase.from("qualification_rule").insert({
+        from_stage_id: stageId,
+        from_group_id: g.id,
+        method,
+        value,
+        to_stage_id: toStageId,
+      });
+    }
+  }
+
   revalidatePath(`/admin/${slug}/setup/groups`);
+  revalidatePath(`/admin/${slug}/setup/stages`);
   revalidatePath(`/admin/${slug}/matches`);
   revalidatePath(`/t/${slug}`);
+  revalidatePath(`/t/${slug}/bracket`);
   revalidatePath(`/t/${slug}/standings`);
 }
 

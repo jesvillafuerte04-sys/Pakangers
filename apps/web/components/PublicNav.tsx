@@ -18,7 +18,7 @@ export function PublicNav({ slug }: { slug: string }) {
     { href: base, label: "Now", icon: "home" as const },
     { href: `${base}/matches`, label: "Matches", icon: "matches" as const },
     { href: `${base}/standings`, label: "Standings", icon: "standings" as const },
-    { href: `${base}/bracket`, label: "Bracket", icon: "bracket" as const },
+    { href: `${base}/bracket`, label: "Brackets", icon: "bracket" as const },
     { href: `${base}/info`, label: "Info", icon: "profile" as const },
   ];
 

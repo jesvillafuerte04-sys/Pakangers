@@ -88,11 +88,22 @@ function toEngineGame(g: GameRow): Game {
   return { gameNumber: g.game_number, homeScore: g.home_score, awayScore: g.away_score };
 }
 
-function toEngineMatch(m: MatchRow, allGames: GameRow[], groupNameById: Map<string, string>): EngineMatch {
+function toEngineMatch(
+  m: MatchRow,
+  allGames: GameRow[],
+  groupNameById: Map<string, string>,
+  teamGroupIdById?: Map<string, string>,
+): EngineMatch {
+  let effectiveGroupId = m.group_id;
+  if (!effectiveGroupId && teamGroupIdById) {
+    effectiveGroupId = (m.home_team_id ? teamGroupIdById.get(m.home_team_id) : null)
+      ?? (m.away_team_id ? teamGroupIdById.get(m.away_team_id) : null)
+      ?? null;
+  }
   return {
     matchNumber: m.match_number,
     round: 0,
-    group: m.group_id ? groupNameById.get(m.group_id) : undefined,
+    group: effectiveGroupId ? groupNameById.get(effectiveGroupId) : undefined,
     homeEntrantId: m.home_team_id,
     awayEntrantId: m.away_team_id,
     status: m.status as MatchStatus,
@@ -132,6 +143,7 @@ type EngineState = {
   stageConfigs: Map<string, StageConfig>;
   groupNameById: Map<string, string>;
   groupIdByStageAndName: Map<string, string>;
+  teamGroupIdById: Map<string, string>;
   flatEntrants: Entrant[];
   plannedByStageKey: Map<string, PlannedMatch[]>;
 };
@@ -139,6 +151,7 @@ type EngineState = {
 function buildEngineState(snapshot: TournamentSnapshot): EngineState {
   const groupNameById = new Map(snapshot.groups.map((g) => [g.id, g.name]));
   const groupIdByStageAndName = new Map(snapshot.groups.map((g) => [`${g.stage_id}:${g.name}`, g.id]));
+  const teamGroupIdById = new Map(snapshot.teams.filter((t) => t.group_id).map((t) => [t.id, t.group_id!]));
 
   const teamsByGroup = new Map<string, string[]>();
   for (const t of snapshot.teams) {
@@ -163,7 +176,7 @@ function buildEngineState(snapshot: TournamentSnapshot): EngineState {
   const engineMatchesByStageId = new Map<string, EngineMatch[]>();
   for (const m of snapshot.matches) {
     const list = engineMatchesByStageId.get(m.stage_id) ?? [];
-    list.push(toEngineMatch(m, snapshot.games, groupNameById));
+    list.push(toEngineMatch(m, snapshot.games, groupNameById, teamGroupIdById));
     engineMatchesByStageId.set(m.stage_id, list);
   }
 
@@ -178,17 +191,28 @@ function buildEngineState(snapshot: TournamentSnapshot): EngineState {
   // at 0 games played (arbitrarily tie-broken), so reporting it early would
   // let a downstream bracket match "resolve" against a made-up order.
   const standingsByGroup = new Map<string, Standing[]>();
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   for (const stage of snapshot.stages) {
     const cfg = stageConfigs.get(stage.key)!;
     if (!cfg.groups) continue;
     const planned = plannedByStageKey.get(stage.key)!;
     const stageMatches = engineMatchesByStageId.get(stage.id) ?? [];
+    const groupsForStage = snapshot.groups.filter((g) => g.stage_id === stage.id);
+
     for (const g of cfg.groups) {
       const plannedCount = planned.filter((pm) => pm.group === g.name).length;
       const groupMatches = stageMatches.filter((m) => m.group === g.name);
       const allResolved = plannedCount > 0 && groupMatches.length === plannedCount && groupMatches.every((m) => RESOLVED_STATUSES.includes(m.status));
       if (allResolved) {
-        standingsByGroup.set(g.name, engineComputeStandings(g.entrantIds, groupMatches, cfg.tiebreakers));
+        const standings = engineComputeStandings(g.entrantIds, groupMatches, cfg.tiebreakers);
+        standingsByGroup.set(g.name, standings);
+        const groupRow = groupsForStage.find((gr) => gr.name === g.name);
+        const letter = groupRow ? alphabet[groupRow.display_order] : undefined;
+        if (letter) {
+          standingsByGroup.set(letter, standings);
+          standingsByGroup.set(`Bracket ${letter}`, standings);
+          standingsByGroup.set(`Pool ${letter}`, standings);
+        }
       }
     }
   }
@@ -206,6 +230,7 @@ function buildEngineState(snapshot: TournamentSnapshot): EngineState {
     stageConfigs,
     groupNameById,
     groupIdByStageAndName,
+    teamGroupIdById,
     flatEntrants,
     plannedByStageKey,
   };
@@ -260,10 +285,13 @@ export async function populateTournament(tournamentId: string): Promise<void> {
         continue;
       }
 
-      const groupId = pm.group ? groupIdByStageAndName.get(`${stage.id}:${pm.group}`) ?? null : null;
-      const status: MatchStatus = home.kind === "bye" || away.kind === "bye" ? "bye" : "pending";
       const homeTeamId = home.kind === "team" ? home.id : null;
       const awayTeamId = away.kind === "team" ? away.id : null;
+      const groupId = (pm.group ? groupIdByStageAndName.get(`${stage.id}:${pm.group}`) : null)
+        ?? (homeTeamId ? state.teamGroupIdById.get(homeTeamId) : null)
+        ?? (awayTeamId ? state.teamGroupIdById.get(awayTeamId) : null)
+        ?? null;
+      const status: MatchStatus = home.kind === "bye" || away.kind === "bye" ? "bye" : "pending";
 
       const { data: inserted, error } = await supabase
         .from("match")
@@ -336,10 +364,26 @@ async function ensureBracketNode(
   const key = `${stageId}:${pm.round}:${pm.matchNumber}`;
   const existing = existingNodes.get(key);
   if (existing) {
-    if (matchId && !existing.match_id) {
-      const { error } = await supabase.from("bracket_node").update({ match_id: matchId }).eq("id", existing.id);
+    const homeDiff = JSON.stringify(existing.home_ref) !== JSON.stringify(pm.home);
+    const awayDiff = JSON.stringify(existing.away_ref) !== JSON.stringify(pm.away);
+    const matchDiff = Boolean(matchId && !existing.match_id);
+    if (homeDiff || awayDiff || matchDiff) {
+      const nextMatchId = matchId ?? existing.match_id;
+      const { error } = await supabase
+        .from("bracket_node")
+        .update({
+          match_id: nextMatchId,
+          home_ref: pm.home as unknown as Json,
+          away_ref: pm.away as unknown as Json,
+        })
+        .eq("id", existing.id);
       if (error) throw new Error(error.message);
-      existingNodes.set(key, { ...existing, match_id: matchId });
+      existingNodes.set(key, {
+        ...existing,
+        match_id: nextMatchId,
+        home_ref: pm.home as unknown as Json,
+        away_ref: pm.away as unknown as Json,
+      });
     }
     return;
   }
@@ -585,9 +629,14 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
       : Promise.resolve({ data: [] as { from_group_id: string | null; method: string; value: number }[] }),
     getTournamentTeamDisplays(tournamentId),
   ]);
+  const teamGroupIdById = new Map(snapshot.teams.filter((t) => t.group_id).map((t) => [t.id, t.group_id!]));
   const qualifyCountByGroupId = new Map<string, number>();
+  let defaultQualifyCount: number | null = null;
   for (const r of qualRules ?? []) {
     if (r.from_group_id && r.method === "top_n") qualifyCountByGroupId.set(r.from_group_id, r.value);
+    if (r.method === "top_n" && typeof r.value === "number" && defaultQualifyCount === null) {
+      defaultQualifyCount = r.value;
+    }
   }
 
   const result: DisplayStandingsGroup[] = [];
@@ -599,7 +648,7 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
 
     const stageMatches = snapshot.matches
       .filter((m) => m.stage_id === stage.id)
-      .map((m) => toEngineMatch(m, snapshot.games, groupNameById));
+      .map((m) => toEngineMatch(m, snapshot.games, groupNameById, teamGroupIdById));
 
     for (const g of cfg.groups) {
       const groupRow = groupsForStage.find((gr) => gr.name === g.name)!;
@@ -610,7 +659,7 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
         stageName: stage.name,
         groupName: g.name,
         tiebreakers: cfg.tiebreakers,
-        qualifyCount: qualifyCountByGroupId.get(groupRow.id) ?? null,
+        qualifyCount: qualifyCountByGroupId.get(groupRow.id) ?? defaultQualifyCount,
         standings: standings.map((s) => ({
           ...s,
           team: teamDisplayById.get(s.entrantId) ?? { header: "Unknown", subtext: null },
@@ -638,7 +687,10 @@ function labelForSlotRef(ref: MatchSide, stageNameByKey: Map<string, string>): T
   const header = (() => {
     if (ref.kind === "entrant") return "TBD";
     if (ref.kind === "bye") return "Bye";
-    if (ref.kind === "group_rank") return `Pool ${ref.group} — ${ordinal(ref.rank)}`;
+    if (ref.kind === "group_rank") {
+      const groupLabel = ref.group.startsWith("Bracket") ? ref.group : `Bracket ${ref.group}`;
+      return `${groupLabel} — ${ordinal(ref.rank)}`;
+    }
     const stageName = stageNameByKey.get(ref.stage) ?? ref.stage;
     return `${ref.outcome === "winner" ? "Winner" : "Loser"} of ${stageName} Match #${ref.match}`;
   })();
