@@ -70,9 +70,13 @@ export function PlayerPhotoUpload({
         )}
       </div>
 
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-1">
+        <span className="font-semibold text-sm text-[var(--color-navy)] leading-tight">
+          {playerName.trim() || "Unnamed player"}
+        </span>
+
         <div className="flex items-center gap-2">
-          <label className="inline-flex cursor-pointer items-center rounded-md border border-[var(--border-subtle)] bg-white px-2.5 py-1 text-xs font-semibold text-[var(--color-navy)] shadow-xs transition hover:bg-[var(--surface-sunken)] active:scale-95">
+          <label className="inline-flex cursor-pointer items-center rounded-md border border-[var(--border-subtle)] bg-white px-2.5 py-0.5 text-xs font-semibold text-[var(--color-navy)] shadow-xs transition hover:bg-[var(--surface-sunken)] active:scale-95">
             <span>{isPending ? "Saving..." : currentUrl ? "Change photo" : "Add photo"}</span>
             <input
               type="file"
