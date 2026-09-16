@@ -1,5 +1,4 @@
-import type { TeamDisplay, PlayerDisplayInfo } from "@/lib/team-display";
-import { TeamAvatarGroup } from "./PlayerAvatar";
+import type { TeamDisplay } from "@/lib/team-display";
 
 /**
  * The minimum a match needs to render as a card. Both MatchListRow and the
@@ -23,13 +22,11 @@ export type MatchCardData = {
 function MatchSide({
   header,
   subtext,
-  players,
   score,
   outcome,
 }: {
   header: string;
   subtext: string | null;
-  players?: PlayerDisplayInfo[];
   score: number | null;
   outcome: "won" | "lost" | "undecided";
 }) {
@@ -38,15 +35,10 @@ function MatchSide({
   const scoreColor = outcome === "lost" ? "text-[var(--color-text-muted)]" : "text-[var(--color-navy)]";
 
   return (
-    <div className={`flex items-center justify-between gap-3 ${outcome === "lost" ? "opacity-60" : ""}`}>
-      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-        {players && players.length > 0 && (
-          <TeamAvatarGroup players={players} size="sm" />
-        )}
-        <div className="min-w-0 flex-1">
-          <div className={`${nameWeight} ${nameColor} leading-tight truncate`}>{header}</div>
-          {subtext && <div className="text-xs text-[var(--color-text-muted)] opacity-80 truncate">{subtext}</div>}
-        </div>
+    <div className={`flex items-baseline justify-between gap-3 ${outcome === "lost" ? "opacity-60" : ""}`}>
+      <div className="min-w-0">
+        <div className={`${nameWeight} ${nameColor} leading-tight`}>{header}</div>
+        {subtext && <div className="text-xs text-[var(--color-text-muted)] opacity-80">{subtext}</div>}
       </div>
       {score !== null && (
         <span className={`flex-none text-2xl leading-none tabular-nums ${nameWeight} ${scoreColor}`}>{score}</span>
@@ -61,18 +53,16 @@ export function MatchCardBody({ match }: { match: MatchCardData }) {
   const awayOutcome = decided ? (match.winnerSide === "away" ? "won" : "lost") : "undecided";
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col gap-2">
       <MatchSide
         header={match.home.header}
         subtext={match.home.subtext}
-        players={match.home.players}
         score={match.homePointsTotal}
         outcome={homeOutcome}
       />
       <MatchSide
         header={match.away.header}
         subtext={match.away.subtext}
-        players={match.away.players}
         score={match.awayPointsTotal}
         outcome={awayOutcome}
       />

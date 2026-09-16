@@ -5,7 +5,6 @@ import { addPlayers, removePlayer } from "@/app/admin/actions";
 import { Card } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { PlayerPhotoUpload } from "./PlayerPhotoUpload";
 
 export default async function SetupPlayersPage({ params }: PageProps<"/admin/[slug]/setup/players">) {
   const { slug } = await params;
@@ -15,7 +14,7 @@ export default async function SetupPlayersPage({ params }: PageProps<"/admin/[sl
   const supabase = getServiceSupabase();
   const { data: players } = await supabase
     .from("player")
-    .select("id, first_name, last_name, dupr_id, avatar_url")
+    .select("id, first_name, last_name, dupr_id")
     .eq("tournament_id", tournament.id)
     .order("first_name");
 
@@ -32,7 +31,7 @@ export default async function SetupPlayersPage({ params }: PageProps<"/admin/[sl
             placeholder={"Jes Villafuerte\nMarco Reyes\nLea Dizon"}
           />
           <p className="text-xs text-[var(--color-text-muted)]">
-            DUPR ID and photos are optional — players without a photo are assigned a stylish default icon badge.
+            DUPR ID is optional and can be added later — most club players won&apos;t have one.
           </p>
           <Button type="submit">Add players</Button>
         </form>
@@ -42,24 +41,15 @@ export default async function SetupPlayersPage({ params }: PageProps<"/admin/[sl
         <div className="flex flex-col divide-y divide-[var(--border-subtle)]">
           {players?.length === 0 && <p className="py-3 text-sm text-[var(--color-text-muted)]">No players yet.</p>}
           {players?.map((p) => (
-            <div key={p.id} className="flex items-center justify-between py-3 gap-3">
-              <PlayerPhotoUpload
-                slug={slug}
-                tournamentId={tournament.id}
-                playerId={p.id}
-                playerName={`${p.first_name} ${p.last_name}`}
-                avatarUrl={p.avatar_url}
-              />
-              <div className="flex items-center gap-3">
-                {p.dupr_id && (
-                  <span className="text-xs text-[var(--color-text-muted)]">DUPR: {p.dupr_id}</span>
-                )}
-                <form action={removePlayer.bind(null, slug, p.id)}>
-                  <button type="submit" className="text-sm font-medium text-[var(--color-error)] hover:underline">
-                    Remove
-                  </button>
-                </form>
-              </div>
+            <div key={p.id} className="flex items-center justify-between py-2.5">
+              <span className="font-medium text-[var(--color-navy)]">
+                {p.first_name} {p.last_name}
+              </span>
+              <form action={removePlayer.bind(null, slug, p.id)}>
+                <button type="submit" className="text-sm font-medium text-[var(--color-error)] hover:underline">
+                  Remove
+                </button>
+              </form>
             </div>
           ))}
         </div>

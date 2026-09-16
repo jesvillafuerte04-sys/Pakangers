@@ -192,101 +192,6 @@ export async function removePlayer(slug: string, playerId: string): Promise<void
   revalidatePath(`/admin/${slug}/setup/players`);
 }
 
-export async function updatePlayerAvatar(
-  slug: string,
-  playerId: string,
-  tournamentId: string,
-  formData: FormData,
-): Promise<{ ok: boolean; error?: string }> {
-  await requireSession();
-  const supabase = getServiceSupabase();
-
-  const file = formData.get("photo") as File | null;
-  const dataUrl = formData.get("dataUrl") as string | null;
-
-  if (!file && !dataUrl) {
-    return { ok: false, error: "No image provided" };
-  }
-
-  try {
-    let finalAvatarUrl: string | null = null;
-
-    if (file && file.size > 0) {
-      try {
-        const { data: buckets } = await supabase.storage.listBuckets();
-        if (!buckets?.some((b) => b.name === "player-avatars")) {
-          await supabase.storage.createBucket("player-avatars", {
-            public: true,
-            allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-          });
-        }
-
-        const ext = file.name.split(".").pop() || "jpg";
-        const path = `${tournamentId}/${playerId}-${Date.now()}.${ext}`;
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-
-        const { error: uploadErr } = await supabase.storage
-          .from("player-avatars")
-          .upload(path, buffer, {
-            contentType: file.type || "image/jpeg",
-            upsert: true,
-          });
-
-        if (!uploadErr) {
-          const { data } = supabase.storage.from("player-avatars").getPublicUrl(path);
-          finalAvatarUrl = data.publicUrl;
-        }
-      } catch {
-        // Fall back to dataUrl if storage bucket is unavailable
-      }
-    }
-
-    if (!finalAvatarUrl && dataUrl) {
-      finalAvatarUrl = dataUrl;
-    }
-
-    if (!finalAvatarUrl) {
-      return { ok: false, error: "Failed to process photo" };
-    }
-
-    const { error: dbError } = await supabase
-      .from("player")
-      .update({ avatar_url: finalAvatarUrl })
-      .eq("id", playerId);
-
-    if (dbError) throw new Error(dbError.message);
-
-    revalidatePath(`/admin/${slug}/setup/players`);
-    revalidatePath(`/admin/${slug}/setup/teams`);
-    revalidatePath(`/admin/${slug}/matches`);
-    revalidatePath(`/t/${slug}`);
-    revalidatePath(`/t/${slug}/matches`);
-    revalidatePath(`/t/${slug}/standings`);
-    revalidatePath(`/t/${slug}/bracket`);
-
-    return { ok: true };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to upload avatar";
-    return { ok: false, error: message };
-  }
-}
-
-export async function removePlayerAvatar(slug: string, playerId: string): Promise<void> {
-  await requireSession();
-  const supabase = getServiceSupabase();
-  const { error } = await supabase.from("player").update({ avatar_url: null }).eq("id", playerId);
-  if (error) throw new Error(error.message);
-
-  revalidatePath(`/admin/${slug}/setup/players`);
-  revalidatePath(`/admin/${slug}/setup/teams`);
-  revalidatePath(`/admin/${slug}/matches`);
-  revalidatePath(`/t/${slug}`);
-  revalidatePath(`/t/${slug}/matches`);
-  revalidatePath(`/t/${slug}/standings`);
-  revalidatePath(`/t/${slug}/bracket`);
-}
-
 export async function createTeam(slug: string, tournamentId: string, divisionId: string, formData: FormData): Promise<void> {
   await requireSession();
   const supabase = getServiceSupabase();
@@ -546,10 +451,10 @@ async function deepDuplicateTournament(
             seeding_policy: r.seeding_policy,
           };
         })
-        .filter((r): r is NonNullable<typeof r> => r !== null);
+        .filter(Boolean);
 
       if (newRules.length > 0) {
-        await supabase.from("qualification_rule").insert(newRules);
+        await supabase.from("qualification_rule").insert(newRules as any);
       }
     }
   }
@@ -557,7 +462,7 @@ async function deepDuplicateTournament(
   // 6. Copy player
   const { data: players } = await supabase
     .from("player")
-    .select("id, first_name, last_name, contact, dupr_id, skill_rating, notes, avatar_url")
+    .select("id, first_name, last_name, contact, dupr_id, skill_rating, notes")
     .eq("tournament_id", sourceId);
 
   const playerIdMap = new Map<string, string>();
@@ -573,7 +478,6 @@ async function deepDuplicateTournament(
           dupr_id: p.dupr_id,
           skill_rating: p.skill_rating,
           notes: p.notes,
-          avatar_url: p.avatar_url,
         })
         .select("id")
         .single();
@@ -626,10 +530,10 @@ async function deepDuplicateTournament(
                 position: m.position,
               };
             })
-            .filter((m): m is NonNullable<typeof m> => m !== null);
+            .filter(Boolean);
 
           if (newMembers.length > 0) {
-            await supabase.from("team_member").insert(newMembers);
+            await supabase.from("team_member").insert(newMembers as any);
           }
         }
       }
