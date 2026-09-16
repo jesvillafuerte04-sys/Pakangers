@@ -824,8 +824,8 @@ export async function configureTournamentStages(slug: string, formData: FormData
 
   const playoffFormat = String(formData.get("playoff_format") ?? "semifinals");
   const includePools = formData.get("include_pools") === "true";
-  const poolCount = Math.min(4, Math.max(1, parseInt(String(formData.get("pool_count") ?? "2"), 10)));
-  const advancePerPool = Math.min(4, Math.max(1, parseInt(String(formData.get("advance_per_pool") ?? "2"), 10)));
+  const poolCount = Math.min(16, Math.max(1, parseInt(String(formData.get("pool_count") ?? "2"), 10)));
+  const advancePerPool = Math.min(8, Math.max(1, parseInt(String(formData.get("advance_per_pool") ?? "2"), 10)));
   const includeThirdPlace = formData.get("include_third_place") === "true";
 
   const pointsToWin = parseInt(String(formData.get("points_to_win") ?? "15"), 10) || 15;
@@ -853,7 +853,8 @@ export async function configureTournamentStages(slug: string, formData: FormData
   let currentSequence = 1;
   let poolStageId: string | null = null;
   const groupIdsByName = new Map<string, string>();
-  const poolNames = ["A", "B", "C", "D"].slice(0, poolCount);
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const poolNames = alphabet.slice(0, poolCount);
 
   // 3. Create Pool Stage if requested
   if (includePools) {
@@ -893,7 +894,33 @@ export async function configureTournamentStages(slug: string, formData: FormData
   if (playoffFormat === "round_of_16") {
     // Round of 16 (Top 16)
     let r16EntrantConfig: Record<string, unknown> = {};
-    if (includePools && poolCount === 4 && advancePerPool >= 4) {
+    if (includePools && poolCount === 8 && advancePerPool >= 2) {
+      r16EntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
+          { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 2 } },
+          { match: 3, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 2 } },
+          { match: 4, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 2 } },
+          { match: 5, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
+          { match: 6, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 2 } },
+          { match: 7, home: { kind: "group_rank", group: "F", rank: 1 }, away: { kind: "group_rank", group: "E", rank: 2 } },
+          { match: 8, home: { kind: "group_rank", group: "H", rank: 1 }, away: { kind: "group_rank", group: "G", rank: 2 } },
+        ],
+      };
+    } else if (includePools && poolCount === 16 && advancePerPool >= 1) {
+      r16EntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 1 } },
+          { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 1 } },
+          { match: 3, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 1 } },
+          { match: 4, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 1 } },
+          { match: 5, home: { kind: "group_rank", group: "I", rank: 1 }, away: { kind: "group_rank", group: "J", rank: 1 } },
+          { match: 6, home: { kind: "group_rank", group: "K", rank: 1 }, away: { kind: "group_rank", group: "L", rank: 1 } },
+          { match: 7, home: { kind: "group_rank", group: "M", rank: 1 }, away: { kind: "group_rank", group: "N", rank: 1 } },
+          { match: 8, home: { kind: "group_rank", group: "O", rank: 1 }, away: { kind: "group_rank", group: "P", rank: 1 } },
+        ],
+      };
+    } else if (includePools && poolCount === 4 && advancePerPool >= 4) {
       r16EntrantConfig = {
         entrants: [
           { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 4 } },
@@ -1027,7 +1054,16 @@ export async function configureTournamentStages(slug: string, formData: FormData
   } else if (playoffFormat === "quarterfinals") {
     // Quarterfinals (Top 8)
     let qfEntrantConfig: Record<string, unknown> = {};
-    if (includePools && poolCount === 4 && advancePerPool >= 2) {
+    if (includePools && poolCount === 8 && advancePerPool >= 1) {
+      qfEntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 1 } },
+          { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 1 } },
+          { match: 3, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 1 } },
+          { match: 4, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 1 } },
+        ],
+      };
+    } else if (includePools && poolCount === 4 && advancePerPool >= 2) {
       qfEntrantConfig = {
         entrants: [
           { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },

@@ -55,11 +55,11 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
   const handlePoolCountChange = (count: number) => {
     setPoolCount(count);
     if (playoffFormat === "quarterfinals") {
-      setAdvancePerPool(count === 4 ? 2 : 4);
+      setAdvancePerPool(count === 8 ? 1 : count === 4 ? 2 : 4);
     } else if (playoffFormat === "semifinals") {
       setAdvancePerPool(count === 4 ? 1 : 2);
     } else if (playoffFormat === "round_of_16") {
-      setAdvancePerPool(count === 2 ? 8 : 4);
+      setAdvancePerPool(count === 16 ? 1 : count === 8 ? 2 : count === 2 ? 8 : 4);
     } else if (playoffFormat === "finals_only") {
       setAdvancePerPool(1);
     }
@@ -94,7 +94,11 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
     });
   };
 
-  const poolLetters = ["Pool A", "Pool B", "Pool C", "Pool D"].slice(0, poolCount);
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const poolLettersDisplay =
+    poolCount <= 4
+      ? alphabet.slice(0, poolCount).map((l) => `Pool ${l}`).join(" & ")
+      : `Pools A – ${alphabet[poolCount - 1]} (${poolCount} Pools)`;
 
   return (
     <div className="rounded-2xl border-2 border-[var(--color-navy)] bg-white p-5 shadow-sm md:p-6">
@@ -195,20 +199,20 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
                 <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
                   Number of Pools
                 </label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4].map((num) => (
+                <div className="flex flex-wrap gap-2">
+                  {[1, 2, 3, 4, 8, 16].map((num) => (
                     <button
                       type="button"
                       key={num}
                       onClick={() => handlePoolCountChange(num)}
                       disabled={!isDraft || isPending}
-                      className={`flex-1 rounded-lg border-2 py-2 text-center text-sm font-bold transition ${
+                      className={`flex-1 min-w-[48px] rounded-lg border-2 py-2 text-center text-sm font-bold transition ${
                         poolCount === num
                           ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-gold)]"
                           : "border-[var(--border-subtle)] bg-white text-[var(--color-navy)] hover:bg-gray-50"
                       }`}
                     >
-                      {num} {num === 1 ? "Pool" : "Pools"}
+                      {num}
                     </button>
                   ))}
                 </div>
@@ -334,7 +338,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
             {includePools && (
               <>
                 <span className="rounded-lg bg-[var(--color-navy)] px-2.5 py-1 text-[var(--color-gold)]">
-                  {poolLetters.join(" & ")} (Round-Robin)
+                  {poolLettersDisplay} (Round-Robin)
                 </span>
                 {playoffFormat !== "none" && <span className="text-[var(--color-navy)] font-black">➔</span>}
               </>

@@ -80,7 +80,7 @@ export default async function SetupGroupsPage({ params }: PageProps<"/admin/[slu
             </form>
           )}
 
-          {isDraft && (groups?.length ?? 0) < 4 && (
+          {isDraft && (groups?.length ?? 0) < 16 && (
             <form action={addPoolGroup.bind(null, slug, poolStage.id)}>
               <Button type="submit" variant="outline" size="sm">
                 + Add Pool
