@@ -42,9 +42,16 @@ export default async function MatchListPage({
         ← Dashboard
       </Link>
 
-      <h1 className="font-[family-name:var(--font-display)] text-2xl font-black uppercase text-[var(--color-navy)]">
-        Matches
-      </h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-black uppercase text-[var(--color-navy)]">
+          Matches
+        </h1>
+        <Link href={`/admin/${slug}/schedule`}>
+          <Button variant="outline" size="sm">
+            📅 Courts & schedule
+          </Button>
+        </Link>
+      </div>
 
       <nav className="flex gap-2">
         {TABS.map((tab) => (
@@ -68,16 +75,21 @@ export default async function MatchListPage({
         </Card>
       )}
 
-      {matches.map((m) => (
-        <Card key={m.id} className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-              M{m.matchNumber} · {m.groupName ? `${m.stageName} · ${m.groupName}` : m.stageName}
-              {m.courtName && ` · ${m.courtName}`}
-              {m.round !== null && ` · Round ${m.round + 1}`}
-            </span>
-            <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>{m.status.replace("_", " ")}</Badge>
-          </div>
+      {matches.map((m) => {
+        const bracketOrStage = m.groupName
+          ? (m.groupName.startsWith("Bracket") ? m.groupName : `Bracket ${m.groupName}`)
+          : m.stageName.replace(/Pool Stage/gi, "Bracket");
+
+        return (
+          <Card key={m.id} className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+                M{m.matchNumber} · {bracketOrStage}
+                {m.courtName && ` · ${m.courtName}`}
+                {m.round !== null && ` · Round ${m.round + 1}`}
+              </span>
+              <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>{m.status.replace("_", " ")}</Badge>
+            </div>
 
           <Link href={`/admin/${slug}/matches/${m.id}`} className="block">
             <MatchCardBody match={m} />

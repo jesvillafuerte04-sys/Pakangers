@@ -28,7 +28,10 @@ export default async function ScoreEntryPage({ params }: PageProps<"/admin/[slug
 
       <Card>
         <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
-          Match #{match.matchNumber} {match.groupName ? `· ${match.groupName}` : `· ${match.stageName}`}
+          Match #{match.matchNumber} ·{" "}
+          {match.groupName
+            ? (match.groupName.startsWith("Bracket") ? match.groupName : `Bracket ${match.groupName}`)
+            : match.stageName.replace(/Pool Stage/gi, "Bracket")}
         </p>
         <p className="mb-4 text-sm text-[var(--color-text-muted)]">{scoringDescription(match.scoringConfig)}</p>
 

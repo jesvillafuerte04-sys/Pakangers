@@ -41,12 +41,16 @@ function MatchIssues({ row }: { row: ScheduleRow }) {
 }
 
 function MatchLine({ slug, row, canMove }: { slug: string; row: ScheduleRow; canMove: boolean }) {
+  const bracketOrStage = row.groupName
+    ? (row.groupName.startsWith("Bracket") ? row.groupName : `Bracket ${row.groupName}`)
+    : row.stageName.replace(/Pool Stage/gi, "Bracket");
+
   return (
     <div className="rounded-lg border border-[var(--border-subtle)] p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-            M{row.matchNumber} · {row.groupName ? `${row.stageName} · ${row.groupName}` : row.stageName}
+            M{row.matchNumber} · {bracketOrStage}
             {row.round !== null && ` · Round ${row.round + 1}`}
           </span>
           <TeamMatchup home={row.home} away={row.away} />
@@ -101,15 +105,16 @@ export default async function SchedulePage({ params }: PageProps<"/admin/[slug]/
         ← Dashboard
       </Link>
 
-      <header className="flex flex-col gap-1">
+      <div className="flex items-center justify-between">
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-black uppercase text-[var(--color-navy)]">
           Schedule
         </h1>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          Each court runs its own queue. Everything in Round 1 goes on together, then Round 2, and so on — no fixed
-          clock times, so you can just call the next match as a court frees up.
-        </p>
-      </header>
+        <Link href={`/admin/${slug}/matches`}>
+          <Button variant="outline" size="sm">
+            🎾 Go to matches
+          </Button>
+        </Link>
+      </div>
 
       {rows.length === 0 && (
         <Card>
@@ -236,7 +241,7 @@ export default async function SchedulePage({ params }: PageProps<"/admin/[slug]/
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                      M{row.matchNumber} · {row.groupName ? `${row.stageName} · ${row.groupName}` : row.stageName}
+                      M{row.matchNumber} · {row.groupName ? (row.groupName.startsWith("Bracket") ? row.groupName : `Bracket ${row.groupName}`) : row.stageName.replace(/Pool Stage/gi, "Bracket")}
                     </span>
                     <TeamMatchup home={row.home} away={row.away} />
                   </div>

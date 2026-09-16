@@ -42,6 +42,11 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
       done: progress.teamsTotal > 0 && progress.teamsAssigned === progress.teamsTotal,
       href: `/admin/${slug}/setup/groups`,
     },
+    {
+      label: "Courts & schedule",
+      done: true,
+      href: `/admin/${slug}/schedule`,
+    },
   ];
 
   return (
@@ -87,11 +92,18 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
           <p className="mb-4 text-sm text-[var(--color-text-muted)]">
             Setup is complete and teams are locked in. Starting the tournament generates every preliminary bracket match.
           </p>
-          <form action={startTournament.bind(null, slug)}>
-            <Button type="submit" fullWidth size="lg">
-              Start tournament
-            </Button>
-          </form>
+          <div className="flex flex-col gap-3">
+            <form action={startTournament.bind(null, slug)}>
+              <Button type="submit" fullWidth size="lg">
+                ▶ Start tournament
+              </Button>
+            </form>
+            <Link href={`/admin/${slug}/schedule`}>
+              <Button variant="outline" fullWidth>
+                📅 Courts & schedule
+              </Button>
+            </Link>
+          </div>
         </Card>
       )}
 
@@ -100,14 +112,12 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
           <p className="text-sm text-[var(--color-text-muted)]">
             {matchProgress?.completed ?? 0} of {matchProgress?.total ?? 0} matches complete
           </p>
-          <div className="mt-4 flex flex-col gap-2">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Link href={`/admin/${slug}/matches`}>
-              <Button fullWidth>Go to matches</Button>
+              <Button fullWidth size="lg">🎾 Go to matches</Button>
             </Link>
             <Link href={`/admin/${slug}/schedule`}>
-              <Button variant="outline" fullWidth>
-                Courts & schedule
-              </Button>
+              <Button fullWidth size="lg">📅 Courts & schedule</Button>
             </Link>
           </div>
         </Card>
@@ -119,24 +129,23 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
         <div className="flex flex-col gap-3">
           <Link href={`/admin/${slug}/setup/info`}>
             <Button variant="outline" fullWidth>
-              Edit setup (info, players, teams, stages, brackets)
+              ✏️ Edit setup (info, players, teams, stages, brackets)
             </Button>
           </Link>
           <Link href={`/admin/${slug}/rules`}>
             <Button variant="outline" fullWidth>
-              Rules
+              📜 Rules
             </Button>
           </Link>
           {tournament.status !== "draft" && (
             <form action={unlockTournament.bind(null, slug)}>
               <Button variant="outline" type="submit" fullWidth>
-                Unlock (back to draft)
+                🔓 Unlock (back to draft)
               </Button>
             </form>
           )}
-          <DuplicateTournamentButton tournamentId={tournament.id} label="Duplicate" fullWidth />
-          <DeleteTournamentButton tournamentId={tournament.id} name={tournament.name} label="Delete" fullWidth />
-
+          <DuplicateTournamentButton tournamentId={tournament.id} label="📋 Duplicate" fullWidth />
+          <DeleteTournamentButton tournamentId={tournament.id} name={tournament.name} label="🗑️ Delete" fullWidth />
         </div>
       </Card>
 

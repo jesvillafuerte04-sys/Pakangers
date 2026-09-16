@@ -107,12 +107,12 @@ export default async function AdminHomePage() {
                   href={`/admin/${t.slug}`}
                   className="px-3 py-1 text-xs font-bold text-[var(--color-navy)] hover:bg-white hover:shadow-xs rounded transition"
                 >
-                  Edit
+                  {t.status === "draft" ? "✏️ Edit" : "🔒 Lock & Edit"}
                 </Link>
                 <span className="text-[var(--border-subtle)] text-xs select-none">|</span>
-                <DuplicateTournamentButton tournamentId={t.id} label="Duplicate" variant="ghost" />
+                <DuplicateTournamentButton tournamentId={t.id} label="📋 Duplicate" variant="ghost" />
                 <span className="text-[var(--border-subtle)] text-xs select-none">|</span>
-                <DeleteTournamentButton tournamentId={t.id} name={t.name} label="Delete" variant="ghost" />
+                <DeleteTournamentButton tournamentId={t.id} name={t.name} label="🗑️ Delete" variant="ghost" />
               </div>
             </div>
           </div>

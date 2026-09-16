@@ -906,7 +906,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         tournament_id: tournament.id,
         division_id: division.id,
         key: "pools",
-        name: "Pool Stage",
+        name: "Bracket",
         format_key: "round_robin",
         sequence: currentSequence++,
         scoring_config: poolScoring as unknown as Json,
@@ -942,13 +942,13 @@ export async function configureTournamentStages(slug: string, formData: FormData
         r16EntrantConfig = {
           entrants: [
             { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 2 } },
-            { match: 2, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "E", rank: 2 } },
-            { match: 3, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "G", rank: 2 } },
-            { match: 4, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 2 } },
+            { match: 2, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "G", rank: 2 } },
+            { match: 3, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 2 } },
+            { match: 4, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "E", rank: 2 } },
             { match: 5, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 2 } },
-            { match: 6, home: { kind: "group_rank", group: "H", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
-            { match: 7, home: { kind: "group_rank", group: "F", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 2 } },
-            { match: 8, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
+            { match: 6, home: { kind: "group_rank", group: "F", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 2 } },
+            { match: 7, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
+            { match: 8, home: { kind: "group_rank", group: "H", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
           ],
         };
       } else {

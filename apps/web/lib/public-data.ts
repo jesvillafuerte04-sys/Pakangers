@@ -17,10 +17,23 @@ export const getPublicTournament = cache(async (slug: string) => {
   return data;
 });
 
+export type StandingsSnippetTeam = {
+  rank: number;
+  team: TeamDisplay;
+  record: string;
+};
+
+export type StandingsSnippetGroup = {
+  stageName: string;
+  groupName: string;
+  qualifyCount: number;
+  topTeams: StandingsSnippetTeam[];
+};
+
 export type LandingSnapshot = {
   live: MatchListRow[];
   upcoming: MatchListRow[];
-  standingsSnippet: { stageName: string; groupName: string; topTeam: TeamDisplay; topTeamRecord: string }[];
+  standingsSnippet: StandingsSnippetGroup[];
 };
 
 export async function getLandingSnapshot(tournamentId: string): Promise<LandingSnapshot> {
@@ -34,11 +47,21 @@ export async function getLandingSnapshot(tournamentId: string): Promise<LandingS
   const standingsSnippet = standings
     .filter((g) => g.standings.length > 0)
     .map((g) => {
-      const top = g.standings[0]!;
-      return { stageName: g.stageName, groupName: g.groupName, topTeam: top.team, topTeamRecord: `${top.wins}-${top.losses}` };
+      const takeCount = Math.max(1, g.qualifyCount ?? 1);
+      const topTeams = g.standings.slice(0, takeCount).map((s, idx) => ({
+        rank: idx + 1,
+        team: s.team,
+        record: `${s.wins}-${s.losses}`,
+      }));
+      return {
+        stageName: g.stageName,
+        groupName: g.groupName,
+        qualifyCount: takeCount,
+        topTeams,
+      };
     });
 
-  return { live, upcoming: upcoming.slice(0, 3), standingsSnippet };
+  return { live, upcoming: upcoming.slice(0, 4), standingsSnippet };
 }
 
 export type FinalResults = {

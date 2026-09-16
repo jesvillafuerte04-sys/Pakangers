@@ -142,9 +142,9 @@ export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDeta
             onClick={() => setForfeitWinner("home")}
             fullWidth
           >
-            <span className="flex flex-col leading-tight">
-              <span>{match.home.header}</span>
-              {match.home.subtext && <span className="text-xs font-normal opacity-75">{match.home.subtext}</span>}
+            <span className="flex flex-col leading-tight min-w-0 w-full overflow-hidden text-center">
+              <span className="truncate font-semibold">{match.home.header}</span>
+              {match.home.subtext && <span className="text-xs font-normal opacity-75 truncate">{match.home.subtext}</span>}
             </span>
           </Button>
           <Button
@@ -152,9 +152,9 @@ export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDeta
             onClick={() => setForfeitWinner("away")}
             fullWidth
           >
-            <span className="flex flex-col leading-tight">
-              <span>{match.away.header}</span>
-              {match.away.subtext && <span className="text-xs font-normal opacity-75">{match.away.subtext}</span>}
+            <span className="flex flex-col leading-tight min-w-0 w-full overflow-hidden text-center">
+              <span className="truncate font-semibold">{match.away.header}</span>
+              {match.away.subtext && <span className="text-xs font-normal opacity-75 truncate">{match.away.subtext}</span>}
             </span>
           </Button>
         </div>
@@ -186,27 +186,59 @@ export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDeta
   return (
     <div className="flex flex-col gap-5">
       {Array.from({ length: visibleCount }, (_, i) => games[i] ?? { home: "", away: "" }).map((g, i) => (
-        <div key={i} className="flex flex-col gap-2">
-          {cfg.bestOf > 1 && <p className="text-xs font-bold uppercase text-[var(--color-text-muted)]">Game {i + 1}</p>}
-          <div className="flex items-center gap-3">
-            <div className="flex flex-1 items-center justify-between gap-2">
+        <div key={i} className="flex flex-col gap-2 rounded-2xl border-2 border-[var(--border-subtle)] bg-[var(--surface-sunken)] p-4">
+          {cfg.bestOf > 1 && (
+            <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)] mb-1">
+              Game {i + 1}
+            </p>
+          )}
+
+          {/* Home Team */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
+                Home
+              </span>
               <TeamLine display={match.home} />
+            </div>
+            <div className="shrink-0">
               <input
                 type="number"
                 inputMode="numeric"
+                placeholder="0"
                 value={g.home}
                 onChange={(e) => updateGame(i, "home", e.target.value)}
-                className="w-20 rounded-lg border-2 border-[var(--border-subtle)] bg-white px-3 py-3 text-center text-xl font-bold outline-none focus:border-[var(--color-gold)]"
+                className="w-24 h-14 rounded-xl border-2 border-[var(--border-subtle)] bg-white text-center text-2xl font-black text-[var(--color-navy)] shadow-xs outline-none focus:border-[var(--color-gold)] focus:ring-2 focus:ring-[var(--color-gold)]/20"
               />
             </div>
-            <div className="flex flex-1 items-center justify-between gap-2">
+          </div>
+
+          {/* Divider */}
+          <div className="relative my-1 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[var(--border-subtle)]" />
+            </div>
+            <span className="relative rounded-full bg-white px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-[var(--color-text-muted)] border border-[var(--border-subtle)]">
+              vs
+            </span>
+          </div>
+
+          {/* Away Team */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
+                Away
+              </span>
               <TeamLine display={match.away} />
+            </div>
+            <div className="shrink-0">
               <input
                 type="number"
                 inputMode="numeric"
+                placeholder="0"
                 value={g.away}
                 onChange={(e) => updateGame(i, "away", e.target.value)}
-                className="w-20 rounded-lg border-2 border-[var(--border-subtle)] bg-white px-3 py-3 text-center text-xl font-bold outline-none focus:border-[var(--color-gold)]"
+                className="w-24 h-14 rounded-xl border-2 border-[var(--border-subtle)] bg-white text-center text-2xl font-black text-[var(--color-navy)] shadow-xs outline-none focus:border-[var(--color-gold)] focus:ring-2 focus:ring-[var(--color-gold)]/20"
               />
             </div>
           </div>
