@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTournamentBySlug, getDivisionForTournament } from "@/lib/tournament-data";
 import { getServiceSupabase } from "@/lib/supabase-server";
-import { createTeam, deleteTeam, assignPlayerToTeam, removePlayerFromTeam, autoCreateSinglesTeams } from "@/app/admin/actions";
+import { createTeam, deleteTeam, assignPlayerToTeam, removePlayerFromTeam, randomizeDoublesPartners } from "@/app/admin/actions";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -28,11 +28,12 @@ export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug
 
   const isSingles = division.team_size === 1;
   const isTeamWars = division.team_size >= 4;
+  const isDoubles = !isSingles && !isTeamWars;
 
   const supabase = getServiceSupabase();
   const [{ data: players }, { data: teams }] = await Promise.all([
     supabase.from("player").select("id, first_name, last_name, avatar_url").eq("tournament_id", tournament.id).order("first_name"),
-    supabase.from("team").select("id, name").eq("tournament_id", tournament.id).order("name"),
+    supabase.from("team").select("id, name, team_number").eq("tournament_id", tournament.id).order("team_number", { ascending: true, nullsFirst: false }).order("name"),
   ]);
 
   const teamIds = (teams ?? []).map((t) => t.id);
@@ -52,37 +53,65 @@ export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug
   const playerById = new Map((players ?? []).map((p) => [p.id, p]));
 
   const createAction = createTeam.bind(null, slug, tournament.id, division.id);
-  const autoCreateAction = autoCreateSinglesTeams.bind(null, slug, tournament.id, division.id);
+  const randomizeAction = randomizeDoublesPartners.bind(null, slug, tournament.id, division.id);
+
+  const nextNumber = (teams?.length ?? 0) + 1;
 
   return (
     <div className="flex flex-col gap-6">
-      {isSingles && unassignedPlayers.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border-2 border-[var(--color-gold)] bg-amber-50/50 p-4">
+      {/* Doubles Random Partnering Toolbar */}
+      {isDoubles && unassignedPlayers.length >= 2 && tournament.status === "draft" && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border-2 border-[var(--color-navy)] bg-white p-4 shadow-sm">
           <div>
             <h4 className="font-bold text-sm text-[var(--color-navy)] flex items-center gap-1.5">
-              <span>⚡</span> Singles Format (1v1)
+              <span>🎲</span> Random Doubles Partnering
             </h4>
             <p className="text-xs text-[var(--color-text-muted)]">
-              {unassignedPlayers.length} registered player{unassignedPlayers.length === 1 ? " is" : "s are"} ready. Create their 1v1 match entries in one click:
+              {unassignedPlayers.length} unassigned players available. Automatically shuffle and pair them into 2-player teams:
             </p>
           </div>
-          <form action={autoCreateAction}>
+          <form action={randomizeAction}>
             <Button type="submit" size="sm">
-              Auto-create all 1v1 teams ({unassignedPlayers.length})
+              🎲 Randomly Partner Players ({Math.floor(unassignedPlayers.length / 2)} teams)
             </Button>
           </form>
         </div>
       )}
 
-      <Card title={isSingles ? "Create 1v1 entrant" : isTeamWars ? "Create squad" : "Create team"}>
+      {/* Creation Card */}
+      <Card
+        title={
+          isSingles
+            ? "Create Player Slot / Entrant"
+            : isTeamWars
+            ? "Create Clan / Squad"
+            : "Create Doubles Team"
+        }
+      >
+        <p className="mb-3 text-xs text-[var(--color-text-muted)]">
+          {isSingles
+            ? "Creates an entrant slot (e.g. Slot 1). You can manually assign registered players to slots below."
+            : isTeamWars
+            ? "Create competitive clan/squad entries. Players are manually assigned by clan (random pairing disabled)."
+            : "Create a doubles team. Enter a custom name or leave blank for automatic numbering (Team 1, Team 2...)."
+          }
+        </p>
         <form action={createAction} className="flex gap-3">
           <div className="flex-1">
             <Input
               name="name"
-              placeholder={isSingles ? "Entrant name (optional)" : isTeamWars ? "Squad name (e.g. Tanjay Smashers)" : "Team name (optional)"}
+              placeholder={
+                isSingles
+                  ? `Slot ${nextNumber} (optional)`
+                  : isTeamWars
+                  ? "Clan / Squad name (e.g. Tanjay Smashers)"
+                  : `Team ${nextNumber} (optional)`
+              }
             />
           </div>
-          <Button type="submit">Add</Button>
+          <Button type="submit">
+            {isSingles ? "+ Add Slot" : isTeamWars ? "+ Add Clan" : "+ Add Team"}
+          </Button>
         </form>
       </Card>
 

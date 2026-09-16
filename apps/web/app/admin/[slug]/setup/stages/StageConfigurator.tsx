@@ -16,6 +16,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
   const [isPending, startTransition] = useTransition();
   const [playoffFormat, setPlayoffFormat] = useState<PlayoffFormat>("semifinals");
   const [includePools, setIncludePools] = useState(true);
+  const [crossoverStyle, setCrossoverStyle] = useState<"opposite" | "adjacent">("opposite");
   const [poolCount, setPoolCount] = useState(2);
   const [advancePerPool, setAdvancePerPool] = useState(2);
   const [includeThirdPlace, setIncludeThirdPlace] = useState(true);
@@ -125,6 +126,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
 
       <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-6">
         <input type="hidden" name="playoff_format" value={playoffFormat} />
+        <input type="hidden" name="crossover_style" value={crossoverStyle} />
         <input type="hidden" name="include_pools" value={includePools ? "true" : "false"} />
         <input type="hidden" name="pool_count" value={poolCount} />
         <input type="hidden" name="advance_per_pool" value={advancePerPool} />
@@ -245,6 +247,55 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
             </div>
           )}
         </div>
+
+        {/* Crossover Seeding Options */}
+        {includePools && poolCount >= 4 && playoffFormat !== "none" && (
+          <div className="flex flex-col gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-sunken)] p-4">
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-[var(--color-navy)]">Bracket Crossover Pairing Style</span>
+              <span className="text-xs text-[var(--color-text-muted)]">
+                Choose how advancing teams from different pools match up in the first playoff round.
+              </span>
+            </div>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setCrossoverStyle("opposite")}
+                disabled={!isDraft || isPending}
+                className={`flex flex-col items-start rounded-xl border-2 p-3 text-left transition ${
+                  crossoverStyle === "opposite"
+                    ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-white shadow-sm"
+                    : "border-[var(--border-subtle)] bg-white text-[var(--color-text-main)] hover:border-gray-300"
+                }`}
+              >
+                <span className={`text-sm font-bold ${crossoverStyle === "opposite" ? "text-[var(--color-gold)]" : "text-[var(--color-navy)]"}`}>
+                  ⚡ Opposite Pools ({poolCount >= 8 ? "A1 vs H2" : "A1 vs D2"})
+                </span>
+                <span className={`mt-0.5 text-xs ${crossoverStyle === "opposite" ? "text-gray-200" : "text-[var(--color-text-muted)]"}`}>
+                  Local standard: Top seeds face the furthest runner-up ({poolCount >= 8 ? "A1 vs H2, B1 vs G2, C1 vs F2, D1 vs E2" : "A1 vs D2, B1 vs C2"}).
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCrossoverStyle("adjacent")}
+                disabled={!isDraft || isPending}
+                className={`flex flex-col items-start rounded-xl border-2 p-3 text-left transition ${
+                  crossoverStyle === "adjacent"
+                    ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-white shadow-sm"
+                    : "border-[var(--border-subtle)] bg-white text-[var(--color-text-main)] hover:border-gray-300"
+                }`}
+              >
+                <span className={`text-sm font-bold ${crossoverStyle === "adjacent" ? "text-[var(--color-gold)]" : "text-[var(--color-navy)]"}`}>
+                  Adjacent Pools (A1 vs B2, C1 vs D2)
+                </span>
+                <span className={`mt-0.5 text-xs ${crossoverStyle === "adjacent" ? "text-gray-200" : "text-[var(--color-text-muted)]"}`}>
+                  Standard consecutive pairing (A1 vs B2, C1 vs D2, E1 vs F2, G1 vs H2).
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 3. Knockout Extras & 3rd Place */}
         {playoffFormat !== "none" && playoffFormat !== "finals_only" && (

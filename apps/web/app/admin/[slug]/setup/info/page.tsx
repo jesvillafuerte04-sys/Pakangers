@@ -4,6 +4,7 @@ import { updateTournamentInfo } from "@/app/admin/actions";
 import { Card } from "@/components/ui/Card";
 import { Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { TeamWarsLineupConfigurator } from "./TeamWarsLineupConfigurator";
 
 export default async function SetupInfoPage({ params }: PageProps<"/admin/[slug]/setup/info">) {
   const { slug } = await params;
@@ -14,8 +15,12 @@ export default async function SetupInfoPage({ params }: PageProps<"/admin/[slug]
   const save = updateTournamentInfo.bind(null, slug);
   const currentTeamSize = division?.team_size ?? 2;
 
+  const scheduleConfig = (tournament.schedule_config ?? {}) as Record<string, unknown>;
+  const teamWarsRubbers = (scheduleConfig.team_wars_rubbers as string[]) ?? ["Doubles Men", "Doubles Women", "Mixed 1"];
+
   return (
-    <Card title="Tournament info">
+    <div className="flex flex-col gap-6">
+      <Card title="Tournament info">
       <form action={save} className="flex flex-col gap-4">
         <Input label="Name" name="name" defaultValue={tournament.name} required />
 
@@ -52,7 +57,7 @@ export default async function SetupInfoPage({ params }: PageProps<"/admin/[slug]
                 <span className="font-bold text-sm text-[var(--color-navy)]">Singles (1v1)</span>
               </div>
               <p className="text-xs text-[var(--color-text-muted)] pl-5">
-                1 player per entrant. 1-click auto-generates 1v1 teams from roster.
+                1 player per entrant. Admin manually creates player slots and assigns registered players.
               </p>
             </label>
 
@@ -93,5 +98,14 @@ export default async function SetupInfoPage({ params }: PageProps<"/admin/[slug]
         <Button type="submit">Save</Button>
       </form>
     </Card>
+
+    {currentTeamSize >= 4 && (
+      <TeamWarsLineupConfigurator
+        slug={slug}
+        isDraft={tournament.status === "draft"}
+        initialRubbers={teamWarsRubbers}
+      />
+    )}
+  </div>
   );
 }

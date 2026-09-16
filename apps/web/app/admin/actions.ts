@@ -372,9 +372,27 @@ export async function createTeam(slug: string, tournamentId: string, divisionId:
   await requireSession();
   const supabase = getServiceSupabase();
 
-  const name = String(formData.get("name") ?? "").trim();
+  let name = String(formData.get("name") ?? "").trim();
+  const { data: existing } = await supabase.from("team").select("id").eq("tournament_id", tournamentId);
+  const nextNum = (existing?.length ?? 0) + 1;
 
-  const { error } = await supabase.from("team").insert({ tournament_id: tournamentId, division_id: divisionId, name });
+  if (!name) {
+    const { data: div } = await supabase.from("division").select("team_size").eq("id", divisionId).single();
+    if (div?.team_size === 1) {
+      name = `Slot ${nextNum}`;
+    } else if (div && div.team_size >= 4) {
+      name = `Clan ${nextNum}`;
+    } else {
+      name = `Team ${nextNum}`;
+    }
+  }
+
+  const { error } = await supabase.from("team").insert({
+    tournament_id: tournamentId,
+    division_id: divisionId,
+    name,
+    team_number: nextNum,
+  });
   if (error) throw new Error(error.message);
 
   revalidatePath(`/admin/${slug}/setup/teams`);
@@ -823,6 +841,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
   if (!division) throw new Error("Division not found");
 
   const playoffFormat = String(formData.get("playoff_format") ?? "semifinals");
+  const crossoverStyle = String(formData.get("crossover_style") ?? "opposite");
   const includePools = formData.get("include_pools") === "true";
   const poolCount = Math.min(16, Math.max(1, parseInt(String(formData.get("pool_count") ?? "2"), 10)));
   const advancePerPool = Math.min(8, Math.max(1, parseInt(String(formData.get("advance_per_pool") ?? "2"), 10)));
@@ -895,44 +914,90 @@ export async function configureTournamentStages(slug: string, formData: FormData
     // Round of 16 (Top 16)
     let r16EntrantConfig: Record<string, unknown> = {};
     if (includePools && poolCount === 8 && advancePerPool >= 2) {
-      r16EntrantConfig = {
-        entrants: [
-          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
-          { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 2 } },
-          { match: 3, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 2 } },
-          { match: 4, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 2 } },
-          { match: 5, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
-          { match: 6, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 2 } },
-          { match: 7, home: { kind: "group_rank", group: "F", rank: 1 }, away: { kind: "group_rank", group: "E", rank: 2 } },
-          { match: 8, home: { kind: "group_rank", group: "H", rank: 1 }, away: { kind: "group_rank", group: "G", rank: 2 } },
-        ],
-      };
+      // If opposite crossover (user's preferred local format): A1 vs H2, B1 vs G2, C1 vs F2, D1 vs E2, etc.
+      if (crossoverStyle === "opposite") {
+        r16EntrantConfig = {
+          entrants: [
+            { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 2 } },
+            { match: 2, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "E", rank: 2 } },
+            { match: 3, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "G", rank: 2 } },
+            { match: 4, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 2 } },
+            { match: 5, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 2 } },
+            { match: 6, home: { kind: "group_rank", group: "H", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
+            { match: 7, home: { kind: "group_rank", group: "F", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 2 } },
+            { match: 8, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
+          ],
+        };
+      } else {
+        r16EntrantConfig = {
+          entrants: [
+            { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
+            { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 2 } },
+            { match: 3, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 2 } },
+            { match: 4, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 2 } },
+            { match: 5, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
+            { match: 6, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 2 } },
+            { match: 7, home: { kind: "group_rank", group: "F", rank: 1 }, away: { kind: "group_rank", group: "E", rank: 2 } },
+            { match: 8, home: { kind: "group_rank", group: "H", rank: 1 }, away: { kind: "group_rank", group: "G", rank: 2 } },
+          ],
+        };
+      }
     } else if (includePools && poolCount === 16 && advancePerPool >= 1) {
-      r16EntrantConfig = {
-        entrants: [
-          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 1 } },
-          { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 1 } },
-          { match: 3, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 1 } },
-          { match: 4, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 1 } },
-          { match: 5, home: { kind: "group_rank", group: "I", rank: 1 }, away: { kind: "group_rank", group: "J", rank: 1 } },
-          { match: 6, home: { kind: "group_rank", group: "K", rank: 1 }, away: { kind: "group_rank", group: "L", rank: 1 } },
-          { match: 7, home: { kind: "group_rank", group: "M", rank: 1 }, away: { kind: "group_rank", group: "N", rank: 1 } },
-          { match: 8, home: { kind: "group_rank", group: "O", rank: 1 }, away: { kind: "group_rank", group: "P", rank: 1 } },
-        ],
-      };
+      if (crossoverStyle === "opposite") {
+        r16EntrantConfig = {
+          entrants: [
+            { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "P", rank: 1 } },
+            { match: 2, home: { kind: "group_rank", group: "H", rank: 1 }, away: { kind: "group_rank", group: "I", rank: 1 } },
+            { match: 3, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "M", rank: 1 } },
+            { match: 4, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "L", rank: 1 } },
+            { match: 5, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "O", rank: 1 } },
+            { match: 6, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "J", rank: 1 } },
+            { match: 7, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "N", rank: 1 } },
+            { match: 8, home: { kind: "group_rank", group: "F", rank: 1 }, away: { kind: "group_rank", group: "K", rank: 1 } },
+          ],
+        };
+      } else {
+        r16EntrantConfig = {
+          entrants: [
+            { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 1 } },
+            { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 1 } },
+            { match: 3, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 1 } },
+            { match: 4, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 1 } },
+            { match: 5, home: { kind: "group_rank", group: "I", rank: 1 }, away: { kind: "group_rank", group: "J", rank: 1 } },
+            { match: 6, home: { kind: "group_rank", group: "K", rank: 1 }, away: { kind: "group_rank", group: "L", rank: 1 } },
+            { match: 7, home: { kind: "group_rank", group: "M", rank: 1 }, away: { kind: "group_rank", group: "N", rank: 1 } },
+            { match: 8, home: { kind: "group_rank", group: "O", rank: 1 }, away: { kind: "group_rank", group: "P", rank: 1 } },
+          ],
+        };
+      }
     } else if (includePools && poolCount === 4 && advancePerPool >= 4) {
-      r16EntrantConfig = {
-        entrants: [
-          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 4 } },
-          { match: 2, home: { kind: "group_rank", group: "C", rank: 2 }, away: { kind: "group_rank", group: "D", rank: 3 } },
-          { match: 3, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 4 } },
-          { match: 4, home: { kind: "group_rank", group: "D", rank: 2 }, away: { kind: "group_rank", group: "C", rank: 3 } },
-          { match: 5, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 4 } },
-          { match: 6, home: { kind: "group_rank", group: "A", rank: 2 }, away: { kind: "group_rank", group: "B", rank: 3 } },
-          { match: 7, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 4 } },
-          { match: 8, home: { kind: "group_rank", group: "B", rank: 2 }, away: { kind: "group_rank", group: "A", rank: 3 } },
-        ],
-      };
+      if (crossoverStyle === "opposite") {
+        r16EntrantConfig = {
+          entrants: [
+            { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 4 } },
+            { match: 2, home: { kind: "group_rank", group: "B", rank: 2 }, away: { kind: "group_rank", group: "C", rank: 3 } },
+            { match: 3, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 4 } },
+            { match: 4, home: { kind: "group_rank", group: "D", rank: 2 }, away: { kind: "group_rank", group: "A", rank: 3 } },
+            { match: 5, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 4 } },
+            { match: 6, home: { kind: "group_rank", group: "A", rank: 2 }, away: { kind: "group_rank", group: "D", rank: 3 } },
+            { match: 7, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 4 } },
+            { match: 8, home: { kind: "group_rank", group: "C", rank: 2 }, away: { kind: "group_rank", group: "B", rank: 3 } },
+          ],
+        };
+      } else {
+        r16EntrantConfig = {
+          entrants: [
+            { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 4 } },
+            { match: 2, home: { kind: "group_rank", group: "C", rank: 2 }, away: { kind: "group_rank", group: "D", rank: 3 } },
+            { match: 3, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 4 } },
+            { match: 4, home: { kind: "group_rank", group: "D", rank: 2 }, away: { kind: "group_rank", group: "C", rank: 3 } },
+            { match: 5, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 4 } },
+            { match: 6, home: { kind: "group_rank", group: "A", rank: 2 }, away: { kind: "group_rank", group: "B", rank: 3 } },
+            { match: 7, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 4 } },
+            { match: 8, home: { kind: "group_rank", group: "B", rank: 2 }, away: { kind: "group_rank", group: "A", rank: 3 } },
+          ],
+        };
+      }
     } else if (includePools && poolCount === 2 && advancePerPool >= 8) {
       r16EntrantConfig = {
         entrants: [
@@ -1055,23 +1120,45 @@ export async function configureTournamentStages(slug: string, formData: FormData
     // Quarterfinals (Top 8)
     let qfEntrantConfig: Record<string, unknown> = {};
     if (includePools && poolCount === 8 && advancePerPool >= 1) {
-      qfEntrantConfig = {
-        entrants: [
-          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 1 } },
-          { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 1 } },
-          { match: 3, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 1 } },
-          { match: 4, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 1 } },
-        ],
-      };
+      if (crossoverStyle === "opposite") {
+        qfEntrantConfig = {
+          entrants: [
+            { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 1 } },
+            { match: 2, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "G", rank: 1 } },
+            { match: 3, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 1 } },
+            { match: 4, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "E", rank: 1 } },
+          ],
+        };
+      } else {
+        qfEntrantConfig = {
+          entrants: [
+            { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 1 } },
+            { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 1 } },
+            { match: 3, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 1 } },
+            { match: 4, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 1 } },
+          ],
+        };
+      }
     } else if (includePools && poolCount === 4 && advancePerPool >= 2) {
-      qfEntrantConfig = {
-        entrants: [
-          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
-          { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 2 } },
-          { match: 3, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
-          { match: 4, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 2 } },
-        ],
-      };
+      if (crossoverStyle === "opposite") {
+        qfEntrantConfig = {
+          entrants: [
+            { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 2 } },
+            { match: 2, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 2 } },
+            { match: 3, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
+            { match: 4, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
+          ],
+        };
+      } else {
+        qfEntrantConfig = {
+          entrants: [
+            { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
+            { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 2 } },
+            { match: 3, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
+            { match: 4, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 2 } },
+          ],
+        };
+      }
     } else if (includePools && poolCount === 2 && advancePerPool >= 4) {
       qfEntrantConfig = {
         entrants: [
@@ -1393,6 +1480,93 @@ export async function removePoolGroup(slug: string, groupId: string): Promise<vo
   if (error) throw new Error(error.message);
 
   revalidatePath(`/admin/${slug}/setup/groups`);
+}
+
+/** Randomly partners unassigned players into doubles teams (teams of 2) */
+export async function randomizeDoublesPartners(
+  slug: string,
+  tournamentId: string,
+  divisionId: string
+): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+
+  const [{ data: players }, { data: existingTeams }, { data: existingMembers }] = await Promise.all([
+    supabase.from("player").select("id, first_name, last_name").eq("tournament_id", tournamentId),
+    supabase.from("team").select("id, team_number").eq("tournament_id", tournamentId),
+    supabase.from("team_member").select("player_id"),
+  ]);
+
+  const assignedPlayerIds = new Set((existingMembers ?? []).map((m) => m.player_id));
+  const unassigned = (players ?? []).filter((p) => !assignedPlayerIds.has(p.id));
+
+  if (unassigned.length < 2) {
+    throw new Error("Need at least 2 unassigned players to form random doubles pairs.");
+  }
+
+  // Fisher-Yates shuffle
+  const shuffled = [...unassigned];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+  }
+
+  let nextTeamNumber = (existingTeams?.length ?? 0) + 1;
+  for (let i = 0; i < shuffled.length - 1; i += 2) {
+    const p1 = shuffled[i]!;
+    const p2 = shuffled[i + 1]!;
+
+    const { data: team, error: teamErr } = await supabase
+      .from("team")
+      .insert({
+        tournament_id: tournamentId,
+        division_id: divisionId,
+        name: `Team ${nextTeamNumber}`,
+        team_number: nextTeamNumber,
+      })
+      .select("id")
+      .single();
+
+    if (teamErr || !team) throw new Error(teamErr?.message ?? "Failed to create doubles team");
+
+    await supabase.from("team_member").insert([
+      { team_id: team.id, player_id: p1.id, position: 1 },
+      { team_id: team.id, player_id: p2.id, position: 2 },
+    ]);
+
+    nextTeamNumber++;
+  }
+
+  revalidatePath(`/admin/${slug}/setup/teams`);
+  revalidatePath(`/admin/${slug}/setup/review`);
+  revalidatePath(`/admin/${slug}`);
+}
+
+/** Saves customized rubbers for Team Wars match tie lineup */
+export async function saveTeamWarsLineup(slug: string, rubbers: string[]): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+
+  const { data: tournament, error: tErr } = await supabase
+    .from("tournament")
+    .select("id, schedule_config")
+    .eq("slug", slug)
+    .single();
+  if (tErr || !tournament) throw new Error("Tournament not found");
+
+  const currentConfig = (tournament.schedule_config ?? {}) as Record<string, unknown>;
+  const updatedConfig = { ...currentConfig, team_wars_rubbers: rubbers };
+
+  const { error: updateErr } = await supabase
+    .from("tournament")
+    .update({ schedule_config: updatedConfig as unknown as Json })
+    .eq("id", tournament.id);
+
+  if (updateErr) throw new Error(updateErr.message);
+
+  revalidatePath(`/admin/${slug}/setup/info`);
+  revalidatePath(`/admin/${slug}/setup/stages`);
+  revalidatePath(`/admin/${slug}`);
 }
 
 
