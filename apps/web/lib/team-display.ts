@@ -14,13 +14,26 @@ export type TeamDisplay = {
   players?: PlayerDisplayInfo[];
 };
 
-/** Player names lead; the team name (if the organizer bothered to set one) is a secondary label. */
+/** Player names lead for singles/doubles; squad names lead for Team Wars (3+ players). */
 export function formatTeamDisplay(
   teamName: string | null | undefined,
   playerNames: string[],
   players?: PlayerDisplayInfo[],
 ): TeamDisplay {
   const trimmedName = (teamName ?? "").trim();
+  // Team Wars / Squads (3+ players): Squad name leads, player list is subtext
+  if (playerNames.length > 2 && trimmedName) {
+    return { header: trimmedName, subtext: playerNames.join(", "), players };
+  }
+  // Singles: Single player name leads
+  if (playerNames.length === 1) {
+    return {
+      header: playerNames[0]!,
+      subtext: trimmedName && trimmedName.toLowerCase() !== playerNames[0]!.toLowerCase() ? trimmedName : null,
+      players,
+    };
+  }
+  // Doubles
   if (playerNames.length > 0) {
     return { header: playerNames.join(" / "), subtext: trimmedName || null, players };
   }

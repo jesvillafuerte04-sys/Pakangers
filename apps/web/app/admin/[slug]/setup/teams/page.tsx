@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTournamentBySlug, getDivisionForTournament } from "@/lib/tournament-data";
 import { getServiceSupabase } from "@/lib/supabase-server";
-import { createTeam, deleteTeam, assignPlayerToTeam, removePlayerFromTeam } from "@/app/admin/actions";
+import { createTeam, deleteTeam, assignPlayerToTeam, removePlayerFromTeam, autoCreateSinglesTeams } from "@/app/admin/actions";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -26,6 +26,9 @@ export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug
     };
   }
 
+  const isSingles = division.team_size === 1;
+  const isTeamWars = division.team_size >= 4;
+
   const supabase = getServiceSupabase();
   const [{ data: players }, { data: teams }] = await Promise.all([
     supabase.from("player").select("id, first_name, last_name, avatar_url").eq("tournament_id", tournament.id).order("first_name"),
@@ -49,13 +52,35 @@ export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug
   const playerById = new Map((players ?? []).map((p) => [p.id, p]));
 
   const createAction = createTeam.bind(null, slug, tournament.id, division.id);
+  const autoCreateAction = autoCreateSinglesTeams.bind(null, slug, tournament.id, division.id);
 
   return (
     <div className="flex flex-col gap-6">
-      <Card title="Create team">
+      {isSingles && unassignedPlayers.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border-2 border-[var(--color-gold)] bg-amber-50/50 p-4">
+          <div>
+            <h4 className="font-bold text-sm text-[var(--color-navy)] flex items-center gap-1.5">
+              <span>⚡</span> Singles Format (1v1)
+            </h4>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              {unassignedPlayers.length} registered player{unassignedPlayers.length === 1 ? " is" : "s are"} ready. Create their 1v1 match entries in one click:
+            </p>
+          </div>
+          <form action={autoCreateAction}>
+            <Button type="submit" size="sm">
+              Auto-create all 1v1 teams ({unassignedPlayers.length})
+            </Button>
+          </form>
+        </div>
+      )}
+
+      <Card title={isSingles ? "Create 1v1 entrant" : isTeamWars ? "Create squad" : "Create team"}>
         <form action={createAction} className="flex gap-3">
           <div className="flex-1">
-            <Input name="name" placeholder="Team name (optional)" />
+            <Input
+              name="name"
+              placeholder={isSingles ? "Entrant name (optional)" : isTeamWars ? "Squad name (e.g. Tanjay Smashers)" : "Team name (optional)"}
+            />
           </div>
           <Button type="submit">Add</Button>
         </form>

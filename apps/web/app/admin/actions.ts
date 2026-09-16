@@ -151,19 +151,102 @@ export async function updateTournamentInfo(slug: string, formData: FormData): Pr
   await requireSession();
   const supabase = getServiceSupabase();
 
-  const { error } = await supabase
+  const tournamentName = String(formData.get("name") ?? "").trim();
+  const { data: tournament, error } = await supabase
     .from("tournament")
     .update({
-      name: String(formData.get("name") ?? "").trim(),
+      name: tournamentName,
       date_start: (formData.get("date_start") as string) || null,
       date_end: (formData.get("date_end") as string) || null,
       venue: (formData.get("venue") as string) || null,
       organizer_name: (formData.get("organizer_name") as string) || null,
       description: (formData.get("description") as string) || null,
     })
-    .eq("slug", slug);
-  if (error) throw new Error(error.message);
+    .eq("slug", slug)
+    .select("id")
+    .single();
+  if (error || !tournament) throw new Error(error?.message ?? "Failed to update tournament");
 
+  const rawTeamSize = formData.get("team_size");
+  if (rawTeamSize !== null) {
+    const teamSize = Math.max(1, parseInt(String(rawTeamSize), 10) || 2);
+    const defaultName = teamSize === 1 ? "Singles" : teamSize === 4 ? "Team Wars" : "Open Doubles";
+    const divisionName = String(formData.get("division_name") ?? "").trim() || defaultName;
+
+    const { data: existingDiv } = await supabase
+      .from("division")
+      .select("id")
+      .eq("tournament_id", tournament.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingDiv) {
+      await supabase
+        .from("division")
+        .update({ name: divisionName, team_size: teamSize })
+        .eq("id", existingDiv.id);
+    } else {
+      await supabase
+        .from("division")
+        .insert({ tournament_id: tournament.id, name: divisionName, team_size: teamSize });
+    }
+  }
+
+  revalidatePath(`/admin/${slug}`);
+  revalidatePath(`/admin/${slug}/setup/info`);
+  revalidatePath(`/admin/${slug}/setup/teams`);
+  revalidatePath(`/admin/${slug}/setup/review`);
+  revalidatePath(`/t/${slug}`);
+  revalidatePath(`/t/${slug}/info`);
+}
+
+/** Automatically creates 1v1 teams for all unassigned players in Singles mode */
+export async function autoCreateSinglesTeams(
+  slug: string,
+  tournamentId: string,
+  divisionId: string,
+): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+
+  const [{ data: players }, { data: teams }] = await Promise.all([
+    supabase.from("player").select("id, first_name, last_name").eq("tournament_id", tournamentId),
+    supabase.from("team").select("id").eq("tournament_id", tournamentId),
+  ]);
+
+  const teamIds = (teams ?? []).map((t) => t.id);
+  const { data: memberships } = teamIds.length > 0
+    ? await supabase.from("team_member").select("player_id").in("team_id", teamIds)
+    : { data: [] };
+
+  const assignedPlayerIds = new Set((memberships ?? []).map((m) => m.player_id));
+  const unassignedPlayers = (players ?? []).filter((p) => !assignedPlayerIds.has(p.id));
+
+  if (unassignedPlayers.length === 0) return;
+
+  for (const player of unassignedPlayers) {
+    const fullName = `${player.first_name} ${player.last_name}`.trim() || "Player";
+    const { data: newTeam, error: teamErr } = await supabase
+      .from("team")
+      .insert({
+        tournament_id: tournamentId,
+        division_id: divisionId,
+        name: fullName,
+      })
+      .select("id")
+      .single();
+
+    if (teamErr || !newTeam) continue;
+
+    await supabase.from("team_member").insert({
+      team_id: newTeam.id,
+      player_id: player.id,
+      position: 1,
+    });
+  }
+
+  revalidatePath(`/admin/${slug}/setup/teams`);
+  revalidatePath(`/admin/${slug}/setup/review`);
   revalidatePath(`/admin/${slug}`);
   revalidatePath(`/t/${slug}`);
 }
