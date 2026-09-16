@@ -10,6 +10,7 @@ import { PublicShareCard } from "./PublicShareCard";
 import { unlockTournament } from "@/app/admin/actions";
 import { DeleteTournamentButton } from "@/app/admin/DeleteTournamentButton";
 import { DuplicateTournamentButton } from "@/app/admin/DuplicateTournamentButton";
+import { LockEditToggle } from "@/app/admin/LockEditToggle";
 
 
 const STATUS_TONE: Record<string, "neutral" | "gold" | "success"> = {
@@ -56,7 +57,10 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
       </Link>
 
       <header className="flex flex-col gap-2">
-        <Badge tone={STATUS_TONE[tournament.status] ?? "neutral"}>{tournament.status.replace("_", " ")}</Badge>
+        <div className="flex items-center justify-between gap-3">
+          <Badge tone={STATUS_TONE[tournament.status] ?? "neutral"}>{tournament.status.replace("_", " ")}</Badge>
+          <LockEditToggle slug={slug} status={tournament.status} size="md" />
+        </div>
         <h1 className="font-[family-name:var(--font-display)] text-3xl font-black uppercase text-[var(--color-navy)]">
           {tournament.name}
         </h1>
@@ -127,11 +131,22 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
 
       <Card title="Manage tournament">
         <div className="flex flex-col gap-3">
-          <Link href={`/admin/${slug}/setup/info`}>
-            <Button variant="outline" fullWidth>
-              ✏️ Edit setup (info, players, teams, stages, brackets)
-            </Button>
-          </Link>
+          {tournament.status === "draft" ? (
+            <Link href={`/admin/${slug}/setup/info`}>
+              <Button variant="outline" fullWidth>
+                ✏️ Edit Setup (info, Players, teams, stages, brackets)
+              </Button>
+            </Link>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <Button variant="outline" fullWidth disabled className="opacity-60 cursor-not-allowed">
+                🔒 Edit Setup (info, Players, teams, stages, brackets)
+              </Button>
+              <p className="text-center text-xs text-[var(--color-text-muted)]">
+                Tournament is locked. Toggle to <strong>Edit</strong> above to modify setup.
+              </p>
+            </div>
+          )}
           <Link href={`/admin/${slug}/rules`}>
             <Button variant="outline" fullWidth>
               📜 Rules

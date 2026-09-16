@@ -456,12 +456,21 @@ export async function lockTournament(slug: string): Promise<void> {
   redirect(`/admin/${slug}`);
 }
 
-/** Reverts a locked/in-progress/completed tournament back to draft so its setup can be edited again. */
 export async function unlockTournament(slug: string): Promise<void> {
   await requireSession();
   const supabase = getServiceSupabase();
   const { error } = await supabase.from("tournament").update({ status: "draft" }).eq("slug", slug);
   if (error) throw new Error(error.message);
+  revalidatePath(`/admin/${slug}`);
+  revalidatePath("/admin");
+}
+
+export async function toggleTournamentLock(slug: string, targetState: "locked" | "draft"): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+  const { error } = await supabase.from("tournament").update({ status: targetState }).eq("slug", slug);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin");
   revalidatePath(`/admin/${slug}`);
 }
 

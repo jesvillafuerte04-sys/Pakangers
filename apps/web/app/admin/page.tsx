@@ -5,6 +5,7 @@ import { PasscodeForm } from "./PasscodeForm";
 import { createTournament, signOutOrganizer, ensurePakangersCopyExists } from "./actions";
 import { DeleteTournamentButton } from "./DeleteTournamentButton";
 import { DuplicateTournamentButton } from "./DuplicateTournamentButton";
+import { LockEditToggle } from "./LockEditToggle";
 import { BuiltByCredit } from "@/components/BuiltByCredit";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -67,7 +68,7 @@ export default async function AdminHomePage() {
               <option value="">Blank tournament</option>
               {templates?.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.name}
+                  {t.name.replace(/Pools/gi, "Brackets").replace(/Pool/gi, "Bracket")}
                 </option>
               ))}
             </select>
@@ -100,16 +101,10 @@ export default async function AdminHomePage() {
               </Badge>
             </div>
 
-            {/* Bottom row: Perfectly balanced segmented action pill bar [ Edit | Duplicate | Delete ] */}
-            <div className="flex justify-end pt-2 border-t border-[var(--border-subtle)]/60">
+            {/* Bottom row: Lock & Edit toggle on left, Duplicate & Delete on right */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--border-subtle)]/60">
+              <LockEditToggle slug={t.slug} status={t.status} size="sm" />
               <div className="inline-flex items-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-sunken)] p-1 gap-1">
-                <Link
-                  href={`/admin/${t.slug}`}
-                  className="px-3 py-1 text-xs font-bold text-[var(--color-navy)] hover:bg-white hover:shadow-xs rounded transition"
-                >
-                  {t.status === "draft" ? "✏️ Edit" : "🔒 Lock & Edit"}
-                </Link>
-                <span className="text-[var(--border-subtle)] text-xs select-none">|</span>
                 <DuplicateTournamentButton tournamentId={t.id} label="📋 Duplicate" variant="ghost" />
                 <span className="text-[var(--border-subtle)] text-xs select-none">|</span>
                 <DeleteTournamentButton tournamentId={t.id} name={t.name} label="🗑️ Delete" variant="ghost" />
