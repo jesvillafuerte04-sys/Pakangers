@@ -6,16 +6,48 @@
 
 | Phase | What | Needed for the first tournament? | Status |
 |---|---|---|---|
-| **1** | **Engine** (pure TS, test-first): format registry, round robin, single elimination, standings with configurable tiebreakers, qualification resolver, stage wiring, validation suite | ✅ | **Done** — `packages/engine`, 46 tests |
+| **1** | **Engine** (pure TS, test-first): format registry, round robin, single elimination, standings with configurable tiebreakers, qualification resolver, stage wiring, validation suite | ✅ | **Done** — `packages/engine`, 65 tests |
 | **2** | **Data layer**: Supabase project, schema migrations, RLS policies, typed client, seed from template | ✅ | **Done** — `packages/db`, project `pakangers-tournament`, real tournament seeded in `draft` |
-| **3** | **Organizer console**: passcode gate, setup wizard, players, teams, groups, stages, lock | ✅ | **Done** — `apps/web`, live at pakangers-app.vercel.app |
-| **4** | **Score entry**: match list, per-game entry, derive → recompute → populate, edit with audit log, forfeits | ✅ | **Done** — `apps/web/lib/match-pipeline.ts`, A9/A10 screens, downstream-invalidation guard |
+| **3** | **Organizer console**: passcode gate, setup wizard, players, teams, groups, stages, lock/edit toggle | ✅ | **Done** — `apps/web`, live at pakangers-app.vercel.app |
+| **4** | **Score entry**: match list, per-game entry, derive → recompute → populate, edit with audit log, forfeits, stacked mobile card | ✅ | **Done** — `apps/web/lib/match-pipeline.ts`, A9/A10 screens, downstream-invalidation guard |
 | **5** | **Public view**: live/upcoming/completed, standings, bracket, results, QR, realtime | ✅ | **Done** — `/t/[slug]` with Now/Matches/Standings/Bracket/Info, Supabase Realtime, QR on the dashboard |
-| 6 | **Scheduling**: courts, ordering, greedy auto-assign with conflict + rest checks, manual override | ❌ | **Done** — `packages/engine/src/scheduling.ts` + `/admin/[slug]/schedule`. Courts and running order, **no clock times** (see note below) |
-| 7 | **Rules module**: rule sets, per-tournament selection, curated summaries with links | ❌ | **Done** — `/admin/[slug]/rules`; tournament-specific rules only (see note below) |
+| 6 | **Scheduling**: courts, ordering, greedy auto-assign with conflict + rest checks, wave-based 1 bracket per court | ❌ | **Done** — `packages/engine/src/scheduling.ts` + `/admin/[slug]/schedule`. Courts and running order |
+| 7 | **Rules module**: rule sets, per-tournament selection, curated summaries with links | ❌ | **Done** — `/admin/[slug]/rules`; tournament-specific rules only |
 | 8 | **DUPR export**: CSV in DUPR template shape, eligibility flags, submission records | ❌ | Not started — **deferred as a future feature** |
-| 9 | **Templates**: save-as-template, create-from-template, seed the three starter templates | ❌ | **Done** — `apps/web/lib/template-config.ts` serializes a live tournament back to template config; save action on A7 |
-| 10 | **Hardening**: offline score queue, full dry run, printable standings and bracket | ✅ (partial) | Not started |
+| 9 | **Templates**: save-as-template, create-from-template, PPA Tour Style templates (8 & 4 Brackets), Pakangers 2 Brackets | ❌ | **Done** — `apps/web/lib/template-config.ts` serializes live tournament; 5 templates seeded |
+| 10 | **Hardening**: offline score queue, full dry run, printable standings and bracket | ✅ (partial) | In progress |
+| **Spec 5** | **Interactive Visual Bracket UI**: responsive tree, horizontal pan/scroll, connector lines, round columns, winners/losers/podium tabs | ❌ | **To Do (Roadmap)** |
+| **Spec 6** | **True Offline PWA Support**: Service Worker caching, IndexedDB score queue with auto-replay, installable app banners | ✅ | **To Do (Roadmap)** |
+| **Spec 7** | **Code Quality & Hygiene**: remove hardcoded demo copy seeds, strict zero-warning typecheck/lint, 100% test coverage | ✅ | **To Do (Roadmap)** |
+
+---
+
+## Active Specifications on the Roadmap (Specs 5, 6, 7)
+
+### Specification 5: Interactive Visual Bracket UI
+- **Goal:** Replace vertically stacked cards in `/t/[slug]/bracket` and the organizer view with a true, responsive bracket tree.
+- **Key Features:**
+  - Horizontal scrolling / pan-and-zoom viewport optimized for mobile screens.
+  - Round columns with SVG or CSS connector lines illustrating advancement pathways.
+  - Tabbed switching between **Winners Bracket**, **Losers/Opportunity Bracket**, and **Finals / Podium**.
+  - Visual status indicators for live (active score ticker), scheduled, and completed matches.
+  - Direct tap-through to score entry for authorized organizers.
+
+### Specification 6: True Offline PWA Support
+- **Goal:** Ensure organizers and players have zero downtime on outdoor courts with poor or dropping cell connectivity.
+- **Key Features:**
+  - Service Worker registration with Workbox caching for core assets, app shell, fonts, and icons.
+  - **Offline Score Queue**: Save score entries to IndexedDB or localStorage when offline, displaying a visual "Pending Sync" indicator.
+  - Automatic background replay and synchronization once connectivity is restored.
+  - Manifest enhancements (maskable icons, shortcuts) and an in-app "Install App" prompt for iOS Safari and Android Chrome.
+
+### Specification 7: Code Quality & Hygiene
+- **Goal:** Maintain production codebase integrity and eliminate technical debt.
+- **Key Features:**
+  - Remove hardcoded demo slugs and fallback cloning (`pakangers-2026-copy` in `ensurePakangersCopyExists`).
+  - Maintain 100% passing tests across engine test suites (`npm test`).
+  - Maintain strict zero-error, zero-warning TypeScript checks (`npm run typecheck`) and ESLint checks.
+  - Enforce comprehensive schema migrations aligned between database and types.
 
 **Phases 1–5 plus the offline queue and a dry run are what the first tournament actually requires.**
 Everything else can land afterward without disrupting a live event.
