@@ -19,8 +19,8 @@ const SIZE_CLASSES = {
 };
 
 /** Generates clean initials from a full name (e.g., "Jes Villafuerte" -> "JV"). */
-export function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+export function getInitials(name?: string | null): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
@@ -36,10 +36,11 @@ const AVATAR_BG_COLORS = [
   "bg-[#0F172A] text-[var(--color-gold)]",
 ];
 
-function getAvatarColor(name: string): string {
+function getAvatarColor(name?: string | null): string {
+  const str = (name ?? "").trim();
   let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
   const index = Math.abs(hash) % AVATAR_BG_COLORS.length;
   return AVATAR_BG_COLORS[index] ?? AVATAR_BG_COLORS[0]!;
@@ -54,7 +55,8 @@ export function PlayerAvatar({
 }: PlayerAvatarProps) {
   const [imgError, setImgError] = useState(false);
   const sizeClass = SIZE_CLASSES[size] ?? SIZE_CLASSES.md;
-  const initials = getInitials(name);
+  const safeName = (name ?? "").trim() || "Player";
+  const initials = getInitials(safeName);
   const borderClass = showBorder ? "ring-2 ring-white shadow-xs" : "";
 
   // If a valid avatar URL is supplied and hasn't failed to load
@@ -66,7 +68,7 @@ export function PlayerAvatar({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={avatarUrl}
-          alt={name}
+          alt={safeName}
           className="h-full w-full object-cover"
           onError={() => setImgError(true)}
         />
@@ -75,11 +77,11 @@ export function PlayerAvatar({
   }
 
   // Elegant fallback: Initials badge with brand theme
-  const bgTone = getAvatarColor(name);
+  const bgTone = getAvatarColor(safeName);
 
   return (
     <div
-      title={name}
+      title={safeName}
       className={`inline-flex flex-shrink-0 select-none items-center justify-center rounded-full font-semibold ${bgTone} ${sizeClass} ${borderClass} ${className}`}
     >
       <span>{initials}</span>

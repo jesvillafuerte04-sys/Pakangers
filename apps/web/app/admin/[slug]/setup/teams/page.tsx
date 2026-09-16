@@ -13,15 +13,29 @@ export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug
   const { slug } = await params;
   const tournament = await getTournamentBySlug(slug);
   if (!tournament) notFound();
-  const division = await getDivisionForTournament(tournament.id);
-  if (!division) notFound();
+  let division = await getDivisionForTournament(tournament.id);
+  if (!division) {
+    division = {
+      id: "",
+      tournament_id: tournament.id,
+      name: "Open Doubles",
+      team_size: 2,
+      skill_level: null,
+      gender_category: null,
+      created_at: new Date().toISOString(),
+    };
+  }
 
   const supabase = getServiceSupabase();
-  const [{ data: players }, { data: teams }, { data: memberships }] = await Promise.all([
+  const [{ data: players }, { data: teams }] = await Promise.all([
     supabase.from("player").select("id, first_name, last_name, avatar_url").eq("tournament_id", tournament.id).order("first_name"),
     supabase.from("team").select("id, name").eq("tournament_id", tournament.id).order("name"),
-    supabase.from("team_member").select("team_id, player_id"),
   ]);
+
+  const teamIds = (teams ?? []).map((t) => t.id);
+  const { data: memberships } = teamIds.length > 0
+    ? await supabase.from("team_member").select("team_id, player_id").in("team_id", teamIds)
+    : { data: [] };
 
   const assignedPlayerIds = new Set((memberships ?? []).map((m) => m.player_id));
   const unassignedPlayers = (players ?? []).filter((p) => !assignedPlayerIds.has(p.id));

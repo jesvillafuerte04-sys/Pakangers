@@ -136,6 +136,11 @@ export async function createTournament(formData: FormData): Promise<void> {
     if (template) {
       await instantiateFromTemplate(supabase, tournament.id, template.config as unknown as TemplateConfig);
     }
+  } else {
+    // If created without a template, always seed a default Open Doubles division
+    await supabase
+      .from("division")
+      .insert({ tournament_id: tournament.id, name: "Open Doubles", team_size: 2 });
   }
 
   revalidatePath("/admin");

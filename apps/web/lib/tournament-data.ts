@@ -14,8 +14,17 @@ export const getTournamentBySlug = cache(async (slug: string) => {
 
 export const getDivisionForTournament = cache(async (tournamentId: string) => {
   const supabase = getServiceSupabase();
-  const { data } = await supabase.from("division").select("*").eq("tournament_id", tournamentId).limit(1).single();
-  return data ?? null;
+  const { data } = await supabase.from("division").select("*").eq("tournament_id", tournamentId).limit(1).maybeSingle();
+  if (data) return data;
+
+  // Auto-heal: ensure every tournament always has a division so setup never fails
+  const { data: created } = await supabase
+    .from("division")
+    .insert({ tournament_id: tournamentId, name: "Open Doubles", team_size: 2 })
+    .select("*")
+    .single();
+
+  return created ?? null;
 });
 
 export const getSetupProgress = cache(async (tournamentId: string) => {

@@ -38,7 +38,7 @@ type TeamWithMembers = {
 
 /** Shapes a joined team row into its display form, ordering players by roster position. */
 export function teamDisplayFromJoined(team: TeamWithMembers): TeamDisplay {
-  const sortedMembers = [...team.team_member].sort((a, b) => a.position - b.position);
+  const sortedMembers = [...(team.team_member ?? [])].sort((a, b) => a.position - b.position);
   const players: PlayerDisplayInfo[] = sortedMembers
     .filter((m): m is typeof m & { player: NonNullable<typeof m.player> } => Boolean(m.player))
     .map((m) => ({
