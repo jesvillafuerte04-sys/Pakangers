@@ -36,12 +36,12 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
     { label: "Tournament info", done: Boolean(tournament.venue && tournament.date_start), href: `/admin/${slug}/setup/info` },
     { label: `Players (${progress.playerCount})`, done: progress.playerCount > 0, href: `/admin/${slug}/setup/players` },
     { label: `Teams (${progress.teamCount})`, done: progress.teamCount > 0, href: `/admin/${slug}/setup/teams` },
+    { label: "Stages & scoring", done: true, href: `/admin/${slug}/setup/stages` },
     {
-      label: `Groups (${progress.teamsAssigned}/${progress.teamsTotal} assigned)`,
+      label: `Brackets (${progress.teamsAssigned}/${progress.teamsTotal} assigned)`,
       done: progress.teamsTotal > 0 && progress.teamsAssigned === progress.teamsTotal,
       href: `/admin/${slug}/setup/groups`,
     },
-    { label: "Stages & scoring", done: true, href: `/admin/${slug}/setup/stages` },
   ];
 
   return (
@@ -85,7 +85,7 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
       {tournament.status === "locked" && (
         <Card title="Ready to start">
           <p className="mb-4 text-sm text-[var(--color-text-muted)]">
-            Setup is complete and teams are locked in. Starting the tournament generates every pool match.
+            Setup is complete and teams are locked in. Starting the tournament generates every preliminary bracket match.
           </p>
           <form action={startTournament.bind(null, slug)}>
             <Button type="submit" fullWidth size="lg">
@@ -119,7 +119,7 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
         <div className="flex flex-col gap-3">
           <Link href={`/admin/${slug}/setup/info`}>
             <Button variant="outline" fullWidth>
-              Edit setup (info, players, teams, groups)
+              Edit setup (info, players, teams, stages, brackets)
             </Button>
           </Link>
           <Link href={`/admin/${slug}/rules`}>

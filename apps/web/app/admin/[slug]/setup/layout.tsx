@@ -4,8 +4,8 @@ const STEPS = [
   { key: "info", label: "Info" },
   { key: "players", label: "Players" },
   { key: "teams", label: "Teams" },
-  { key: "groups", label: "Groups" },
   { key: "stages", label: "Stages" },
+  { key: "groups", label: "Brackets" },
   { key: "review", label: "Review & lock" },
 ];
 

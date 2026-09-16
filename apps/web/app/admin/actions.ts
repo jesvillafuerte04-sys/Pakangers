@@ -1497,6 +1497,25 @@ export async function removePoolGroup(slug: string, groupId: string): Promise<vo
   revalidatePath(`/admin/${slug}/setup/groups`);
 }
 
+/** Renames a pool/bracket group */
+export async function renamePoolGroup(slug: string, groupId: string, newName: string): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+  const trimmed = newName.trim();
+  if (!trimmed) throw new Error("Bracket name cannot be empty");
+
+  const { error } = await supabase
+    .from("tournament_group")
+    .update({ name: trimmed })
+    .eq("id", groupId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/${slug}/setup/groups`);
+  revalidatePath(`/admin/${slug}/matches`);
+  revalidatePath(`/t/${slug}`);
+  revalidatePath(`/t/${slug}/standings`);
+}
+
 /** Randomly partners unassigned players into doubles teams (teams of 2) */
 export async function randomizeDoublesPartners(
   slug: string,
