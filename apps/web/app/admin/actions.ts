@@ -1516,6 +1516,75 @@ export async function renamePoolGroup(slug: string, groupId: string, newName: st
   revalidatePath(`/t/${slug}/standings`);
 }
 
+/** Sets the exact number of brackets in a round-robin stage (allowed: 1, 2, 4, 8) */
+export async function setBracketCount(slug: string, stageId: string, targetCount: number): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+
+  if (![1, 2, 4, 8].includes(targetCount)) {
+    throw new Error("Invalid bracket count. Allowed counts: 1, 2, 4, or 8");
+  }
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from("tournament_group")
+    .select("id, name, display_order")
+    .eq("stage_id", stageId)
+    .order("display_order");
+
+  if (fetchErr) throw new Error(fetchErr.message);
+
+  const currentGroups = existing ?? [];
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+  if (currentGroups.length < targetCount) {
+    // Add missing brackets
+    for (let i = currentGroups.length; i < targetCount; i++) {
+      const name = alphabet[i] ?? `Bracket ${i + 1}`;
+      const { error: insErr } = await supabase.from("tournament_group").insert({
+        stage_id: stageId,
+        name,
+        display_order: i,
+      });
+      if (insErr) throw new Error(insErr.message);
+    }
+  } else if (currentGroups.length > targetCount) {
+    // Remove extra brackets beyond targetCount (from the end)
+    const toRemove = currentGroups.slice(targetCount);
+    const removeIds = toRemove.map((g) => g.id);
+
+    // Unassign teams in removed brackets
+    await supabase.from("team").update({ group_id: null }).in("group_id", removeIds);
+    const { error: delErr } = await supabase.from("tournament_group").delete().in("id", removeIds);
+    if (delErr) throw new Error(delErr.message);
+  }
+
+  revalidatePath(`/admin/${slug}/setup/groups`);
+  revalidatePath(`/admin/${slug}/matches`);
+  revalidatePath(`/t/${slug}`);
+  revalidatePath(`/t/${slug}/standings`);
+}
+
+/** Renames a team in a tournament */
+export async function renameTeam(slug: string, teamId: string, newName: string): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+  const trimmed = newName.trim();
+  if (!trimmed) throw new Error("Team name cannot be empty");
+
+  const { error } = await supabase
+    .from("team")
+    .update({ name: trimmed })
+    .eq("id", teamId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/${slug}/setup/groups`);
+  revalidatePath(`/admin/${slug}/setup/teams`);
+  revalidatePath(`/admin/${slug}/matches`);
+  revalidatePath(`/t/${slug}`);
+  revalidatePath(`/t/${slug}/bracket`);
+  revalidatePath(`/t/${slug}/standings`);
+}
+
 /** Randomly partners unassigned players into doubles teams (teams of 2) */
 export async function randomizeDoublesPartners(
   slug: string,

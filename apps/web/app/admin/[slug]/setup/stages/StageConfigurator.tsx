@@ -227,21 +227,28 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
                 <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
                   Number of Brackets
                 </label>
-                <select
-                  value={poolCount}
-                  onChange={(e) => handlePoolCountChange(Number(e.target.value))}
-                  disabled={!isDraft || isPending}
-                  className="rounded-lg border-2 border-[var(--border-subtle)] bg-white px-3 py-2 text-sm font-bold text-[var(--color-navy)] transition focus:border-[var(--color-navy)]"
-                >
+                <div className="flex flex-wrap gap-2">
                   {[1, 2, 4, 8].map((num) => {
                     const allowed = isPoolCountAllowed(num, playoffFormat);
                     return (
-                      <option key={num} value={num} disabled={!allowed}>
-                        {num} {num === 1 ? "Bracket" : "Brackets"} {!allowed ? "(Not applicable)" : ""}
-                      </option>
+                      <button
+                        type="button"
+                        key={num}
+                        onClick={() => handlePoolCountChange(num)}
+                        disabled={!isDraft || isPending || !allowed}
+                        className={`flex-1 min-w-[48px] rounded-lg border-2 py-2 text-center text-sm font-bold transition ${
+                          !allowed
+                            ? "border-gray-200 bg-gray-100 text-gray-400 opacity-40 cursor-not-allowed"
+                            : poolCount === num
+                            ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-gold)] shadow-xs"
+                            : "border-[var(--border-subtle)] bg-white text-[var(--color-navy)] hover:bg-gray-50"
+                        }`}
+                      >
+                        {num}
+                      </button>
                     );
                   })}
-                </select>
+                </div>
               </div>
 
               {playoffFormat !== "none" && (

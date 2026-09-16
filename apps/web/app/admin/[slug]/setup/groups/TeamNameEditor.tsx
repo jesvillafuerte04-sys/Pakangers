@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { renamePoolGroup } from "@/app/admin/actions";
+import { renameTeam } from "@/app/admin/actions";
 
 interface Props {
   slug: string;
-  groupId: string;
+  teamId: string;
   initialName: string;
   isDraft: boolean;
 }
 
-export function BracketNameEditor({ slug, groupId, initialName, isDraft }: Props) {
+export function TeamNameEditor({ slug, teamId, initialName, isDraft }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(initialName);
   const [isPending, startTransition] = useTransition();
@@ -24,10 +24,10 @@ export function BracketNameEditor({ slug, groupId, initialName, isDraft }: Props
     }
     startTransition(async () => {
       try {
-        await renamePoolGroup(slug, groupId, trimmed);
+        await renameTeam(slug, teamId, trimmed);
         setIsEditing(false);
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to rename bracket");
+        alert(err instanceof Error ? err.message : "Failed to rename team");
       }
     });
   };
@@ -42,10 +42,8 @@ export function BracketNameEditor({ slug, groupId, initialName, isDraft }: Props
     }
   };
 
-  const displayName = initialName.toLowerCase().startsWith("bracket") ? initialName : `Bracket ${initialName}`;
-
   if (!isDraft) {
-    return <span className="font-bold text-[var(--color-navy)]">{displayName}</span>;
+    return <span className="text-sm font-medium text-[var(--color-text-main)]">{initialName}</span>;
   }
 
   if (isEditing) {
@@ -58,7 +56,7 @@ export function BracketNameEditor({ slug, groupId, initialName, isDraft }: Props
           onKeyDown={handleKeyDown}
           autoFocus
           disabled={isPending}
-          className="w-32 rounded-lg border-2 border-[var(--color-navy)] bg-white px-2 py-0.5 text-xs font-bold text-[var(--color-navy)] focus:outline-none"
+          className="rounded-md border-2 border-[var(--color-navy)] bg-white px-2 py-0.5 text-xs font-semibold text-[var(--color-navy)] focus:outline-none"
         />
         <button
           type="button"
@@ -84,13 +82,13 @@ export function BracketNameEditor({ slug, groupId, initialName, isDraft }: Props
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="font-bold text-[var(--color-navy)]">{displayName}</span>
+    <div className="flex items-center gap-1.5 group">
+      <span className="text-sm font-medium text-[var(--color-text-main)]">{initialName}</span>
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className="opacity-70 transition hover:opacity-100 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-navy)]"
-        title="Rename bracket"
+        className="opacity-40 transition group-hover:opacity-100 hover:text-[var(--color-navy)] text-[11px]"
+        title="Edit team name"
       >
         ✏️
       </button>

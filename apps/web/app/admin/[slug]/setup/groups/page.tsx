@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTournamentBySlug } from "@/lib/tournament-data";
 import { getServiceSupabase } from "@/lib/supabase-server";
-import { assignTeamToGroup, snakeSeedTeams, addPoolGroup, removePoolGroup } from "@/app/admin/actions";
+import { assignTeamToGroup, snakeSeedTeams, removePoolGroup } from "@/app/admin/actions";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { BracketNameEditor } from "./BracketNameEditor";
+import { BracketCountSelector } from "./BracketCountSelector";
+import { TeamNameEditor } from "./TeamNameEditor";
 
 export default async function SetupGroupsPage({ params }: PageProps<"/admin/[slug]/setup/groups">) {
   const { slug } = await params;
@@ -68,23 +70,24 @@ export default async function SetupGroupsPage({ params }: PageProps<"/admin/[slu
             </span>
           </div>
           <p className="text-xs text-[var(--color-text-muted)]">
-            Balance teams across brackets with 1-click Snake Seeding, rename brackets, or manage them dynamically.
+            Balance teams across brackets with 1-click Snake Seeding, rename brackets & teams, or select bracket count.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          {isDraft && (
+            <BracketCountSelector
+              slug={slug}
+              stageId={poolStage.id}
+              currentCount={groups?.length ?? 0}
+              isDraft={isDraft}
+            />
+          )}
+
           {isDraft && (
             <form action={snakeSeedTeams.bind(null, slug, tournament.id, poolStage.id)}>
               <Button type="submit" size="sm" disabled={(teams?.length ?? 0) === 0}>
                 ⚡ Auto Snake Seed
-              </Button>
-            </form>
-          )}
-
-          {isDraft && (groups?.length ?? 0) < 16 && (
-            <form action={addPoolGroup.bind(null, slug, poolStage.id)}>
-              <Button type="submit" variant="outline" size="sm">
-                + Add Bracket
               </Button>
             </form>
           )}
@@ -139,7 +142,12 @@ export default async function SetupGroupsPage({ params }: PageProps<"/admin/[slu
                         #{team.seed}
                       </span>
                     )}
-                    <span className="text-sm font-medium text-[var(--color-text-main)]">{team.name}</span>
+                    <TeamNameEditor
+                      slug={slug}
+                      teamId={team.id}
+                      initialName={team.name}
+                      isDraft={isDraft}
+                    />
                   </div>
                   {isDraft && (
                     <form action={assignTeamToGroup.bind(null, slug, team.id, null)}>
@@ -174,7 +182,12 @@ export default async function SetupGroupsPage({ params }: PageProps<"/admin/[slu
                       #{team.seed}
                     </span>
                   )}
-                  <span className="text-sm font-medium text-[var(--color-text-main)]">{team.name}</span>
+                  <TeamNameEditor
+                    slug={slug}
+                    teamId={team.id}
+                    initialName={team.name}
+                    isDraft={isDraft}
+                  />
                 </div>
                 {isDraft && (
                   <div className="flex gap-2">
