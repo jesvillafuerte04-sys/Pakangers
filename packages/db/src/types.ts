@@ -449,6 +449,7 @@ export type Database = {
       }
       player: {
         Row: {
+          avatar_url: string | null
           contact: string | null
           created_at: string
           dupr_id: string | null
@@ -460,6 +461,7 @@ export type Database = {
           tournament_id: string
         }
         Insert: {
+          avatar_url?: string | null
           contact?: string | null
           created_at?: string
           dupr_id?: string | null
@@ -471,6 +473,7 @@ export type Database = {
           tournament_id: string
         }
         Update: {
+          avatar_url?: string | null
           contact?: string | null
           created_at?: string
           dupr_id?: string | null
