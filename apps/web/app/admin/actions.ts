@@ -7,6 +7,7 @@ import { getServiceSupabase } from "@/lib/supabase-server";
 import type { TypedSupabaseClient, Json } from "@pakangers/db";
 import { getTournamentBySlug } from "@/lib/tournament-data";
 import { serializeTournamentAsTemplate, type TemplateConfig } from "@/lib/template-config";
+import { populateTournament } from "@/lib/match-pipeline";
 
 export type UnlockState = { error?: string };
 
@@ -803,6 +804,559 @@ export async function ensurePakangersCopyExists(): Promise<void> {
   if (createError || !newTournament) return;
 
   await deepDuplicateTournament(supabase, original.id, newTournament.id);
+}
+
+/**
+ * Configures the tournament's stages, pool groups, knockout rounds, and qualification rules.
+ * Supports Round of 16 (Top 16), Quarterfinals (Top 8), Semifinals (Top 4), Finals, 3rd Place match,
+ * and 1 to 4 pools with automatic crossover wiring.
+ */
+export async function configureTournamentStages(slug: string, formData: FormData): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+
+  const { data: tournament } = await supabase.from("tournament").select("id, status").eq("slug", slug).single();
+  if (!tournament) throw new Error("Tournament not found");
+  if (tournament.status !== "draft") throw new Error("Cannot modify stages of a tournament that has started or is locked");
+
+  const { data: division } = await supabase.from("division").select("id").eq("tournament_id", tournament.id).limit(1).single();
+  if (!division) throw new Error("Division not found");
+
+  const playoffFormat = String(formData.get("playoff_format") ?? "semifinals");
+  const includePools = formData.get("include_pools") === "true";
+  const poolCount = Math.min(4, Math.max(1, parseInt(String(formData.get("pool_count") ?? "2"), 10)));
+  const advancePerPool = Math.min(4, Math.max(1, parseInt(String(formData.get("advance_per_pool") ?? "2"), 10)));
+  const includeThirdPlace = formData.get("include_third_place") === "true";
+
+  const pointsToWin = parseInt(String(formData.get("points_to_win") ?? "15"), 10) || 15;
+  const winBy = String(formData.get("win_by") ?? "sudden_death");
+  const bestOf = parseInt(String(formData.get("best_of") ?? "1"), 10) || 1;
+  const scoringType = String(formData.get("scoring_type") ?? "side_out");
+
+  const standardScoring = { pointsToWin, winBy, bestOf, scoringType };
+  const poolScoring = { pointsToWin: 11, winBy: "sudden_death", bestOf: 1, scoringType: "side_out" };
+
+  // 1. Unassign all teams from groups first
+  await supabase.from("team").update({ group_id: null }).eq("tournament_id", tournament.id);
+
+  // 2. Fetch existing stage IDs to delete old qualification rules, groups, matches, and stages
+  const { data: oldStages } = await supabase.from("stage").select("id").eq("tournament_id", tournament.id);
+  const oldStageIds = (oldStages ?? []).map((s) => s.id);
+  if (oldStageIds.length > 0) {
+    await supabase.from("qualification_rule").delete().in("from_stage_id", oldStageIds);
+    await supabase.from("qualification_rule").delete().in("to_stage_id", oldStageIds);
+    await supabase.from("tournament_group").delete().in("stage_id", oldStageIds);
+    await supabase.from("match").delete().in("stage_id", oldStageIds);
+    await supabase.from("stage").delete().eq("tournament_id", tournament.id);
+  }
+
+  let currentSequence = 1;
+  let poolStageId: string | null = null;
+  const groupIdsByName = new Map<string, string>();
+  const poolNames = ["A", "B", "C", "D"].slice(0, poolCount);
+
+  // 3. Create Pool Stage if requested
+  if (includePools) {
+    const { data: poolStage, error: pErr } = await supabase
+      .from("stage")
+      .insert({
+        tournament_id: tournament.id,
+        division_id: division.id,
+        key: "pools",
+        name: "Pool Stage",
+        format_key: "round_robin",
+        sequence: currentSequence++,
+        scoring_config: poolScoring as unknown as Json,
+        tiebreaker_config: ["match_wins", "point_differential", "points_scored"] as unknown as Json,
+      })
+      .select("id")
+      .single();
+    if (pErr || !poolStage) throw new Error(pErr?.message ?? "Failed to create pool stage");
+    poolStageId = poolStage.id;
+
+    for (let i = 0; i < poolNames.length; i++) {
+      const gName = poolNames[i]!;
+      const { data: grp } = await supabase
+        .from("tournament_group")
+        .insert({
+          stage_id: poolStage.id,
+          name: gName,
+          display_order: i,
+        })
+        .select("id")
+        .single();
+      if (grp) groupIdsByName.set(gName, grp.id);
+    }
+  }
+
+  // 4. Create Knockout Stages based on playoff_format
+  if (playoffFormat === "round_of_16") {
+    // Round of 16 (Top 16)
+    let r16EntrantConfig: Record<string, unknown> = {};
+    if (includePools && poolCount === 4 && advancePerPool >= 4) {
+      r16EntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 4 } },
+          { match: 2, home: { kind: "group_rank", group: "C", rank: 2 }, away: { kind: "group_rank", group: "D", rank: 3 } },
+          { match: 3, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 4 } },
+          { match: 4, home: { kind: "group_rank", group: "D", rank: 2 }, away: { kind: "group_rank", group: "C", rank: 3 } },
+          { match: 5, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 4 } },
+          { match: 6, home: { kind: "group_rank", group: "A", rank: 2 }, away: { kind: "group_rank", group: "B", rank: 3 } },
+          { match: 7, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 4 } },
+          { match: 8, home: { kind: "group_rank", group: "B", rank: 2 }, away: { kind: "group_rank", group: "A", rank: 3 } },
+        ],
+      };
+    } else if (includePools && poolCount === 2 && advancePerPool >= 8) {
+      r16EntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 8 } },
+          { match: 2, home: { kind: "group_rank", group: "A", rank: 5 }, away: { kind: "group_rank", group: "B", rank: 4 } },
+          { match: 3, home: { kind: "group_rank", group: "A", rank: 3 }, away: { kind: "group_rank", group: "B", rank: 6 } },
+          { match: 4, home: { kind: "group_rank", group: "A", rank: 7 }, away: { kind: "group_rank", group: "B", rank: 2 } },
+          { match: 5, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 8 } },
+          { match: 6, home: { kind: "group_rank", group: "B", rank: 5 }, away: { kind: "group_rank", group: "A", rank: 4 } },
+          { match: 7, home: { kind: "group_rank", group: "B", rank: 3 }, away: { kind: "group_rank", group: "A", rank: 6 } },
+          { match: 8, home: { kind: "group_rank", group: "B", rank: 7 }, away: { kind: "group_rank", group: "A", rank: 2 } },
+        ],
+      };
+    }
+
+    const { data: r16 } = await supabase
+      .from("stage")
+      .insert({
+        tournament_id: tournament.id,
+        division_id: division.id,
+        key: "round_of_16",
+        name: "Round of 16",
+        format_key: "single_elimination",
+        sequence: currentSequence++,
+        scoring_config: standardScoring as unknown as Json,
+        tiebreaker_config: [] as unknown as Json,
+        entrant_config: r16EntrantConfig as unknown as Json,
+      })
+      .select("id")
+      .single();
+
+    if (poolStageId && r16) {
+      for (const gName of poolNames) {
+        const gId = groupIdsByName.get(gName);
+        if (gId) {
+          await supabase.from("qualification_rule").insert({
+            from_stage_id: poolStageId,
+            from_group_id: gId,
+            method: "top_n",
+            value: advancePerPool,
+            to_stage_id: r16.id,
+          });
+        }
+      }
+    }
+
+    // Quarterfinals
+    await supabase.from("stage").insert({
+      tournament_id: tournament.id,
+      division_id: division.id,
+      key: "quarterfinals",
+      name: "Quarterfinals",
+      format_key: "single_elimination",
+      sequence: currentSequence++,
+      scoring_config: standardScoring as unknown as Json,
+      tiebreaker_config: [] as unknown as Json,
+      entrant_config: {
+        entrants: [
+          { match: 1, home: { kind: "match_outcome", stage: "round_of_16", match: 1, outcome: "winner" }, away: { kind: "match_outcome", stage: "round_of_16", match: 2, outcome: "winner" } },
+          { match: 2, home: { kind: "match_outcome", stage: "round_of_16", match: 3, outcome: "winner" }, away: { kind: "match_outcome", stage: "round_of_16", match: 4, outcome: "winner" } },
+          { match: 3, home: { kind: "match_outcome", stage: "round_of_16", match: 5, outcome: "winner" }, away: { kind: "match_outcome", stage: "round_of_16", match: 6, outcome: "winner" } },
+          { match: 4, home: { kind: "match_outcome", stage: "round_of_16", match: 7, outcome: "winner" }, away: { kind: "match_outcome", stage: "round_of_16", match: 8, outcome: "winner" } },
+        ],
+      } as unknown as Json,
+    });
+
+    // Semifinals
+    await supabase.from("stage").insert({
+      tournament_id: tournament.id,
+      division_id: division.id,
+      key: "semifinals",
+      name: "Semifinals",
+      format_key: "single_elimination",
+      sequence: currentSequence++,
+      scoring_config: standardScoring as unknown as Json,
+      tiebreaker_config: [] as unknown as Json,
+      entrant_config: {
+        entrants: [
+          { match: 1, home: { kind: "match_outcome", stage: "quarterfinals", match: 1, outcome: "winner" }, away: { kind: "match_outcome", stage: "quarterfinals", match: 2, outcome: "winner" } },
+          { match: 2, home: { kind: "match_outcome", stage: "quarterfinals", match: 3, outcome: "winner" }, away: { kind: "match_outcome", stage: "quarterfinals", match: 4, outcome: "winner" } },
+        ],
+      } as unknown as Json,
+    });
+
+    if (includeThirdPlace) {
+      await supabase.from("stage").insert({
+        tournament_id: tournament.id,
+        division_id: division.id,
+        key: "third_place",
+        name: "Third Place",
+        format_key: "single_elimination",
+        sequence: currentSequence++,
+        scoring_config: standardScoring as unknown as Json,
+        tiebreaker_config: [] as unknown as Json,
+        entrant_config: {
+          entrants: [
+            { match: 1, home: { kind: "match_outcome", stage: "semifinals", match: 1, outcome: "loser" }, away: { kind: "match_outcome", stage: "semifinals", match: 2, outcome: "loser" } },
+          ],
+        } as unknown as Json,
+      });
+    }
+
+    // Championship
+    await supabase.from("stage").insert({
+      tournament_id: tournament.id,
+      division_id: division.id,
+      key: "championship",
+      name: "Championship",
+      format_key: "single_elimination",
+      sequence: currentSequence++,
+      scoring_config: standardScoring as unknown as Json,
+      tiebreaker_config: [] as unknown as Json,
+      entrant_config: {
+        entrants: [
+          { match: 1, home: { kind: "match_outcome", stage: "semifinals", match: 1, outcome: "winner" }, away: { kind: "match_outcome", stage: "semifinals", match: 2, outcome: "winner" } },
+        ],
+      } as unknown as Json,
+    });
+  } else if (playoffFormat === "quarterfinals") {
+    // Quarterfinals (Top 8)
+    let qfEntrantConfig: Record<string, unknown> = {};
+    if (includePools && poolCount === 4 && advancePerPool >= 2) {
+      qfEntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
+          { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 2 } },
+          { match: 3, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
+          { match: 4, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 2 } },
+        ],
+      };
+    } else if (includePools && poolCount === 2 && advancePerPool >= 4) {
+      qfEntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 4 } },
+          { match: 2, home: { kind: "group_rank", group: "A", rank: 3 }, away: { kind: "group_rank", group: "B", rank: 2 } },
+          { match: 3, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 4 } },
+          { match: 4, home: { kind: "group_rank", group: "B", rank: 3 }, away: { kind: "group_rank", group: "A", rank: 2 } },
+        ],
+      };
+    } else if (includePools && poolCount === 1 && advancePerPool >= 8) {
+      qfEntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 8 } },
+          { match: 2, home: { kind: "group_rank", group: "A", rank: 4 }, away: { kind: "group_rank", group: "A", rank: 5 } },
+          { match: 3, home: { kind: "group_rank", group: "A", rank: 2 }, away: { kind: "group_rank", group: "A", rank: 7 } },
+          { match: 4, home: { kind: "group_rank", group: "A", rank: 3 }, away: { kind: "group_rank", group: "A", rank: 6 } },
+        ],
+      };
+    }
+
+    const { data: qf } = await supabase
+      .from("stage")
+      .insert({
+        tournament_id: tournament.id,
+        division_id: division.id,
+        key: "quarterfinals",
+        name: "Quarterfinals",
+        format_key: "single_elimination",
+        sequence: currentSequence++,
+        scoring_config: standardScoring as unknown as Json,
+        tiebreaker_config: [] as unknown as Json,
+        entrant_config: qfEntrantConfig as unknown as Json,
+      })
+      .select("id")
+      .single();
+
+    if (poolStageId && qf) {
+      for (const gName of poolNames) {
+        const gId = groupIdsByName.get(gName);
+        if (gId) {
+          await supabase.from("qualification_rule").insert({
+            from_stage_id: poolStageId,
+            from_group_id: gId,
+            method: "top_n",
+            value: advancePerPool,
+            to_stage_id: qf.id,
+          });
+        }
+      }
+    }
+
+    // Semifinals
+    await supabase.from("stage").insert({
+      tournament_id: tournament.id,
+      division_id: division.id,
+      key: "semifinals",
+      name: "Semifinals",
+      format_key: "single_elimination",
+      sequence: currentSequence++,
+      scoring_config: standardScoring as unknown as Json,
+      tiebreaker_config: [] as unknown as Json,
+      entrant_config: {
+        entrants: [
+          { match: 1, home: { kind: "match_outcome", stage: "quarterfinals", match: 1, outcome: "winner" }, away: { kind: "match_outcome", stage: "quarterfinals", match: 2, outcome: "winner" } },
+          { match: 2, home: { kind: "match_outcome", stage: "quarterfinals", match: 3, outcome: "winner" }, away: { kind: "match_outcome", stage: "quarterfinals", match: 4, outcome: "winner" } },
+        ],
+      } as unknown as Json,
+    });
+
+    if (includeThirdPlace) {
+      await supabase.from("stage").insert({
+        tournament_id: tournament.id,
+        division_id: division.id,
+        key: "third_place",
+        name: "Third Place",
+        format_key: "single_elimination",
+        sequence: currentSequence++,
+        scoring_config: standardScoring as unknown as Json,
+        tiebreaker_config: [] as unknown as Json,
+        entrant_config: {
+          entrants: [
+            { match: 1, home: { kind: "match_outcome", stage: "semifinals", match: 1, outcome: "loser" }, away: { kind: "match_outcome", stage: "semifinals", match: 2, outcome: "loser" } },
+          ],
+        } as unknown as Json,
+      });
+    }
+
+    // Championship
+    await supabase.from("stage").insert({
+      tournament_id: tournament.id,
+      division_id: division.id,
+      key: "championship",
+      name: "Championship",
+      format_key: "single_elimination",
+      sequence: currentSequence++,
+      scoring_config: standardScoring as unknown as Json,
+      tiebreaker_config: [] as unknown as Json,
+      entrant_config: {
+        entrants: [
+          { match: 1, home: { kind: "match_outcome", stage: "semifinals", match: 1, outcome: "winner" }, away: { kind: "match_outcome", stage: "semifinals", match: 2, outcome: "winner" } },
+        ],
+      } as unknown as Json,
+    });
+  } else if (playoffFormat === "semifinals") {
+    // Semifinals (Top 4)
+    let semiEntrantConfig: Record<string, unknown> = {};
+    if (includePools && poolCount >= 2 && advancePerPool >= 2) {
+      semiEntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
+          { match: 2, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
+        ],
+      };
+    } else if (includePools && poolCount === 1 && advancePerPool >= 4) {
+      semiEntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 4 } },
+          { match: 2, home: { kind: "group_rank", group: "A", rank: 2 }, away: { kind: "group_rank", group: "A", rank: 3 } },
+        ],
+      };
+    } else if (includePools && poolCount === 4 && advancePerPool >= 1) {
+      semiEntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 1 } },
+          { match: 2, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 1 } },
+        ],
+      };
+    }
+
+    const { data: semis } = await supabase
+      .from("stage")
+      .insert({
+        tournament_id: tournament.id,
+        division_id: division.id,
+        key: "semifinals",
+        name: "Semifinals",
+        format_key: "single_elimination",
+        sequence: currentSequence++,
+        scoring_config: standardScoring as unknown as Json,
+        tiebreaker_config: [] as unknown as Json,
+        entrant_config: semiEntrantConfig as unknown as Json,
+      })
+      .select("id")
+      .single();
+
+    if (poolStageId && semis) {
+      for (const gName of poolNames) {
+        const gId = groupIdsByName.get(gName);
+        if (gId) {
+          await supabase.from("qualification_rule").insert({
+            from_stage_id: poolStageId,
+            from_group_id: gId,
+            method: "top_n",
+            value: advancePerPool,
+            to_stage_id: semis.id,
+          });
+        }
+      }
+    }
+
+    if (includeThirdPlace) {
+      await supabase.from("stage").insert({
+        tournament_id: tournament.id,
+        division_id: division.id,
+        key: "third_place",
+        name: "Third Place",
+        format_key: "single_elimination",
+        sequence: currentSequence++,
+        scoring_config: standardScoring as unknown as Json,
+        tiebreaker_config: [] as unknown as Json,
+        entrant_config: {
+          entrants: [
+            { match: 1, home: { kind: "match_outcome", stage: "semifinals", match: 1, outcome: "loser" }, away: { kind: "match_outcome", stage: "semifinals", match: 2, outcome: "loser" } },
+          ],
+        } as unknown as Json,
+      });
+    }
+
+    // Championship
+    await supabase.from("stage").insert({
+      tournament_id: tournament.id,
+      division_id: division.id,
+      key: "championship",
+      name: "Championship",
+      format_key: "single_elimination",
+      sequence: currentSequence++,
+      scoring_config: standardScoring as unknown as Json,
+      tiebreaker_config: [] as unknown as Json,
+      entrant_config: {
+        entrants: [
+          { match: 1, home: { kind: "match_outcome", stage: "semifinals", match: 1, outcome: "winner" }, away: { kind: "match_outcome", stage: "semifinals", match: 2, outcome: "winner" } },
+        ],
+      } as unknown as Json,
+    });
+  } else if (playoffFormat === "finals_only") {
+    let finalsEntrantConfig: Record<string, unknown> = {};
+    if (includePools && poolCount >= 2) {
+      finalsEntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 1 } },
+        ],
+      };
+    } else if (includePools && poolCount === 1 && advancePerPool >= 2) {
+      finalsEntrantConfig = {
+        entrants: [
+          { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
+        ],
+      };
+    }
+
+    const { data: finals } = await supabase
+      .from("stage")
+      .insert({
+        tournament_id: tournament.id,
+        division_id: division.id,
+        key: "championship",
+        name: "Championship",
+        format_key: "single_elimination",
+        sequence: currentSequence++,
+        scoring_config: standardScoring as unknown as Json,
+        tiebreaker_config: [] as unknown as Json,
+        entrant_config: finalsEntrantConfig as unknown as Json,
+      })
+      .select("id")
+      .single();
+
+    if (poolStageId && finals) {
+      for (const gName of poolNames) {
+        const gId = groupIdsByName.get(gName);
+        if (gId) {
+          await supabase.from("qualification_rule").insert({
+            from_stage_id: poolStageId,
+            from_group_id: gId,
+            method: "top_n",
+            value: 1,
+            to_stage_id: finals.id,
+          });
+        }
+      }
+    }
+  }
+
+  // Populate matches and bracket nodes immediately
+  await populateTournament(tournament.id).catch((err) => {
+    console.warn("populateTournament after configure stages non-fatal error:", err);
+  });
+
+  revalidatePath(`/admin/${slug}/setup/stages`);
+  revalidatePath(`/admin/${slug}/setup/groups`);
+  revalidatePath(`/admin/${slug}/setup/review`);
+  revalidatePath(`/admin/${slug}`);
+  revalidatePath(`/t/${slug}`);
+  revalidatePath(`/t/${slug}/bracket`);
+}
+
+/** Distributes teams in fair snake order across existing pools */
+export async function snakeSeedTeams(slug: string, tournamentId: string, stageId: string): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+
+  const [{ data: groups }, { data: teams }] = await Promise.all([
+    supabase.from("tournament_group").select("id, name").eq("stage_id", stageId).order("display_order"),
+    supabase.from("team").select("id, name, seed").eq("tournament_id", tournamentId).order("seed", { nullsFirst: false }).order("name"),
+  ]);
+
+  if (!groups || groups.length === 0) throw new Error("No pools found for this stage");
+  if (!teams || teams.length === 0) throw new Error("No teams to assign");
+
+  const numGroups = groups.length;
+  for (let i = 0; i < teams.length; i++) {
+    const cycle = Math.floor(i / numGroups);
+    const pos = i % numGroups;
+    const groupIndex = cycle % 2 === 0 ? pos : numGroups - 1 - pos;
+    const targetGroup = groups[groupIndex]!;
+
+    await supabase.from("team").update({ group_id: targetGroup.id }).eq("id", teams[i]!.id);
+  }
+
+  await populateTournament(tournamentId).catch((err) => {
+    console.warn("populateTournament after snakeSeedTeams non-fatal error:", err);
+  });
+
+  revalidatePath(`/admin/${slug}/setup/groups`);
+  revalidatePath(`/admin/${slug}/setup/review`);
+  revalidatePath(`/admin/${slug}`);
+  revalidatePath(`/admin/${slug}/matches`);
+  revalidatePath(`/t/${slug}`);
+  revalidatePath(`/t/${slug}/bracket`);
+  revalidatePath(`/t/${slug}/standings`);
+}
+
+/** Adds a new pool (e.g. Pool C) to an existing round-robin stage */
+export async function addPoolGroup(slug: string, stageId: string): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+
+  const { data: existing } = await supabase.from("tournament_group").select("name").eq("stage_id", stageId).order("display_order");
+  const nextOrder = existing?.length ?? 0;
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const name = alphabet[nextOrder] ?? `Pool ${nextOrder + 1}`;
+
+  const { error } = await supabase.from("tournament_group").insert({
+    stage_id: stageId,
+    name,
+    display_order: nextOrder,
+  });
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/${slug}/setup/groups`);
+}
+
+/** Removes a pool */
+export async function removePoolGroup(slug: string, groupId: string): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+
+  await supabase.from("team").update({ group_id: null }).eq("group_id", groupId);
+  const { error } = await supabase.from("tournament_group").delete().eq("id", groupId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/${slug}/setup/groups`);
 }
 
 

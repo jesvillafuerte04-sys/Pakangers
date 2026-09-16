@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
 export function Card({
   title,
@@ -6,7 +6,7 @@ export function Card({
   className = "",
   children,
   ...rest
-}: HTMLAttributes<HTMLDivElement> & { title?: string; accent?: boolean }) {
+}: Omit<HTMLAttributes<HTMLDivElement>, "title"> & { title?: ReactNode; accent?: boolean }) {
   return (
     <div
       className={`relative overflow-hidden rounded-2xl bg-[var(--surface-card)] p-6 shadow-[var(--shadow-md)] ${className}`}

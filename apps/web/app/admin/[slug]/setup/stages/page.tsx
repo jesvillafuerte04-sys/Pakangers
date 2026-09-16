@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
 
+import { StageConfigurator } from "./StageConfigurator";
+
 type ScoringConfig = { pointsToWin?: number; winBy?: string; bestOf?: number; scoringType?: string };
 
 export default async function SetupStagesPage({ params }: PageProps<"/admin/[slug]/setup/stages">) {
@@ -21,11 +23,22 @@ export default async function SetupStagesPage({ params }: PageProps<"/admin/[slu
     .order("sequence");
 
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-sm text-[var(--color-text-muted)]">
-        Pre-filled from the tournament&apos;s template. Editing stage configuration in the app comes in a later phase —
-        for now, changes to scoring or bracket wiring go through the database directly.
-      </p>
+    <div className="flex flex-col gap-6">
+      <StageConfigurator
+        slug={slug}
+        isDraft={tournament.status === "draft"}
+        currentStageCount={stages?.length ?? 0}
+      />
+
+      <div className="flex flex-col gap-3">
+        <h3 className="font-[family-name:var(--font-display)] text-sm font-bold uppercase tracking-wider text-[var(--color-navy)]">
+          Current Configured Stages ({stages?.length ?? 0})
+        </h3>
+        {(!stages || stages.length === 0) && (
+          <Card>
+            <p className="text-sm text-[var(--color-text-muted)]">No stages configured yet. Use the configurator above to set them up.</p>
+          </Card>
+        )}
       {stages?.map((stage) => {
         const scoring = (stage.scoring_config ?? {}) as ScoringConfig;
         return (
@@ -43,6 +56,7 @@ export default async function SetupStagesPage({ params }: PageProps<"/admin/[slu
           </Card>
         );
       })}
+      </div>
 
       <Card title="Save as template">
         <p className="mb-4 text-sm text-[var(--color-text-muted)]">
