@@ -44,7 +44,10 @@ export default async function PublicLandingPage({ params }: PageProps<"/t/[slug]
         </Card>
 
         {results.standings.map((g) => (
-          <Card key={`${g.stageKey}:${g.groupName}`} title={`${g.stageName} — ${g.groupName} — final standings`}>
+          <Card
+            key={`${g.stageKey}:${g.groupName}`}
+            title={`${g.groupName.startsWith("Bracket") ? g.groupName : `Bracket ${g.groupName}`} — final standings`}
+          >
             <ol className="flex flex-col gap-1">
               {g.standings.map((s) => (
                 <li key={s.entrantId} className="flex items-start justify-between gap-3 text-sm">
@@ -110,7 +113,9 @@ export default async function PublicLandingPage({ params }: PageProps<"/t/[slug]
           <div className="flex flex-col gap-2">
             {snapshot.standingsSnippet.map((s) => (
               <div key={`${s.stageName}:${s.groupName}`} className="flex items-start justify-between gap-3 text-sm">
-                <span className="whitespace-nowrap text-[var(--color-text-muted)]">{s.groupName} leads</span>
+                <span className="whitespace-nowrap text-[var(--color-text-muted)]">
+                  {s.groupName.startsWith("Bracket") ? s.groupName : `Bracket ${s.groupName}`} leads
+                </span>
                 <TeamLine display={s.topTeam} className="text-right" />
                 <span className="whitespace-nowrap text-[var(--color-text-muted)]">({s.topTeamRecord})</span>
               </div>

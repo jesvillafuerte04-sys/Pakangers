@@ -37,7 +37,7 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
         <Card key={`${g.stageKey}:${g.groupName}`}>
           <div className="mb-3 flex items-baseline justify-between gap-2">
             <h3 className="font-[family-name:var(--font-display)] text-xl font-bold uppercase text-[var(--color-navy)]">
-              {g.stageName} — {g.groupName}
+              {g.groupName.startsWith("Bracket") ? g.groupName : `Bracket ${g.groupName}`}
             </h3>
             {g.qualifyCount !== null && (
               <span className="whitespace-nowrap rounded-full bg-[var(--color-gold)] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-navy)]">

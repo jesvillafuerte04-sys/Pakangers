@@ -21,6 +21,10 @@ export type SchedulableMatch = {
   matchNumber: number;
   /** Already-played matches are never rescheduled. */
   isResolved?: boolean;
+  /** Optional group/bracket identifier. */
+  groupId?: string | null;
+  /** Optional group/bracket display order (0 for Bracket A, 1 for Bracket B, etc.). */
+  groupOrder?: number | null;
 };
 
 export type SchedulableCourt = {
@@ -170,19 +174,13 @@ export function detectScheduleConflicts(
  * two places at once and honours the rest setting. Already-resolved matches
  * are left alone -- you cannot reschedule something already played.
  */
-export function autoSchedule(
-  matches: SchedulableMatch[],
-  courts: SchedulableCourt[],
-  opts: ScheduleOptions = DEFAULT_SCHEDULE_OPTIONS,
+function autoScheduleGreedy(
+  pending: SchedulableMatch[],
+  usableCourts: SchedulableCourt[],
+  opts: ScheduleOptions,
+  startRound = 0,
 ): ScheduleAssignment[] {
-  const usableCourts = courts.filter((c) => c.isAvailable);
-  const pending = matches.filter((m) => !m.isResolved).sort(bySortOrder);
-
-  if (usableCourts.length === 0) {
-    return pending.map((m) => ({ matchId: m.id, courtId: null, round: null }));
-  }
-
-  // court id -> round -> taken, and entrant -> rounds already used.
+  const sorted = [...pending].sort(bySortOrder);
   const taken = new Map<string, Set<number>>(usableCourts.map((c) => [c.id, new Set<number>()]));
   const entrantRounds = new Map<string, number[]>();
 
@@ -193,10 +191,10 @@ export function autoSchedule(
 
   const assignments: ScheduleAssignment[] = [];
 
-  for (const m of pending) {
+  for (const m of sorted) {
     let placed = false;
 
-    for (let round = 0; !placed; round++) {
+    for (let round = startRound; !placed; round++) {
       for (const court of usableCourts) {
         if (taken.get(court.id)!.has(round)) continue;
         if (!restRespected(m.entrantIds, round)) continue;
@@ -213,9 +211,9 @@ export function autoSchedule(
       // Safety valve: with rest configured higher than the schedule can
       // satisfy, don't spin forever -- fall back to ignoring rest once we've
       // searched well past the theoretical minimum number of rounds.
-      if (!placed && round > pending.length + opts.minRestRounds + 1) {
+      if (!placed && round > startRound + sorted.length + opts.minRestRounds + 1) {
         const court = usableCourts[0]!;
-        let round2 = 0;
+        let round2 = startRound;
         while (taken.get(court.id)!.has(round2)) round2++;
         taken.get(court.id)!.add(round2);
         for (const id of m.entrantIds) {
@@ -225,6 +223,92 @@ export function autoSchedule(
         placed = true;
       }
     }
+  }
+
+  return assignments;
+}
+
+/**
+  * Assigns matches to courts.
+  * When matches have groupOrder/groupId information, it assigns 1 bracket per court
+  * in waves (e.g. Brackets A and B on Courts 1 and 2 until complete, then Brackets C and D
+  * on Courts 1 and 2), followed by knockout stages.
+  * When no group information is present, it uses greedy list scheduling.
+  */
+export function autoSchedule(
+  matches: SchedulableMatch[],
+  courts: SchedulableCourt[],
+  opts: ScheduleOptions = DEFAULT_SCHEDULE_OPTIONS,
+): ScheduleAssignment[] {
+  const usableCourts = courts.filter((c) => c.isAvailable);
+  const pending = matches.filter((m) => !m.isResolved);
+
+  if (usableCourts.length === 0) {
+    return pending.map((m) => ({ matchId: m.id, courtId: null, round: null }));
+  }
+
+  const hasGroupInfo = pending.some((m) => m.groupOrder !== undefined && m.groupOrder !== null);
+
+  if (!hasGroupInfo) {
+    return autoScheduleGreedy(pending, usableCourts, opts, 0);
+  }
+
+  // 1. Separate group matches from non-group (e.g. playoff/knockout) matches
+  const groupMatches = pending.filter((m) => m.groupOrder !== undefined && m.groupOrder !== null);
+  const nonGroupMatches = pending
+    .filter((m) => m.groupOrder === undefined || m.groupOrder === null)
+    .sort(bySortOrder);
+
+  const assignments: ScheduleAssignment[] = [];
+
+  // Group matches by groupOrder
+  const groupsMap = new Map<number, SchedulableMatch[]>();
+  for (const m of groupMatches) {
+    const ord = m.groupOrder!;
+    const list = groupsMap.get(ord) ?? [];
+    list.push(m);
+    groupsMap.set(ord, list);
+  }
+
+  const sortedGroupOrders = [...groupsMap.keys()].sort((a, b) => a - b);
+  const numCourts = usableCourts.length;
+  let currentWaveStartRound = 0;
+
+  // Process groups in waves of size numCourts
+  for (let i = 0; i < sortedGroupOrders.length; i += numCourts) {
+    const waveGroupOrders = sortedGroupOrders.slice(i, i + numCourts);
+    let maxRoundsInWave = 0;
+
+    for (let cIdx = 0; cIdx < waveGroupOrders.length; cIdx++) {
+      const gOrder = waveGroupOrders[cIdx]!;
+      const court = usableCourts[cIdx]!;
+      const gMatches = (groupsMap.get(gOrder) ?? []).sort((a, b) => a.matchNumber - b.matchNumber);
+
+      maxRoundsInWave = Math.max(maxRoundsInWave, gMatches.length);
+
+      for (let mIdx = 0; mIdx < gMatches.length; mIdx++) {
+        const m = gMatches[mIdx]!;
+        assignments.push({
+          matchId: m.id,
+          courtId: court.id,
+          round: currentWaveStartRound + mIdx,
+        });
+      }
+    }
+
+    currentWaveStartRound += maxRoundsInWave;
+  }
+
+  // Schedule any remaining non-group matches (e.g. Semifinals, Finals)
+  // starting at currentWaveStartRound
+  if (nonGroupMatches.length > 0) {
+    const nonGroupAssignments = autoScheduleGreedy(
+      nonGroupMatches,
+      usableCourts,
+      opts,
+      currentWaveStartRound,
+    );
+    assignments.push(...nonGroupAssignments);
   }
 
   return assignments;

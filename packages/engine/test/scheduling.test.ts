@@ -268,3 +268,94 @@ test('warns about an unscheduled match, but not about a played one', () => {
   assert.equal(unscheduled[0]!.entityRef?.id, 'm1');
   assert.equal(unscheduled[0]!.severity, 'warning');
 });
+
+test('autoSchedule wave-based: assigns 1 bracket per court, running to completion before next wave (2 courts, 4 brackets)', () => {
+  // 4 brackets: A (ord 0), B (ord 1), C (ord 2), D (ord 3) with 6 matches each
+  const poolMatches: SchedulableMatch[] = [];
+  let idCounter = 1;
+  for (let grp = 0; grp < 4; grp++) {
+    for (let m = 1; m <= 6; m++) {
+      poolMatches.push({
+        id: `m${idCounter++}`,
+        entrantIds: [`t_${grp}_${m}a`, `t_${grp}_${m}b`],
+        stageSequence: 1,
+        matchNumber: m,
+        groupOrder: grp,
+      });
+    }
+  }
+
+  // 2 knockout matches (stageSequence: 2, no groupOrder)
+  const koMatches: SchedulableMatch[] = [
+    { id: 'ko1', entrantIds: ['t1', 't2'], stageSequence: 2, matchNumber: 1 },
+    { id: 'ko2', entrantIds: ['t3', 't4'], stageSequence: 2, matchNumber: 2 },
+  ];
+
+  const cs = courts(2);
+  const assignments = autoSchedule([...poolMatches, ...koMatches], cs);
+
+  // Bracket A (grp 0) should be entirely on court 1, rounds 0..5
+  const grpAMatches = assignments.filter((a) => {
+    const m = poolMatches.find((x) => x.id === a.matchId);
+    return m?.groupOrder === 0;
+  });
+  assert.equal(grpAMatches.length, 6);
+  assert.ok(grpAMatches.every((a) => a.courtId === 'c1'));
+  assert.deepEqual(grpAMatches.map((a) => a.round).sort((x, y) => x! - y!), [0, 1, 2, 3, 4, 5]);
+
+  // Bracket B (grp 1) should be entirely on court 2, rounds 0..5
+  const grpBMatches = assignments.filter((a) => {
+    const m = poolMatches.find((x) => x.id === a.matchId);
+    return m?.groupOrder === 1;
+  });
+  assert.equal(grpBMatches.length, 6);
+  assert.ok(grpBMatches.every((a) => a.courtId === 'c2'));
+  assert.deepEqual(grpBMatches.map((a) => a.round).sort((x, y) => x! - y!), [0, 1, 2, 3, 4, 5]);
+
+  // Wave 2: Bracket C (grp 2) on court 1, rounds 6..11
+  const grpCMatches = assignments.filter((a) => {
+    const m = poolMatches.find((x) => x.id === a.matchId);
+    return m?.groupOrder === 2;
+  });
+  assert.equal(grpCMatches.length, 6);
+  assert.ok(grpCMatches.every((a) => a.courtId === 'c1'));
+  assert.deepEqual(grpCMatches.map((a) => a.round).sort((x, y) => x! - y!), [6, 7, 8, 9, 10, 11]);
+
+  // Wave 2: Bracket D (grp 3) on court 2, rounds 6..11
+  const grpDMatches = assignments.filter((a) => {
+    const m = poolMatches.find((x) => x.id === a.matchId);
+    return m?.groupOrder === 3;
+  });
+  assert.equal(grpDMatches.length, 6);
+  assert.ok(grpDMatches.every((a) => a.courtId === 'c2'));
+  assert.deepEqual(grpDMatches.map((a) => a.round).sort((x, y) => x! - y!), [6, 7, 8, 9, 10, 11]);
+
+  // Knockout matches should only begin at round 12 or later
+  const koAssignments = assignments.filter((a) => a.matchId === 'ko1' || a.matchId === 'ko2');
+  assert.equal(koAssignments.length, 2);
+  assert.ok(koAssignments.every((a) => a.round! >= 12));
+});
+
+test('autoSchedule wave-based: 1 court runs Bracket A to completion before starting Bracket B', () => {
+  const matches: SchedulableMatch[] = [
+    { id: 'a1', entrantIds: ['1', '2'], stageSequence: 1, matchNumber: 1, groupOrder: 0 },
+    { id: 'a2', entrantIds: ['3', '4'], stageSequence: 1, matchNumber: 2, groupOrder: 0 },
+    { id: 'b1', entrantIds: ['5', '6'], stageSequence: 1, matchNumber: 1, groupOrder: 1 },
+    { id: 'b2', entrantIds: ['7', '8'], stageSequence: 1, matchNumber: 2, groupOrder: 1 },
+  ];
+  const cs = courts(1);
+  const assignments = autoSchedule(matches, cs);
+
+  assert.equal(assignments.length, 4);
+  assert.ok(assignments.every((a) => a.courtId === 'c1'));
+  // Bracket A must run first in rounds 0 and 1
+  const a1 = assignments.find((x) => x.matchId === 'a1')!;
+  const a2 = assignments.find((x) => x.matchId === 'a2')!;
+  assert.equal(a1.round, 0);
+  assert.equal(a2.round, 1);
+  // Bracket B must run after Bracket A finishes (rounds 2 and 3)
+  const b1 = assignments.find((x) => x.matchId === 'b1')!;
+  const b2 = assignments.find((x) => x.matchId === 'b2')!;
+  assert.equal(b1.round, 2);
+  assert.equal(b2.round, 3);
+});

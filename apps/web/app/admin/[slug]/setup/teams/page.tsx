@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { formatTeamDisplay } from "@/lib/team-display";
 import { PlayerAvatar, TeamAvatarGroup } from "@/components/PlayerAvatar";
+import { TeamNameEditor } from "../groups/TeamNameEditor";
 
 export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug]/setup/teams">) {
   const { slug } = await params;
@@ -133,9 +134,14 @@ export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug
                 <div className="flex items-center gap-2.5">
                   <TeamAvatarGroup players={memberPlayers} size="sm" />
                   <div>
-                    <h3 className="font-[family-name:var(--font-display)] text-lg font-bold uppercase text-[var(--color-navy)]">
-                      {display.header}
-                    </h3>
+                    <TeamNameEditor
+                      slug={slug}
+                      teamId={team.id}
+                      initialName={team.name}
+                      displayHeader={display.header}
+                      className="font-[family-name:var(--font-display)] text-lg font-bold uppercase text-[var(--color-navy)]"
+                      isDraft={tournament.status !== "completed"}
+                    />
                     {display.subtext && <p className="text-xs text-[var(--color-text-muted)]">{display.subtext}</p>}
                   </div>
                 </div>

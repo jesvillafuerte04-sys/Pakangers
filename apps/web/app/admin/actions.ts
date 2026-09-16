@@ -119,10 +119,17 @@ export async function createTournament(formData: FormData): Promise<void> {
 
   const supabase = getServiceSupabase();
   const slug = slugify(name);
+  const { data: defaultRuleSet } = await supabase.from("rule_set").select("id").limit(1).maybeSingle();
 
   const { data: tournament, error } = await supabase
     .from("tournament")
-    .insert({ name, slug, status: "draft", created_from_template_id: templateId || null })
+    .insert({
+      name,
+      slug,
+      status: "draft",
+      created_from_template_id: templateId || null,
+      rule_set_id: defaultRuleSet?.id ?? null,
+    })
     .select("id, slug")
     .single();
   if (error || !tournament) throw new Error(error?.message ?? "Failed to create tournament");

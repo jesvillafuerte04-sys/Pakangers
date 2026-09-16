@@ -8,9 +8,11 @@ interface Props {
   teamId: string;
   initialName: string;
   isDraft: boolean;
+  displayHeader?: string;
+  className?: string;
 }
 
-export function TeamNameEditor({ slug, teamId, initialName, isDraft }: Props) {
+export function TeamNameEditor({ slug, teamId, initialName, isDraft, displayHeader, className }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(initialName);
   const [isPending, startTransition] = useTransition();
@@ -43,7 +45,7 @@ export function TeamNameEditor({ slug, teamId, initialName, isDraft }: Props) {
   };
 
   if (!isDraft) {
-    return <span className="text-sm font-medium text-[var(--color-text-main)]">{initialName}</span>;
+    return <span className={className ?? "text-sm font-medium text-[var(--color-text-main)]"}>{displayHeader ?? initialName}</span>;
   }
 
   if (isEditing) {
@@ -83,11 +85,11 @@ export function TeamNameEditor({ slug, teamId, initialName, isDraft }: Props) {
 
   return (
     <div className="flex items-center gap-1.5 group">
-      <span className="text-sm font-medium text-[var(--color-text-main)]">{initialName}</span>
+      <span className={className ?? "text-sm font-medium text-[var(--color-text-main)]"}>{displayHeader ?? initialName}</span>
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className="opacity-40 transition group-hover:opacity-100 hover:text-[var(--color-navy)] text-[11px]"
+        className="opacity-40 transition group-hover:opacity-100 hover:text-[var(--color-navy)] text-xs p-0.5"
         title="Edit team name"
       >
         ✏️

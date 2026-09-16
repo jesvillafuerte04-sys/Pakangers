@@ -131,27 +131,40 @@ export async function getSchedulableInputs(tournamentId: string): Promise<{
   courts: SchedulableCourt[];
 }> {
   const supabase = getServiceSupabase();
-  const [{ data: courtRows }, { data: matchRows }, { data: stages }] = await Promise.all([
+  const [{ data: courtRows }, { data: matchRows }, { data: stages }, { data: groups }, { data: teams }] = await Promise.all([
     supabase.from("court").select("id, name, is_available").eq("tournament_id", tournamentId).order("name"),
     supabase
       .from("match")
-      .select("id, match_number, status, stage_id, home_team_id, away_team_id")
+      .select("id, match_number, status, stage_id, group_id, home_team_id, away_team_id")
       .eq("tournament_id", tournamentId),
     supabase.from("stage").select("id, sequence").eq("tournament_id", tournamentId),
+    supabase.from("tournament_group").select("id, display_order").in("stage_id", (await supabase.from("stage").select("id").eq("tournament_id", tournamentId)).data?.map(s => s.id) ?? []),
+    supabase.from("team").select("id, group_id").eq("tournament_id", tournamentId),
   ]);
 
   const seqByStage = new Map((stages ?? []).map((s) => [s.id, s.sequence]));
+  const groupOrderByGroupId = new Map((groups ?? []).map((g) => [g.id, g.display_order]));
+  const teamGroupIdById = new Map((teams ?? []).filter((t) => t.group_id).map((t) => [t.id, t.group_id!]));
 
   return {
     courts: (courtRows ?? []).map((c) => ({ id: c.id, name: c.name, isAvailable: c.is_available })),
     matches: (matchRows ?? [])
       .filter((m) => m.home_team_id)
-      .map((m) => ({
-        id: m.id,
-        entrantIds: [m.home_team_id, m.away_team_id].filter((id): id is string => Boolean(id)),
-        stageSequence: seqByStage.get(m.stage_id) ?? 0,
-        matchNumber: m.match_number,
-        isResolved: RESOLVED.includes(m.status),
-      })),
+      .map((m) => {
+        const effectiveGroupId = m.group_id
+          || (m.home_team_id ? teamGroupIdById.get(m.home_team_id) : null)
+          || (m.away_team_id ? teamGroupIdById.get(m.away_team_id) : null)
+          || null;
+        const groupOrder = effectiveGroupId ? groupOrderByGroupId.get(effectiveGroupId) ?? null : null;
+        return {
+          id: m.id,
+          entrantIds: [m.home_team_id, m.away_team_id].filter((id): id is string => Boolean(id)),
+          stageSequence: seqByStage.get(m.stage_id) ?? 0,
+          matchNumber: m.match_number,
+          isResolved: RESOLVED.includes(m.status),
+          groupId: effectiveGroupId,
+          groupOrder,
+        };
+      }),
   };
 }
