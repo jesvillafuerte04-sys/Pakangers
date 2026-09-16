@@ -85,6 +85,20 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
       ? 2
       : 0;
 
+  const isPoolCountAllowed = (num: number, format: PlayoffFormat) => {
+    if (format === "none") return true;
+    if (format === "round_of_16") return num === 8;
+    if (format === "quarterfinals") return num === 4;
+    if (format === "semifinals") return num === 2 || num === 4;
+    if (format === "finals_only") return num === 1 || num === 2;
+    return true;
+  };
+
+  const isAdvanceAllowed = (adv: number) => {
+    if (playoffFormat === "none") return true;
+    return poolCount * adv === totalKnockoutSlots;
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (currentStageCount > 0 && !confirmOpen) {
@@ -217,21 +231,26 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
                   Number of Pools
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {[1, 2, 3, 4, 8, 16].map((num) => (
-                    <button
-                      type="button"
-                      key={num}
-                      onClick={() => handlePoolCountChange(num)}
-                      disabled={!isDraft || isPending}
-                      className={`flex-1 min-w-[48px] rounded-lg border-2 py-2 text-center text-sm font-bold transition ${
-                        poolCount === num
-                          ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-gold)]"
-                          : "border-[var(--border-subtle)] bg-white text-[var(--color-navy)] hover:bg-gray-50"
-                      }`}
-                    >
-                      {num}
-                    </button>
-                  ))}
+                  {[1, 2, 3, 4, 8].map((num) => {
+                    const allowed = isPoolCountAllowed(num, playoffFormat);
+                    return (
+                      <button
+                        type="button"
+                        key={num}
+                        onClick={() => handlePoolCountChange(num)}
+                        disabled={!isDraft || isPending || !allowed}
+                        className={`flex-1 min-w-[48px] rounded-lg border-2 py-2 text-center text-sm font-bold transition ${
+                          !allowed
+                            ? "border-gray-200 bg-gray-100 text-gray-400 opacity-40 cursor-not-allowed"
+                            : poolCount === num
+                            ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-gold)] shadow-xs"
+                            : "border-[var(--border-subtle)] bg-white text-[var(--color-navy)] hover:bg-gray-50"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -241,21 +260,26 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
                     Advance per Pool ({poolCount * advancePerPool} Total advancing)
                   </label>
                   <div className="flex gap-2">
-                    {[1, 2].map((adv) => (
-                      <button
-                        type="button"
-                        key={adv}
-                        onClick={() => setAdvancePerPool(adv)}
-                        disabled={!isDraft || isPending}
-                        className={`flex-1 rounded-lg border-2 py-2 text-center text-sm font-bold transition ${
-                          advancePerPool === adv
-                            ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-gold)]"
-                            : "border-[var(--border-subtle)] bg-white text-[var(--color-navy)] hover:bg-gray-50"
-                        }`}
-                      >
-                        Top {adv} {adv === 1 ? "(Winner only)" : "(1st & 2nd)"}
-                      </button>
-                    ))}
+                    {[1, 2].map((adv) => {
+                      const advAllowed = isAdvanceAllowed(adv);
+                      return (
+                        <button
+                          type="button"
+                          key={adv}
+                          onClick={() => setAdvancePerPool(adv)}
+                          disabled={!isDraft || isPending || !advAllowed}
+                          className={`flex-1 rounded-lg border-2 py-2 text-center text-sm font-bold transition ${
+                            !advAllowed
+                              ? "border-gray-200 bg-gray-100 text-gray-400 opacity-40 cursor-not-allowed"
+                              : advancePerPool === adv
+                              ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-gold)] shadow-xs"
+                              : "border-[var(--border-subtle)] bg-white text-[var(--color-navy)] hover:bg-gray-50"
+                          }`}
+                        >
+                          Top {adv}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -334,19 +358,14 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
           </div>
         )}
 
-        {/* 4. Match Scoring Presets & Customizer */}
+        {/* 4. Match Scoring Customizer */}
         <div className="flex flex-col gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-sunken)] p-4">
           <div className="flex flex-col gap-1">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
-                2. Match Scoring Rules by Round
-              </label>
-              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-                Preset Active: Semis Sudden Death · Finals Win by 2 (Deuce)
-              </span>
-            </div>
+            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
+              2. Match Scoring Rules by Round
+            </label>
             <p className="text-xs text-[var(--color-text-muted)]">
-              Defaults to 15 pts sudden death for Pools & Semis, and 15 pts win-by-two for Finals & 3rd Place. You can manually adjust the points and win condition for each round below.
+              Configure points to win and win conditions for each tournament round.
             </p>
           </div>
 
@@ -494,27 +513,31 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
           <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
             ⚡ Resulting Tournament Flow
           </span>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold">
+          <div className="mt-3 flex flex-col items-center gap-1.5 text-xs font-semibold">
             {includePools && (
               <>
-                <span className="rounded-lg bg-[var(--color-navy)] px-2.5 py-1 text-[var(--color-gold)]">
-                  {poolLettersDisplay} (Round-Robin · Top {advancePerPool} advance{playoffFormat !== "none" ? ` = ${poolCount * advancePerPool} teams` : ""})
-                </span>
-                {playoffFormat !== "none" && <span className="text-[var(--color-navy)] font-black">➔</span>}
+                <div className="w-full rounded-lg bg-[var(--color-navy)] px-3 py-2 text-center text-[var(--color-gold)] shadow-xs">
+                  {poolLettersDisplay} · Round-Robin (Top {advancePerPool} advance{playoffFormat !== "none" ? ` = ${poolCount * advancePerPool} teams` : ""})
+                </div>
+                {playoffFormat !== "none" && <span className="text-sm font-black text-[var(--color-navy)]">↓</span>}
               </>
             )}
 
             {playoffFormat === "round_of_16" && (
               <>
-                <span className="rounded-lg bg-blue-700 px-2.5 py-1 text-white">Round of 16 (8 matches)</span>
-                <span className="text-[var(--color-navy)] font-black">➔</span>
+                <div className="w-full rounded-lg bg-blue-700 px-3 py-2 text-center text-white shadow-xs">
+                  Round of 16 (8 matches)
+                </div>
+                <span className="text-sm font-black text-[var(--color-navy)]">↓</span>
               </>
             )}
 
             {(playoffFormat === "round_of_16" || playoffFormat === "quarterfinals") && (
               <>
-                <span className="rounded-lg bg-indigo-700 px-2.5 py-1 text-white">Quarterfinals (4 matches)</span>
-                <span className="text-[var(--color-navy)] font-black">➔</span>
+                <div className="w-full rounded-lg bg-indigo-700 px-3 py-2 text-center text-white shadow-xs">
+                  Quarterfinals (4 matches)
+                </div>
+                <span className="text-sm font-black text-[var(--color-navy)]">↓</span>
               </>
             )}
 
@@ -522,19 +545,21 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
               playoffFormat === "quarterfinals" ||
               playoffFormat === "semifinals") && (
               <>
-                <span className="rounded-lg bg-purple-700 px-2.5 py-1 text-white">Semifinals (2 matches)</span>
-                <span className="text-[var(--color-navy)] font-black">➔</span>
+                <div className="w-full rounded-lg bg-purple-700 px-3 py-2 text-center text-white shadow-xs">
+                  Semifinals (2 matches)
+                </div>
+                <span className="text-sm font-black text-[var(--color-navy)]">↓</span>
               </>
             )}
 
             {playoffFormat !== "none" && (
-              <span className="rounded-lg bg-amber-600 px-2.5 py-1 text-white">
+              <div className="w-full rounded-lg bg-amber-600 px-3 py-2 text-center text-white shadow-xs">
                 Championship {includeThirdPlace && "& 3rd Place Match"}
-              </span>
+              </div>
             )}
           </div>
 
-          <p className="mt-2.5 text-xs text-[var(--color-text-muted)]">
+          <p className="mt-3 border-t border-[var(--color-gold)]/30 pt-2 text-center text-xs text-[var(--color-text-muted)]">
             Scoring: Pools ({poolPointsToWin} pts {poolWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Semis ({semisPointsToWin} pts {semisWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Finals & 3rd ({finalsPointsToWin} pts {finalsWinBy === "win_by_two" ? "win by 2 deuce" : "sudden death"}) · {scoringType === "side_out" ? "Side-out" : "Rally"} · {bestOf === 1 ? "1 game" : "Best of 3"}
           </p>
         </div>
@@ -562,14 +587,9 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
         )}
 
         {!confirmOpen && (
-          <div className="flex flex-col gap-2">
-            <Button type="submit" size="lg" disabled={!isDraft || isPending} fullWidth>
-              {isPending ? "Configuring Stages..." : "⚡ Generate & Apply Stage Configuration"}
-            </Button>
-            <p className="text-center text-[11px] text-[var(--color-text-muted)]">
-              ℹ️ <strong>What this button does:</strong> Creates the tournament structure in the database — builds pool groups (Pools A–H), sets advancement rules (Top 1 or Top 2), generates playoff brackets with crossover pairings (e.g. A1 vs H2), and attaches your scoring rules to every round.
-            </p>
-          </div>
+          <Button type="submit" size="lg" disabled={!isDraft || isPending} fullWidth>
+            {isPending ? "Configuring Stages..." : "⚡ Generate & Apply Stage Configuration"}
+          </Button>
         )}
       </form>
     </div>
