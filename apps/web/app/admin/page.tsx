@@ -68,7 +68,7 @@ export default async function AdminHomePage() {
               <option value="">Blank tournament</option>
               {templates?.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.name.replace(/Pools/gi, "Brackets").replace(/Pool/gi, "Bracket")}
+                  {t.name}
                 </option>
               ))}
             </select>

@@ -102,6 +102,17 @@ export const getScheduleView = cache(async (tournamentId: string, scheduleConfig
   const TBD: TeamDisplay = { header: "TBD", subtext: null };
   const seqOf = (stageId: string) => stageById.get(stageId)?.sequence ?? 0;
 
+  const allOrdered = [...(matchRows ?? [])].sort(
+    (a, b) =>
+      seqOf(a.stage_id) - seqOf(b.stage_id) ||
+      (a.group_id ?? "").localeCompare(b.group_id ?? "") ||
+      a.match_number - b.match_number,
+  );
+  const continuousNumberByMatchId = new Map<string, number>();
+  allOrdered.forEach((m, idx) => {
+    continuousNumberByMatchId.set(m.id, idx + 1);
+  });
+
   const rows: ScheduleRow[] = [...playable]
     .sort(
       (a, b) =>
@@ -109,18 +120,26 @@ export const getScheduleView = cache(async (tournamentId: string, scheduleConfig
         seqOf(a.stage_id) - seqOf(b.stage_id) ||
         a.match_number - b.match_number,
     )
-    .map((m) => ({
-      matchId: m.id,
-      matchNumber: m.match_number,
-      stageName: stageById.get(m.stage_id)?.name ?? "",
-      groupName: m.group_id ? groupNameById.get(m.group_id) ?? null : null,
-      home: m.home_team_id ? teamDisplayById.get(m.home_team_id) ?? TBD : TBD,
-      away: m.away_team_id ? teamDisplayById.get(m.away_team_id) ?? TBD : { header: "Bye", subtext: null },
-      courtId: m.court_id,
-      round: m.display_order,
-      isResolved: RESOLVED.includes(m.status),
-      issues: issuesByMatch.get(m.id) ?? [],
-    }));
+    .map((m) => {
+      const rawStage = stageById.get(m.stage_id)?.name ?? "";
+      const cleanStage =
+        rawStage.toLowerCase() === "third_place" || rawStage.toLowerCase() === "third place"
+          ? "Fight for Third"
+          : rawStage;
+
+      return {
+        matchId: m.id,
+        matchNumber: continuousNumberByMatchId.get(m.id) ?? m.match_number,
+        stageName: cleanStage,
+        groupName: m.group_id ? groupNameById.get(m.group_id) ?? null : null,
+        home: m.home_team_id ? teamDisplayById.get(m.home_team_id) ?? TBD : TBD,
+        away: m.away_team_id ? teamDisplayById.get(m.away_team_id) ?? TBD : { header: "Bye", subtext: null },
+        courtId: m.court_id,
+        round: m.display_order,
+        isResolved: RESOLVED.includes(m.status),
+        issues: issuesByMatch.get(m.id) ?? [],
+      };
+    });
 
   return { courts, rows, options, generalIssues };
 });

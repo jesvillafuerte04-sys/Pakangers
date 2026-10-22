@@ -120,10 +120,10 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   const poolLettersDisplay =
     poolCount === 1
-      ? "Bracket A"
+      ? "Pool A"
       : poolCount <= 4
-      ? alphabet.slice(0, poolCount).map((l) => `Bracket ${l}`).join(" & ")
-      : `Brackets A – ${alphabet[poolCount - 1]} (${poolCount} Brackets)`;
+      ? alphabet.slice(0, poolCount).map((l) => `Pool ${l}`).join(" & ")
+      : `Pools A – ${alphabet[poolCount - 1]} (${poolCount} Pools)`;
 
   return (
     <div className="rounded-2xl border-2 border-[var(--color-navy)] bg-white p-5 shadow-sm md:p-6">
@@ -169,11 +169,11 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
           </label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {[
-              { id: "round_of_16", label: "Round of 16 (Top 16)", desc: "16 teams · 8 Brackets (Top 2)" },
-              { id: "quarterfinals", label: "Quarterfinals (Top 8)", desc: "8 teams · 4 Brackets (Top 2)" },
-              { id: "semifinals", label: "Semifinals (Top 4)", desc: "4 teams · 2 Brackets (Top 2) or 4 Brackets (Top 1)" },
+              { id: "round_of_16", label: "Round of 16 (Top 16)", desc: "16 teams · 8 Pools (Top 2)" },
+              { id: "quarterfinals", label: "Quarterfinals (Top 8)", desc: "8 teams · 4 Pools (Top 2)" },
+              { id: "semifinals", label: "Semifinals (Top 4)", desc: "4 teams · 2 Pools (Top 2) or 4 Pools (Top 1)" },
               { id: "finals_only", label: "Championship Only", desc: "Top 2 teams · 1 final match" },
-              { id: "none", label: "Pure Round Robin", desc: "Brackets only · No knockout bracket" },
+              { id: "none", label: "Pure Round Robin", desc: "Pools only · No knockout stage" },
             ].map((opt) => {
               const active = playoffFormat === opt.id;
               return (
@@ -200,13 +200,13 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
           </div>
         </div>
 
-        {/* 2. Bracket Stage Options */}
+        {/* 2. Pool Stage Options */}
         <div className="flex flex-col gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-sunken)] p-4">
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-[var(--color-navy)]">Include Round-Robin Bracket Stage</span>
+              <span className="text-sm font-bold text-[var(--color-navy)]">Include Round-Robin Pool Stage</span>
               <span className="text-xs text-[var(--color-text-muted)]">
-                Teams play preliminary matches inside brackets before advancing to the knockout round.
+                Teams play preliminary matches inside pools before advancing to the knockout round.
               </span>
             </div>
             <label className="relative inline-flex cursor-pointer items-center">
@@ -225,7 +225,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
             <div className="mt-2 grid grid-cols-1 gap-4 pt-3 border-t border-[var(--border-subtle)] sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
-                  Number of Brackets
+                  Number of Pools
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {[1, 2, 4, 8].map((num) => {
@@ -254,7 +254,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
               {playoffFormat !== "none" && (
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
-                    Advance per Bracket ({poolCount * advancePerPool} Teams)
+                    Advance per Pool ({poolCount * advancePerPool} Teams)
                   </label>
                   <div className="flex gap-2">
                     {[1, 2].map((adv) => {
@@ -290,7 +290,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
             <div className="flex flex-col">
               <span className="text-sm font-bold text-[var(--color-navy)]">Playoff Crossover Pairing Style</span>
               <span className="text-xs text-[var(--color-text-muted)]">
-                Choose how advancing teams from different brackets match up in the first playoff round.
+                Choose how advancing teams from different pools match up in the first playoff round.
               </span>
             </div>
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -305,7 +305,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
                 }`}
               >
                 <span className={`text-sm font-bold ${crossoverStyle === "opposite" ? "text-[var(--color-gold)]" : "text-[var(--color-navy)]"}`}>
-                  ⚡ Opposite Brackets ({poolCount >= 8 ? "A1 vs H2" : "A1 vs D2"})
+                  ⚡ Opposite Pools ({poolCount >= 8 ? "A1 vs H2" : "A1 vs D2"})
                 </span>
                 <span className={`mt-0.5 text-xs ${crossoverStyle === "opposite" ? "text-gray-200" : "text-[var(--color-text-muted)]"}`}>
                   Local standard: Top seeds face the furthest runner-up ({poolCount >= 8 ? "A1 vs H2, B1 vs G2, C1 vs F2, D1 vs E2" : "A1 vs D2, B1 vs C2"}).
@@ -323,7 +323,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
                 }`}
               >
                 <span className={`text-sm font-bold ${crossoverStyle === "adjacent" ? "text-[var(--color-gold)]" : "text-[var(--color-navy)]"}`}>
-                  Adjacent Brackets (A1 vs B2)
+                  Adjacent Pools (A1 vs B2)
                 </span>
                 <span className={`mt-0.5 text-xs ${crossoverStyle === "adjacent" ? "text-gray-200" : "text-[var(--color-text-muted)]"}`}>
                   Standard consecutive pairing (A1 vs B2, C1 vs D2, etc.).
@@ -367,11 +367,11 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
           </div>
 
           <div className="grid grid-cols-1 gap-3 pt-1 md:grid-cols-3">
-            {/* Round 1: Brackets & Early Knockout */}
+            {/* Round 1: Pools & Early Knockout */}
             <div className="flex flex-col gap-2.5 rounded-xl border border-[var(--border-subtle)] bg-white p-3.5 shadow-xs">
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
                 <span className="text-xs font-bold text-[var(--color-navy)]">
-                  {includePools ? "Brackets & Early Knockout" : "Early Knockout (R16, QF)"}
+                  {includePools ? "Pools & Early Knockout" : "Early Knockout (R16, QF)"}
                 </span>
                 <span className="rounded-full bg-[var(--surface-sunken)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-navy)]">
                   Rounds 1–2
@@ -557,7 +557,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
           </div>
 
           <p className="mt-3 border-t border-[var(--border-subtle)] pt-2 text-center text-xs text-[var(--color-text-muted)]">
-            Scoring: Brackets ({poolPointsToWin} pts {poolWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Semis ({semisPointsToWin} pts {semisWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Finals & 3rd ({finalsPointsToWin} pts {finalsWinBy === "win_by_two" ? "win by 2 deuce" : "sudden death"}) · {scoringType === "side_out" ? "Side-out" : "Rally"} · {bestOf === 1 ? "1 game" : "Best of 3"}
+            Scoring: Pools ({poolPointsToWin} pts {poolWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Semis ({semisPointsToWin} pts {semisWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Finals & 3rd ({finalsPointsToWin} pts {finalsWinBy === "win_by_two" ? "win by 2 deuce" : "sudden death"}) · {scoringType === "side_out" ? "Side-out" : "Rally"} · {bestOf === 1 ? "1 game" : "Best of 3"}
           </p>
         </div>
 

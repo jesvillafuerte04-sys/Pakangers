@@ -915,11 +915,11 @@ export async function configureTournamentStages(slug: string, formData: FormData
         tournament_id: tournament.id,
         division_id: division.id,
         key: "pools",
-        name: "Bracket",
+        name: "Pool Stage",
         format_key: "round_robin",
         sequence: currentSequence++,
         scoring_config: poolScoring as unknown as Json,
-        tiebreaker_config: ["match_wins", "point_differential", "points_scored"] as unknown as Json,
+        tiebreaker_config: ["match_wins", "head_to_head", "point_differential", "points_scored"] as unknown as Json,
       })
       .select("id")
       .single();
@@ -1119,7 +1119,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         tournament_id: tournament.id,
         division_id: division.id,
         key: "third_place",
-        name: "Third Place",
+        name: "Fight for Third",
         format_key: "single_elimination",
         sequence: currentSequence++,
         scoring_config: finalsScoring as unknown as Json,
@@ -1265,7 +1265,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         tournament_id: tournament.id,
         division_id: division.id,
         key: "third_place",
-        name: "Third Place",
+        name: "Fight for Third",
         format_key: "single_elimination",
         sequence: currentSequence++,
         scoring_config: finalsScoring as unknown as Json,
@@ -1365,7 +1365,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         tournament_id: tournament.id,
         division_id: division.id,
         key: "third_place",
-        name: "Third Place",
+        name: "Fight for Third",
         format_key: "single_elimination",
         sequence: currentSequence++,
         scoring_config: finalsScoring as unknown as Json,
@@ -1565,7 +1565,7 @@ export async function setBracketCount(slug: string, stageId: string, targetCount
   if (currentGroups.length < targetCount) {
     // Add missing brackets
     for (let i = currentGroups.length; i < targetCount; i++) {
-      const name = alphabet[i] ?? `Bracket ${i + 1}`;
+      const name = alphabet[i] ?? `Pool ${i + 1}`;
       const { error: insErr } = await supabase.from("tournament_group").insert({
         stage_id: stageId,
         name,

@@ -10,6 +10,8 @@ export function StandingsRow({
   team,
   unresolvedTie,
   isQualifying,
+  advancementReason,
+  tiebreakerReason,
   wins,
   losses,
   pointDifferential,
@@ -21,6 +23,8 @@ export function StandingsRow({
   team: TeamDisplay;
   unresolvedTie: boolean;
   isQualifying: boolean;
+  advancementReason?: string | null;
+  tiebreakerReason?: string | null;
   wins: number;
   losses: number;
   pointDifferential: number;
@@ -47,14 +51,26 @@ export function StandingsRow({
           </span>
           {isQualifying && <span className="h-0.5 w-4 rounded-full bg-[var(--color-gold)]" />}
         </span>
-        <span className="flex flex-1 flex-col gap-1">
+        <span className="flex flex-1 flex-col gap-1 min-w-0">
           <TeamLine display={team} variant={isQualifying ? "light" : "dark"} />
           {isQualifying && (
-            <span className="w-fit rounded-full bg-[var(--color-gold)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-navy)]">
-              Advancing
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="w-fit rounded-full bg-[var(--color-gold)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-navy)]">
+                Advancing
+              </span>
+              {advancementReason && (
+                <span className="text-[10px] font-medium text-[var(--color-gold)] truncate max-w-[220px] sm:max-w-none">
+                  {advancementReason}
+                </span>
+              )}
+            </div>
+          )}
+          {!isQualifying && tiebreakerReason && (
+            <span className="text-[10px] text-[var(--color-text-muted)] italic truncate">
+              {tiebreakerReason}
             </span>
           )}
-          {unresolvedTie && (
+          {unresolvedTie && !advancementReason && !tiebreakerReason && (
             <span className={`text-xs ${isQualifying ? "text-[var(--color-cream-dark)] opacity-70" : "text-[var(--color-text-muted)]"}`}>
               (tied)
             </span>
@@ -91,6 +107,13 @@ export function StandingsRow({
               </div>
             ))}
           </div>
+
+          {(advancementReason || tiebreakerReason) && (
+            <div className="rounded-md border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
+              <span className="font-bold">⚖️ Standing & Advancement note: </span>
+              <span>{advancementReason ? `Advances — ${advancementReason}` : tiebreakerReason}</span>
+            </div>
+          )}
           {history.length > 0 ? (
             <div className="flex flex-col gap-1.5">
               {history.map((h, i) => (

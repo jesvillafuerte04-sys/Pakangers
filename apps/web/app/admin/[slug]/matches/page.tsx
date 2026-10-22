@@ -80,15 +80,13 @@ export default async function MatchListPage({
       )}
 
       {matches.map((m) => {
-        const bracketOrStage = m.groupName
-          ? (m.groupName.startsWith("Bracket") ? m.groupName : `Bracket ${m.groupName}`)
-          : m.stageName.replace(/Pool Stage/gi, "Bracket");
+        const cleanLabel = m.matchLabel ?? (m.groupName ? (m.groupName.startsWith("Pool") ? m.groupName : `Pool ${m.groupName.replace(/^(Bracket|Pool|Group)\s*/i, "")}`) : m.stageName);
 
         return (
           <Card key={m.id} className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                M{m.matchNumber} · {bracketOrStage}
+                {m.fullBadgeText ?? `M${m.matchNumber} · ${cleanLabel}`}
                 {m.courtName && ` · ${m.courtName}`}
                 {m.round !== null && ` · Round ${m.round + 1}`}
               </span>

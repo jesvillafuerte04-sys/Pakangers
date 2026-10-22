@@ -9,12 +9,29 @@ const TIEBREAKER_LABEL: Record<Tiebreaker, string> = {
   match_wins: "match wins",
   win_percentage: "win percentage",
   head_to_head: "head-to-head",
+  head_to_head_point_differential: "head-to-head point differential",
   point_differential: "point differential",
   points_scored: "points scored",
   points_allowed: "points allowed",
   games_won: "games won",
   coin_flip: "organizer decision",
 };
+
+function formatTiebreakerNote(tiebreakers: Tiebreaker[]): string {
+  if (tiebreakers.length === 0) return "";
+  const labels = tiebreakers.map((tb) => TIEBREAKER_LABEL[tb] ?? tb);
+  if (labels.length === 1) {
+    return `Ties are broken by: ${labels[0]}.`;
+  }
+  const allButLast = labels.slice(0, -1).join(", ");
+  const last = labels[labels.length - 1];
+  return `Ties are broken by: ${allButLast}, then ${last}.`;
+}
+
+function formatGroupHeading(groupName: string): string {
+  const clean = groupName.replace(/^(Bracket|Pool|Group)\s*/i, "").trim();
+  return clean ? `Pool ${clean}` : groupName;
+}
 
 export default async function PublicStandingsPage({ params }: PageProps<"/t/[slug]/standings">) {
   const { slug } = await params;
@@ -39,7 +56,7 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
           <Card key={`${g.stageKey}:${g.groupName}`}>
             <div className="mb-3 flex items-baseline justify-between gap-2">
               <h3 className="font-[family-name:var(--font-display)] text-xl font-bold uppercase text-[var(--color-navy)]">
-                {g.groupName.startsWith("Bracket") ? g.groupName : `Bracket ${g.groupName}`}
+                {formatGroupHeading(g.groupName)}
               </h3>
               {g.qualifyCount !== null && (
                 <span className="whitespace-nowrap rounded-full bg-[var(--color-gold)] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-navy)]">
@@ -55,6 +72,8 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
                     team={s.team}
                     unresolvedTie={s.unresolvedTie}
                     isQualifying={hasStarted && g.qualifyCount !== null && i < g.qualifyCount}
+                    advancementReason={s.advancementReason}
+                    tiebreakerReason={s.tiebreakerReason}
                     wins={s.wins}
                     losses={s.losses}
                     pointDifferential={s.pointDifferential}
@@ -76,7 +95,7 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
             </div>
           {g.tiebreakers.length > 0 && (
             <p className="mt-3 text-xs text-[var(--color-text-muted)]">
-              Ties broken by: {g.tiebreakers.map((tb) => TIEBREAKER_LABEL[tb]).join(", then ")}.
+              {formatTiebreakerNote(g.tiebreakers)}
             </p>
           )}
           </Card>

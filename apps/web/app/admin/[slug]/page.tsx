@@ -39,7 +39,7 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
     { label: `Teams (${progress.teamCount})`, done: progress.teamCount > 0, href: `/admin/${slug}/setup/teams` },
     { label: "Stages & scoring", done: true, href: `/admin/${slug}/setup/stages` },
     {
-      label: `Brackets (${progress.teamsAssigned}/${progress.teamsTotal} assigned)`,
+      label: `Pools (${progress.teamsAssigned}/${progress.teamsTotal} assigned)`,
       done: progress.teamsTotal > 0 && progress.teamsAssigned === progress.teamsTotal,
       href: `/admin/${slug}/setup/groups`,
     },

@@ -24,10 +24,10 @@ export default async function SetupGroupsPage({ params }: PageProps<"/admin/[slu
   const poolStage = stages?.[0];
   if (!poolStage) {
     return (
-      <Card title="Round-Robin Brackets">
+      <Card title="Round-Robin Pools">
         <div className="flex flex-col gap-3 py-2">
           <p className="text-sm text-[var(--color-text-muted)]">
-            This tournament currently has no round-robin bracket stage configured.
+            This tournament currently has no round-robin pool stage configured.
           </p>
           <div>
             <Link href={`/admin/${slug}/setup/stages`}>
@@ -58,19 +58,19 @@ export default async function SetupGroupsPage({ params }: PageProps<"/admin/[slu
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Top Action Bar for Dynamic Brackets & Snake Seeding */}
+      {/* Top Action Bar for Dynamic Pools & Snake Seeding */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-[var(--color-navy)] bg-white p-4 shadow-sm">
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <h2 className="font-[family-name:var(--font-display)] text-base font-black uppercase text-[var(--color-navy)]">
-              Brackets & Seeding
+              Pools & Seeding
             </h2>
             <span className="rounded-full bg-[var(--color-gold)]/20 px-2.5 py-0.5 text-xs font-bold text-[var(--color-navy)]">
-              {groups?.length ?? 0} {groups?.length === 1 ? "Bracket" : "Brackets"}
+              {groups?.length ?? 0} {groups?.length === 1 ? "Pool" : "Pools"}
             </span>
           </div>
           <p className="text-xs text-[var(--color-text-muted)]">
-            Balance teams across brackets with 1-click Snake Seeding, rename brackets & teams, or select bracket count.
+            Balance teams across pools with 1-click Snake Seeding, rename pools & teams, or select pool count.
           </p>
         </div>
 
@@ -118,7 +118,7 @@ export default async function SetupGroupsPage({ params }: PageProps<"/admin/[slu
                       type="submit"
                       className="text-xs font-medium text-[var(--color-error)] hover:underline"
                     >
-                      Delete Bracket
+                      Delete Pool
                     </button>
                   </form>
                 )}
@@ -128,7 +128,7 @@ export default async function SetupGroupsPage({ params }: PageProps<"/admin/[slu
             <div className="flex flex-col gap-1.5">
               {members.length === 0 && (
                 <p className="py-2 text-sm text-[var(--color-text-muted)]">
-                  No teams in this bracket yet. Click &quot;⚡ Auto Snake Seed&quot; above or assign teams below.
+                  No teams in this pool yet. Click &quot;⚡ Auto Snake Seed&quot; above or assign teams below.
                 </p>
               )}
               {members.map((team) => (
@@ -168,7 +168,7 @@ export default async function SetupGroupsPage({ params }: PageProps<"/admin/[slu
 
       <Card title={`Unassigned teams (${unassigned.length})`}>
         {unassigned.length === 0 ? (
-          <p className="text-sm text-[var(--color-success)]">Every team is assigned to a bracket.</p>
+          <p className="text-sm text-[var(--color-success)]">Every team is assigned to a pool.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {unassigned.map((team) => (

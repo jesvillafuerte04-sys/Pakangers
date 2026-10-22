@@ -219,9 +219,11 @@ function buildEngineState(snapshot: TournamentSnapshot): EngineState {
 
   const matchesByStageAndNumber = new Map<string, EngineMatch>();
   for (const stage of snapshot.stages) {
-    for (const m of engineMatchesByStageId.get(stage.id) ?? []) {
+    const list = engineMatchesByStageId.get(stage.id) ?? [];
+    list.forEach((m, idx) => {
       matchesByStageAndNumber.set(`${stage.key}:${m.matchNumber}`, m);
-    }
+      matchesByStageAndNumber.set(`${stage.key}:${idx + 1}`, m);
+    });
   }
 
   return {
@@ -568,8 +570,148 @@ export type DisplayStandingsGroup = {
   groupName: string;
   tiebreakers: Tiebreaker[];
   qualifyCount: number | null;
-  standings: (Standing & { team: TeamDisplay; stats: StandingStat[]; history: StandingHistoryEntry[] })[];
+  standings: (Standing & {
+    team: TeamDisplay;
+    advancementReason?: string | null;
+    tiebreakerReason?: string | null;
+    stats: StandingStat[];
+    history: StandingHistoryEntry[];
+  })[];
 };
+
+/**
+ * Computes clear explanation of why an entrant is at their current standing position
+ * and why they advance (or why they are placed where they are when there's a tie).
+ */
+function computeAdvancementAndTieReasons(
+  standings: Standing[],
+  groupMatches: EngineMatch[],
+  qualifyCount: number | null,
+  teamDisplayById: Map<string, TeamDisplay>,
+): Map<string, { advancementReason: string | null; tiebreakerReason: string | null }> {
+  const result = new Map<string, { advancementReason: string | null; tiebreakerReason: string | null }>();
+
+  const hasStarted = standings.some((s) => s.wins > 0 || s.losses > 0 || s.pointsFor > 0);
+  if (!hasStarted) {
+    for (const s of standings) {
+      result.set(s.entrantId, { advancementReason: null, tiebreakerReason: null });
+    }
+    return result;
+  }
+
+  for (let i = 0; i < standings.length; i++) {
+    const s = standings[i]!;
+    const isQualifying = qualifyCount !== null && i < qualifyCount;
+    const tiedWith = standings.filter((o) => o.entrantId !== s.entrantId && o.wins === s.wins);
+
+    if (tiedWith.length === 0) {
+      // Outright record
+      const advNote = isQualifying ? `Outright ${s.wins}–${s.losses} record` : null;
+      result.set(s.entrantId, { advancementReason: advNote, tiebreakerReason: null });
+      continue;
+    }
+
+    if (tiedWith.length === 1) {
+      const other = tiedWith[0]!;
+      const isAhead = s.rank < other.rank;
+      const otherName = teamDisplayById.get(other.entrantId)?.header ?? "opponent";
+
+      const h2hMatches = groupMatches.filter(
+        (m) =>
+          RESOLVED_STATUSES.includes(m.status) &&
+          ((m.homeEntrantId === s.entrantId && m.awayEntrantId === other.entrantId) ||
+            (m.homeEntrantId === other.entrantId && m.awayEntrantId === s.entrantId)),
+      );
+      let sH2HWins = 0;
+      let otherH2HWins = 0;
+      for (const m of h2hMatches) {
+        const winner = matchWinner(m.scoringConfig, m.games);
+        if (winner === "home") {
+          if (m.homeEntrantId === s.entrantId) sH2HWins++;
+          else otherH2HWins++;
+        } else if (winner === "away") {
+          if (m.awayEntrantId === s.entrantId) sH2HWins++;
+          else otherH2HWins++;
+        }
+      }
+
+      if (isAhead) {
+        if (sH2HWins > otherH2HWins) {
+          const reason = `Won head-to-head vs ${otherName}`;
+          result.set(s.entrantId, {
+            advancementReason: isQualifying ? reason : null,
+            tiebreakerReason: reason,
+          });
+        } else if (s.pointDifferential !== other.pointDifferential) {
+          const diffSign = s.pointDifferential >= 0 ? "+" : "";
+          const otherDiffSign = other.pointDifferential >= 0 ? "+" : "";
+          const reason = `Point differential (${diffSign}${s.pointDifferential} vs ${otherDiffSign}${other.pointDifferential})`;
+          result.set(s.entrantId, {
+            advancementReason: isQualifying ? `Won tiebreaker on point diff` : null,
+            tiebreakerReason: reason,
+          });
+        } else if (s.pointsFor !== other.pointsFor) {
+          const reason = `Points scored (${s.pointsFor} vs ${other.pointsFor} pts)`;
+          result.set(s.entrantId, {
+            advancementReason: isQualifying ? `Won tiebreaker on points scored` : null,
+            tiebreakerReason: reason,
+          });
+        } else if (s.unresolvedTie) {
+          result.set(s.entrantId, {
+            advancementReason: isQualifying ? `Tied (pending coin flip)` : null,
+            tiebreakerReason: `Tied with ${otherName} (coin flip needed)`,
+          });
+        } else {
+          result.set(s.entrantId, {
+            advancementReason: isQualifying ? `Won tiebreaker` : null,
+            tiebreakerReason: `Tiebreaker over ${otherName}`,
+          });
+        }
+      } else {
+        if (otherH2HWins > sH2HWins) {
+          result.set(s.entrantId, {
+            advancementReason: null,
+            tiebreakerReason: `Behind ${otherName} on head-to-head`,
+          });
+        } else if (s.pointDifferential !== other.pointDifferential) {
+          result.set(s.entrantId, {
+            advancementReason: null,
+            tiebreakerReason: `Behind ${otherName} on point differential`,
+          });
+        } else {
+          result.set(s.entrantId, {
+            advancementReason: null,
+            tiebreakerReason: `Tied with ${otherName}`,
+          });
+        }
+      }
+    } else {
+      // 3-way or multi-way tie
+      const minRank = Math.min(s.rank, ...tiedWith.map((o) => o.rank));
+      if (s.rank === minRank) {
+        if (s.pointDifferential !== tiedWith[0]!.pointDifferential) {
+          const diffSign = s.pointDifferential >= 0 ? "+" : "";
+          result.set(s.entrantId, {
+            advancementReason: isQualifying ? `Won multi-way tiebreaker on point diff (${diffSign}${s.pointDifferential})` : null,
+            tiebreakerReason: `Won multi-way tiebreaker on point differential (${diffSign}${s.pointDifferential})`,
+          });
+        } else {
+          result.set(s.entrantId, {
+            advancementReason: isQualifying ? `Won multi-way tiebreaker` : null,
+            tiebreakerReason: `Won multi-way tiebreaker`,
+          });
+        }
+      } else {
+        result.set(s.entrantId, {
+          advancementReason: isQualifying ? `Advances via tiebreaker criteria` : null,
+          tiebreakerReason: `Tied on ${s.wins} wins (${tiedWith.length + 1}-way tie)`,
+        });
+      }
+    }
+  }
+
+  return result;
+}
 
 /** Every resolved match a given entrant played within a group, for the standings drill-down. */
 function matchHistoryForEntrant(
@@ -654,23 +796,31 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
       const groupRow = groupsForStage.find((gr) => gr.name === g.name)!;
       const groupMatches = stageMatches.filter((m) => m.group === g.name);
       const standings = engineComputeStandings(g.entrantIds, groupMatches, cfg.tiebreakers);
+      const qCount = qualifyCountByGroupId.get(groupRow.id) ?? defaultQualifyCount;
+      const reasonsMap = computeAdvancementAndTieReasons(standings, groupMatches, qCount, teamDisplayById);
+
       result.push({
         stageKey: stage.key,
         stageName: stage.name,
         groupName: g.name,
         tiebreakers: cfg.tiebreakers,
-        qualifyCount: qualifyCountByGroupId.get(groupRow.id) ?? defaultQualifyCount,
-        standings: standings.map((s) => ({
-          ...s,
-          team: teamDisplayById.get(s.entrantId) ?? { header: "Unknown", subtext: null },
-          stats: [
-            { k: "W–L", v: `${s.wins}-${s.losses}` },
-            { k: "DIFF", v: `${s.pointDifferential >= 0 ? "+" : ""}${s.pointDifferential}` },
-            { k: "PTS FOR", v: s.pointsFor },
-            { k: "PTS AGST", v: s.pointsAgainst },
-          ],
-          history: matchHistoryForEntrant(s.entrantId, groupMatches, teamDisplayById),
-        })),
+        qualifyCount: qCount,
+        standings: standings.map((s) => {
+          const reasons = reasonsMap.get(s.entrantId);
+          return {
+            ...s,
+            team: teamDisplayById.get(s.entrantId) ?? { header: "Unknown", subtext: null },
+            advancementReason: reasons?.advancementReason ?? null,
+            tiebreakerReason: reasons?.tiebreakerReason ?? null,
+            stats: [
+              { k: "W–L", v: `${s.wins}-${s.losses}` },
+              { k: "DIFF", v: `${s.pointDifferential >= 0 ? "+" : ""}${s.pointDifferential}` },
+              { k: "PTS FOR", v: s.pointsFor },
+              { k: "PTS AGST", v: s.pointsAgainst },
+            ],
+            history: matchHistoryForEntrant(s.entrantId, groupMatches, teamDisplayById),
+          };
+        }),
       });
     }
   }
@@ -688,11 +838,17 @@ function labelForSlotRef(ref: MatchSide, stageNameByKey: Map<string, string>): T
     if (ref.kind === "entrant") return "TBD";
     if (ref.kind === "bye") return "Bye";
     if (ref.kind === "group_rank") {
-      const groupLabel = ref.group.startsWith("Bracket") ? ref.group : `Bracket ${ref.group}`;
+      const groupClean = ref.group.replace(/^(Bracket|Pool|Group)\s*/i, "").trim();
+      const groupLabel = groupClean ? `Pool ${groupClean}` : ref.group;
       return `${groupLabel} — ${ordinal(ref.rank)}`;
     }
-    const stageName = stageNameByKey.get(ref.stage) ?? ref.stage;
-    return `${ref.outcome === "winner" ? "Winner" : "Loser"} of ${stageName} Match #${ref.match}`;
+    const rawStageName = stageNameByKey.get(ref.stage) ?? ref.stage;
+    let cleanStage = rawStageName;
+    if (cleanStage.toLowerCase().includes("semi")) cleanStage = "Semifinals";
+    else if (cleanStage.toLowerCase().includes("quarter")) cleanStage = "Quarterfinals";
+    else if (cleanStage.toLowerCase().includes("third")) cleanStage = "Fight for Third";
+    else if (cleanStage.toLowerCase().includes("champ") || cleanStage.toLowerCase().includes("final")) cleanStage = "Championship";
+    return `${ref.outcome === "winner" ? "Winner" : "Loser"} of ${cleanStage} Match #${ref.match}`;
   })();
   return { header, subtext: null };
 }
@@ -700,6 +856,10 @@ function labelForSlotRef(ref: MatchSide, stageNameByKey: Map<string, string>): T
 /** Field names match MatchListRow so both render through MatchCardBody. */
 export type PublicBracketMatch = {
   matchNumber: number;
+  stageMatchIndex?: number;
+  stageTotalMatches?: number;
+  matchLabel?: string;
+  fullBadgeText?: string;
   status: string | null;
   home: TeamDisplay;
   away: TeamDisplay;
@@ -716,9 +876,27 @@ export type PublicBracketStage = {
 };
 
 /**
+ * Formats stage context so Bracket is never shown for Quarterfinals, Semifinals,
+ * Fight for Third, and Championship, and match index within stage is indicated.
+ */
+function formatKnockoutStageName(stageKey: string, stageName: string): string {
+  const k = stageKey.toLowerCase();
+  const n = stageName.toLowerCase();
+  if (k.includes("quarter") || n.includes("quarter")) return "Quarterfinals";
+  if (k.includes("semi") || n.includes("semi")) return "Semifinals";
+  if (k.includes("third") || n.includes("third")) return "Fight for Third";
+  if (k.includes("champ") || n.includes("champ") || n.includes("final")) return "Championship";
+  if (k.includes("16") || n.includes("16")) return "Round of 16";
+  return stageName.replace(/Bracket/gi, "").trim() || stageName;
+}
+
+/**
  * Per knockout stage, every planned match -- resolved (real teams, scores if
  * played) or not (a human-readable source label built from the bracket_node's
  * stored ref, e.g. "Pool A -- 1st", never a bare "TBD").
+ *
+ * Match numbers are continuous across the competition from round-robin up to finals,
+ * and indicate the stage match progress (e.g. Quarterfinals Match 1 of 4).
  */
 export async function getPublicBracket(tournamentId: string): Promise<PublicBracketStage[]> {
   const supabase = getServiceSupabase();
@@ -733,6 +911,11 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
   ]);
   const resultByMatchId = new Map((results ?? []).map((r) => [r.match_id, r]));
   const BYE_DISPLAY: TeamDisplay = { header: "Bye", subtext: null };
+
+  // Count pool stage matches so continuous match numbering starts right after pools
+  const poolStageIds = new Set(snapshot.stages.filter((s) => s.format_key === "round_robin").map((s) => s.id));
+  const poolMatchesCount = snapshot.matches.filter((m) => poolStageIds.has(m.stage_id)).length;
+  let runningContinuousMatchNumber = poolMatchesCount;
 
   const bracketStages: PublicBracketStage[] = [];
   for (const stage of snapshot.stages) {
@@ -749,13 +932,36 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
     existing.forEach((m) => numbers.add(m.match_number));
     nodesByPosition.forEach((_, pos) => numbers.add(pos));
 
-    const matches: PublicBracketMatch[] = [...numbers].sort((a, b) => a - b).map((num) => {
+    const sortedNumbers = [...numbers].sort((a, b) => a - b);
+    const cleanStageName = formatKnockoutStageName(stage.key, stage.name);
+    const stageTotalMatches = sortedNumbers.length;
+
+    const matches: PublicBracketMatch[] = sortedNumbers.map((num, idx) => {
+      runningContinuousMatchNumber++;
+      const continuousNumber = runningContinuousMatchNumber;
+      const stageMatchIndex = idx + 1;
+
+      let matchLabel = cleanStageName;
+      if (cleanStageName === "Quarterfinals" || cleanStageName === "Round of 16" || cleanStageName === "Semifinals") {
+        matchLabel = `${cleanStageName} (Match ${stageMatchIndex} of ${stageTotalMatches})`;
+      } else if (cleanStageName === "Fight for Third") {
+        matchLabel = "Fight for Third";
+      } else if (cleanStageName === "Championship") {
+        matchLabel = "Championship";
+      }
+
+      const fullBadgeText = `M${continuousNumber} · ${matchLabel}`;
+
       const match = existing.find((m) => m.match_number === num);
       if (match) {
         const result = resultByMatchId.get(match.id);
         const winnerId = result?.winner_team_id ?? null;
         return {
-          matchNumber: num,
+          matchNumber: continuousNumber,
+          stageMatchIndex,
+          stageTotalMatches,
+          matchLabel,
+          fullBadgeText,
           status: match.status,
           home: match.home_team_id ? teamDisplayById.get(match.home_team_id) ?? { header: "Unknown", subtext: null } : BYE_DISPLAY,
           away: match.away_team_id ? teamDisplayById.get(match.away_team_id) ?? { header: "Unknown", subtext: null } : BYE_DISPLAY,
@@ -768,7 +974,11 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
       const node = nodesByPosition.get(num);
       const tbd: TeamDisplay = { header: "TBD", subtext: null };
       return {
-        matchNumber: num,
+        matchNumber: continuousNumber,
+        stageMatchIndex,
+        stageTotalMatches,
+        matchLabel,
+        fullBadgeText,
         status: null,
         home: node ? labelForSlotRef(node.home_ref as unknown as MatchSide, stageNameByKey) : tbd,
         away: node ? labelForSlotRef(node.away_ref as unknown as MatchSide, stageNameByKey) : tbd,
@@ -779,7 +989,7 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
       };
     });
 
-    bracketStages.push({ stageKey: stage.key, stageName: stage.name, matches });
+    bracketStages.push({ stageKey: stage.key, stageName: cleanStageName, matches });
   }
   return bracketStages;
 }

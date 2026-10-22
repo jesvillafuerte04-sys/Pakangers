@@ -29,7 +29,7 @@ export function BracketCountSelector({ slug, stageId, currentCount, isDraft }: P
   return (
     <div className="flex items-center gap-2">
       <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-navy)]">
-        Brackets:
+        Pools:
       </label>
       <select
         value={currentCount}
@@ -39,12 +39,12 @@ export function BracketCountSelector({ slug, stageId, currentCount, isDraft }: P
       >
         {allowedCounts.map((num) => (
           <option key={num} value={num}>
-            {num} {num === 1 ? "Bracket" : "Brackets"}
+            {num} {num === 1 ? "Pool" : "Pools"}
           </option>
         ))}
         {!allowedCounts.includes(currentCount) && (
           <option value={currentCount} disabled>
-            {currentCount} Brackets (Custom)
+            {currentCount} Pools (Custom)
           </option>
         )}
       </select>

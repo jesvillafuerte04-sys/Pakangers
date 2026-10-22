@@ -41,16 +41,16 @@ function MatchIssues({ row }: { row: ScheduleRow }) {
 }
 
 function MatchLine({ slug, row, canMove }: { slug: string; row: ScheduleRow; canMove: boolean }) {
-  const bracketOrStage = row.groupName
-    ? (row.groupName.startsWith("Bracket") ? row.groupName : `Bracket ${row.groupName}`)
-    : row.stageName.replace(/Pool Stage/gi, "Bracket");
+  const poolOrStage = row.groupName
+    ? (row.groupName.startsWith("Pool") ? row.groupName : `Pool ${row.groupName.replace(/^(Bracket|Pool|Group)\s*/i, "")}`)
+    : (row.stageName.toLowerCase() === "third_place" || row.stageName.toLowerCase() === "third place" ? "Fight for Third" : row.stageName);
 
   return (
     <div className="rounded-lg border border-[var(--border-subtle)] p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-            M{row.matchNumber} · {bracketOrStage}
+            M{row.matchNumber} · {poolOrStage}
             {row.round !== null && ` · Round ${row.round + 1}`}
           </span>
           <TeamMatchup home={row.home} away={row.away} />
@@ -241,7 +241,7 @@ export default async function SchedulePage({ params }: PageProps<"/admin/[slug]/
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                      M{row.matchNumber} · {row.groupName ? (row.groupName.startsWith("Bracket") ? row.groupName : `Bracket ${row.groupName}`) : row.stageName.replace(/Pool Stage/gi, "Bracket")}
+                      M{row.matchNumber} · {row.groupName ? (row.groupName.startsWith("Pool") ? row.groupName : `Pool ${row.groupName.replace(/^(Bracket|Pool|Group)\s*/i, "")}`) : (row.stageName.toLowerCase() === "third_place" || row.stageName.toLowerCase() === "third place" ? "Fight for Third" : row.stageName)}
                     </span>
                     <TeamMatchup home={row.home} away={row.away} />
                   </div>

@@ -27,7 +27,7 @@ export function BracketNameEditor({ slug, groupId, initialName, isDraft }: Props
         await renamePoolGroup(slug, groupId, trimmed);
         setIsEditing(false);
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to rename bracket");
+        alert(err instanceof Error ? err.message : "Failed to rename pool");
       }
     });
   };
@@ -42,7 +42,8 @@ export function BracketNameEditor({ slug, groupId, initialName, isDraft }: Props
     }
   };
 
-  const displayName = initialName.toLowerCase().startsWith("bracket") ? initialName : `Bracket ${initialName}`;
+  const clean = initialName.replace(/^(bracket|pool|group)\s*/i, "").trim();
+  const displayName = clean ? `Pool ${clean}` : initialName;
 
   if (!isDraft) {
     return <span className="font-bold text-[var(--color-navy)]">{displayName}</span>;
@@ -90,7 +91,7 @@ export function BracketNameEditor({ slug, groupId, initialName, isDraft }: Props
         type="button"
         onClick={() => setIsEditing(true)}
         className="opacity-70 transition hover:opacity-100 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-navy)]"
-        title="Rename bracket"
+        title="Rename pool"
       >
         ✏️
       </button>

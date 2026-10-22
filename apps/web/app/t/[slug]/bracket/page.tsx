@@ -34,7 +34,7 @@ export default async function PublicBracketPage({ params }: PageProps<"/t/[slug]
               <Card key={m.matchNumber} className={isChampion ? "border-2 border-[var(--color-gold)]" : undefined}>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                    M{m.matchNumber} · {stage.stageName}
+                    {m.fullBadgeText ?? `M${m.matchNumber} · ${m.matchLabel ?? stage.stageName}`}
                   </span>
                   {m.status ? (
                     <Badge tone={m.status === "in_progress" ? "gold" : m.status === "pending" ? "neutral" : "success"}>
