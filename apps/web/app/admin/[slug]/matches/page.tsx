@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTournamentBySlug } from "@/lib/tournament-data";
-import { getMatchList, type MatchListFilter } from "@/lib/match-data";
+import { getMatchList, getTournamentCourts, type MatchListFilter } from "@/lib/match-data";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -34,7 +34,11 @@ export default async function MatchListPage({
   const tournament = await getTournamentBySlug(slug);
   if (!tournament) notFound();
 
-  const matches = await getMatchList(tournament.id, filter);
+  const [matches, courts] = await Promise.all([
+    getMatchList(tournament.id, filter),
+    getTournamentCourts(tournament.id),
+  ]);
+  const openCourts = courts.filter((c) => c.isAvailable);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-6">
@@ -101,13 +105,32 @@ export default async function MatchListPage({
                 {m.winnerSide ? "Correct score" : "Enter score"}
               </Button>
             </Link>
-            {m.status === "pending" && (
-              <form action={markMatchLive.bind(null, slug, m.id)}>
-                <Button type="submit" variant="outline" size="sm">
-                  Mark live
-                </Button>
-              </form>
-            )}
+            {m.status === "pending" &&
+              (openCourts.length === 0 ? (
+                <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+                  Add a court first
+                </span>
+              ) : (
+                <form action={markMatchLive.bind(null, slug, m.id)} className="flex items-center gap-2">
+                  <select
+                    name="courtId"
+                    required
+                    defaultValue={m.courtId ?? ""}
+                    aria-label={`Court for match ${m.matchNumber}`}
+                    className="rounded-lg border-2 border-[var(--color-navy)] px-2 py-1.5 text-sm font-semibold text-[var(--color-navy)]"
+                  >
+                    <option value="">Court…</option>
+                    {openCourts.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Button type="submit" variant="outline" size="sm">
+                    Mark live
+                  </Button>
+                </form>
+              ))}
           </div>
         </Card>
       );

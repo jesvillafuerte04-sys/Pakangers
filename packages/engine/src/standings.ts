@@ -80,6 +80,20 @@ function metricValue(s: Standing, tb: Tiebreaker): number {
   }
 }
 
+/** Point differential counted only in matches played between the tied entrants. */
+function headToHeadPointDiff(ids: string[], matches: Match[]): Map<string, number> {
+  const diff = new Map<string, number>(ids.map((id) => [id, 0]));
+  for (const m of matches) {
+    if (!m.homeEntrantId || !m.awayEntrantId) continue;
+    if (!ids.includes(m.homeEntrantId) || !ids.includes(m.awayEntrantId)) continue;
+    for (const g of m.games) {
+      diff.set(m.homeEntrantId, (diff.get(m.homeEntrantId) ?? 0) + (g.homeScore - g.awayScore));
+      diff.set(m.awayEntrantId, (diff.get(m.awayEntrantId) ?? 0) + (g.awayScore - g.homeScore));
+    }
+  }
+  return diff;
+}
+
 function headToHeadWins(ids: string[], matches: Match[]): Map<string, number> {
   const wins = new Map<string, number>(ids.map((id) => [id, 0]));
   for (const m of matches) {
@@ -107,42 +121,53 @@ function partitionByKey(group: Standing[], keyOf: (s: Standing) => number): Stan
   return out;
 }
 
-function rankByTiebreakers(standings: Standing[], matches: Match[], tiebreakers: Tiebreaker[]): Standing[] {
-  let groups: Standing[][] = [[...standings]];
+/**
+ * Applies one tiebreaker to a tied group, returning ordered sub-groups.
+ * A single returned group means this tiebreaker could not separate anyone.
+ */
+function applyTiebreaker(group: Standing[], matches: Match[], tb: Tiebreaker): Standing[][] {
+  if (tb === 'head_to_head' || tb === 'head_to_head_point_differential') {
+    // Both are computed over the matches played *between the tied entrants only*,
+    // which is what USA Pickleball calls for. With 3+ tied entrants this is the
+    // mini round robin among them.
+    const ids = group.map((s) => s.entrantId);
+    const metric =
+      tb === 'head_to_head' ? headToHeadWins(ids, matches) : headToHeadPointDiff(ids, matches);
+    const distinct = new Set(ids.map((id) => metric.get(id) ?? 0));
+    // Circular or identical within this subset -- cannot separate, hand the group on untouched.
+    if (distinct.size <= 1) return [group];
+    return partitionByKey(group, (s) => metric.get(s.entrantId) ?? 0);
+  }
+  return partitionByKey(group, (s) => metricValue(s, tb));
+}
+
+/**
+ * Ranks one tied group by walking the tiebreaker list in order.
+ *
+ * When a tiebreaker splits the group, each resulting sub-group is ranked by
+ * starting the list again from the top. That re-application is deliberate: USA
+ * Pickleball requires that once a three-way tie collapses to a two-way tie, the
+ * head-to-head result between those two is consulted again rather than skipped.
+ */
+function rankGroup(group: Standing[], matches: Match[], tiebreakers: Tiebreaker[]): Standing[] {
+  if (group.length <= 1) return group;
 
   for (const tb of tiebreakers) {
-    const nextGroups: Standing[][] = [];
-    for (const group of groups) {
-      if (group.length <= 1) { nextGroups.push(group); continue; }
-
-      if (tb === 'head_to_head') {
-        const ids = group.map((s) => s.entrantId);
-        const h2h = headToHeadWins(ids, matches);
-        const distinctValues = new Set(ids.map((id) => h2h.get(id) ?? 0));
-        if (distinctValues.size <= 1) {
-          // Circular or fully-tied within this subset — head-to-head can't separate them.
-          nextGroups.push(group);
-          continue;
-        }
-        nextGroups.push(...partitionByKey(group, (s) => h2h.get(s.entrantId) ?? 0));
-      } else {
-        nextGroups.push(...partitionByKey(group, (s) => metricValue(s, tb)));
-      }
-    }
-    groups = nextGroups;
-  }
-
-  const finalOrder: Standing[] = [];
-  for (const group of groups) {
-    if (group.length > 1) {
-      const stable = [...group].sort((a, b) => a.entrantId.localeCompare(b.entrantId));
-      for (const s of stable) s.unresolvedTie = true;
-      finalOrder.push(...stable);
-    } else {
-      finalOrder.push(...group);
+    const parts = applyTiebreaker(group, matches, tb);
+    if (parts.length > 1) {
+      return parts.flatMap((part) => rankGroup(part, matches, tiebreakers));
     }
   }
 
+  // Every tiebreaker exhausted and these entrants are still level: flag for the
+  // organizer to settle (coin toss) and order them stably so the list never jumps.
+  const stable = [...group].sort((a, b) => a.entrantId.localeCompare(b.entrantId));
+  for (const s of stable) s.unresolvedTie = true;
+  return stable;
+}
+
+function rankByTiebreakers(standings: Standing[], matches: Match[], tiebreakers: Tiebreaker[]): Standing[] {
+  const finalOrder = rankGroup([...standings], matches, tiebreakers);
   finalOrder.forEach((s, idx) => { s.rank = idx + 1; });
   return finalOrder;
 }

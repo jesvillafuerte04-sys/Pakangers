@@ -9,7 +9,10 @@ export type ScoringConfig = {
 export type Tiebreaker =
   | 'match_wins'
   | 'win_percentage'
+  /** Wins counted only in matches between the tied entrants (USA Pickleball step 1). */
   | 'head_to_head'
+  /** Point differential counted only in matches between the tied entrants (USA Pickleball step 2). */
+  | 'head_to_head_point_differential'
   | 'point_differential'
   | 'points_scored'
   | 'points_allowed'

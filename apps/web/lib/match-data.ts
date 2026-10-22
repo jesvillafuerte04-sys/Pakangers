@@ -22,6 +22,7 @@ export type MatchListRow = {
   /** Which side won, once a result exists -- drives winner/loser emphasis in the UI. */
   winnerSide: "home" | "away" | null;
   courtName: string | null;
+  courtId: string | null;
   /** Position in that court's queue; round N+1 is what players see. */
   round: number | null;
 };
@@ -43,7 +44,7 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
     supabase
       .from("match")
       .select(
-        "id, match_number, status, stage_id, group_id, home_team_id, away_team_id, display_order, court(name), match_result(winner_team_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type)",
+        "id, match_number, status, stage_id, group_id, home_team_id, away_team_id, display_order, court_id, court(name), match_result(winner_team_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type)",
       )
       .eq("tournament_id", tournamentId)
       .order("match_number"),
@@ -78,6 +79,7 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
         resultType: result?.result_type ?? null,
         winnerSide: winnerId ? (winnerId === m.home_team_id ? "home" : "away") : null,
         courtName: court?.name ?? null,
+        courtId: m.court_id ?? null,
         round: m.display_order,
       };
     });
@@ -90,6 +92,20 @@ export async function getMatchList(tournamentId: string, filter: MatchListFilter
   if (filter === "live") return rows.filter((r) => r.status === "in_progress");
   return rows.filter((r) => r.status === "pending" || r.status === "scheduled");
 }
+
+export type CourtOption = { id: string; name: string; isAvailable: boolean };
+
+/** Courts a match can be sent to, for the court picker on the Mark-live button. */
+export const getTournamentCourts = cache(async (tournamentId: string): Promise<CourtOption[]> => {
+  const supabase = getServiceSupabase();
+  const { data, error } = await supabase
+    .from("court")
+    .select("id, name, is_available")
+    .eq("tournament_id", tournamentId)
+    .order("name");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((c) => ({ id: c.id, name: c.name, isAvailable: c.is_available }));
+});
 
 export type MatchDetail = {
   id: string;
