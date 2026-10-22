@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { setBracketCount } from "@/app/admin/actions";
+import { handleActionError } from "@/lib/client-error";
 
 interface Props {
   slug: string;
@@ -19,7 +20,7 @@ export function BracketCountSelector({ slug, stageId, currentCount, isDraft }: P
       try {
         await setBracketCount(slug, stageId, newCount);
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to update bracket count");
+        handleActionError(err, "Failed to update pool count");
       }
     });
   };

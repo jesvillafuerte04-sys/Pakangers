@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { configureTournamentStages } from "@/app/admin/actions";
 import { Button } from "@/components/ui/Button";
+import { handleActionError } from "@/lib/client-error";
 
 type PlayoffFormat = "round_of_16" | "quarterfinals" | "semifinals" | "finals_only" | "none";
 
@@ -112,7 +113,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
         await configureTournamentStages(slug, formData);
         setConfirmOpen(false);
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to configure stages");
+        handleActionError(err, "Failed to configure stages");
       }
     });
   };

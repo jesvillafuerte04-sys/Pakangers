@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { renamePoolGroup } from "@/app/admin/actions";
+import { handleActionError } from "@/lib/client-error";
 
 interface Props {
   slug: string;
@@ -27,7 +28,7 @@ export function BracketNameEditor({ slug, groupId, initialName, isDraft }: Props
         await renamePoolGroup(slug, groupId, trimmed);
         setIsEditing(false);
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to rename pool");
+        handleActionError(err, "Failed to rename pool");
       }
     });
   };
