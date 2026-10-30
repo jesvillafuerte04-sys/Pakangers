@@ -102,7 +102,7 @@ export default async function MatchListPage({
               <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>{statusText(m)}</Badge>
             </div>
 
-          <Link href={`/admin/${slug}/matches/${m.id}`} className="block">
+          <Link href={`/admin/${slug}/matches/${m.id}?from=${filter}`} className="block">
             <MatchCardBody match={m} />
           </Link>
 
@@ -115,7 +115,7 @@ export default async function MatchListPage({
                 Mark this match live before entering a score.
               </span>
             ) : (
-              <Link href={`/admin/${slug}/matches/${m.id}`} className="flex-1">
+              <Link href={`/admin/${slug}/matches/${m.id}?from=${filter}`} className="flex-1">
                 <Button variant="outline" size="sm" fullWidth>
                   {m.winnerSide ? "Correct score" : "Enter score"}
                 </Button>

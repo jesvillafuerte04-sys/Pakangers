@@ -12,8 +12,17 @@ function scoringDescription(cfg: { pointsToWin: number; winBy: string; bestOf: n
   return `First to ${cfg.pointsToWin}, ${winBy}${capText}${bestOfText}`;
 }
 
-export default async function ScoreEntryPage({ params }: PageProps<"/admin/[slug]/matches/[matchId]">) {
+const LIST_TABS = ["upcoming", "live", "completed"];
+
+export default async function ScoreEntryPage({
+  params,
+  searchParams,
+}: PageProps<"/admin/[slug]/matches/[matchId]">) {
   const { slug, matchId } = await params;
+  const sp = await searchParams;
+  // Which tab to come back to. "live" is the fallback rather than "upcoming",
+  // because a match being scored was, by definition, live a moment ago.
+  const from = typeof sp.from === "string" && LIST_TABS.includes(sp.from) ? sp.from : "live";
   const tournament = await getTournamentBySlug(slug);
   if (!tournament) notFound();
 
@@ -22,7 +31,7 @@ export default async function ScoreEntryPage({ params }: PageProps<"/admin/[slug
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-6">
-      <Link href={`/admin/${slug}/matches`} className="text-sm font-medium text-[var(--color-navy)]">
+      <Link href={`/admin/${slug}/matches?filter=${from}`} className="text-sm font-medium text-[var(--color-navy)]">
         ← Match list
       </Link>
 
@@ -46,7 +55,7 @@ export default async function ScoreEntryPage({ params }: PageProps<"/admin/[slug
             <strong> Mark live</strong> — then the score can be entered.
           </p>
         ) : (
-          <ScoreEntryForm slug={slug} match={match} />
+          <ScoreEntryForm slug={slug} match={match} returnFilter={from} />
         )}
       </Card>
     </main>

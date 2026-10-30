@@ -18,7 +18,16 @@ function toGames(inputs: GameInput[]): Game[] {
     .map((g, i) => ({ gameNumber: i + 1, homeScore: Number(g.home), awayScore: Number(g.away) }));
 }
 
-export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDetail }) {
+export function ScoreEntryForm({
+  slug,
+  match,
+  returnFilter,
+}: {
+  slug: string;
+  match: MatchDetail;
+  /** The match-list tab this was opened from, so saving comes back to it. */
+  returnFilter: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const cfg = match.scoringConfig;
@@ -61,7 +70,9 @@ export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDeta
     setError(null);
     const result: SaveScoreResult = await saveMatchScore(slug, match.id, payload, confirmInvalidation);
     if (result.ok) {
-      router.push(`/admin/${slug}/matches`);
+      // Back to the tab the scorer came from. Dropping the filter sent them
+      // to Upcoming, which is never where they were working.
+      router.push(`/admin/${slug}/matches?filter=${returnFilter}`);
       return;
     }
     if ("needsConfirmation" in result) {
