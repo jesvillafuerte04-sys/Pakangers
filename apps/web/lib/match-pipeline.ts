@@ -495,9 +495,11 @@ export async function writeMatchResult(params: {
   games: Game[];
   winnerTeamId: string;
   resultType: ResultType;
+  /** Why the match was awarded, when it was not played out. */
+  resultNote?: string | null;
   actorName: string;
 }): Promise<void> {
-  const { tournamentId, matchId, homeTeamId, awayTeamId, games, winnerTeamId, resultType, actorName } = params;
+  const { tournamentId, matchId, homeTeamId, awayTeamId, games, winnerTeamId, resultType, resultNote, actorName } = params;
   const supabase = getServiceSupabase();
 
   // Two sequential round trips (fetch, then the games delete that must precede
@@ -536,6 +538,7 @@ export async function writeMatchResult(params: {
         home_points_total: homePointsTotal,
         away_points_total: awayPointsTotal,
         result_type: resultType,
+        result_note: resultNote?.trim() || null,
         recorded_by: actorName,
       },
       { onConflict: "match_id" },
@@ -578,8 +581,14 @@ export type DisplayStandingsGroup = {
   isComplete: boolean;
   standings: (Standing & {
     team: TeamDisplay;
+    /** Short note beside the "Advancing" chip. Null until the bracket is done. */
     advancementReason?: string | null;
-    tiebreakerReason?: string | null;
+    /**
+     * The one line in the drill-down: "Advances - won head-to-head vs X" or
+     * "Eliminated - behind X on point differential". Null until the bracket
+     * is done, because nothing is decided before then.
+     */
+    outcomeNote?: string | null;
     stats: StandingStat[];
     history: StandingHistoryEntry[];
   })[];
@@ -804,6 +813,8 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
       const standings = engineComputeStandings(g.entrantIds, groupMatches, cfg.tiebreakers);
       const qCount = qualifyCountByGroupId.get(groupRow.id) ?? defaultQualifyCount;
       const reasonsMap = computeAdvancementAndTieReasons(standings, groupMatches, qCount, teamDisplayById);
+      const groupIsComplete =
+        groupMatches.length > 0 && groupMatches.every((m) => RESOLVED_STATUSES.includes(m.status));
 
       result.push({
         stageKey: stage.key,
@@ -811,14 +822,26 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
         groupName: g.name,
         tiebreakers: cfg.tiebreakers,
         qualifyCount: qCount,
-        isComplete: groupMatches.length > 0 && groupMatches.every((m) => RESOLVED_STATUSES.includes(m.status)),
-        standings: standings.map((s) => {
+        isComplete: groupIsComplete,
+        standings: standings.map((s, i) => {
           const reasons = reasonsMap.get(s.entrantId);
+          // Nothing advances or is eliminated until the bracket is finished,
+          // so no reason is shown before then -- a half-played bracket full of
+          // "won multi-way tiebreaker" notes reads as though places are settled.
+          const qualifies = qCount !== null && i < qCount;
+          const why = qualifies
+            ? reasons?.advancementReason ?? reasons?.tiebreakerReason ?? null
+            : reasons?.tiebreakerReason ?? null;
+          const outcomeNote =
+            !groupIsComplete || qCount === null
+              ? null
+              : `${qualifies ? "Advances" : "Eliminated"}${why ? ` — ${why}` : ""}`;
+
           return {
             ...s,
             team: teamDisplayById.get(s.entrantId) ?? { header: "Unknown", subtext: null },
-            advancementReason: reasons?.advancementReason ?? null,
-            tiebreakerReason: reasons?.tiebreakerReason ?? null,
+            advancementReason: groupIsComplete ? reasons?.advancementReason ?? null : null,
+            outcomeNote,
             stats: [
               { k: "W–L", v: `${s.wins}-${s.losses}` },
               { k: "DIFF", v: `${s.pointDifferential >= 0 ? "+" : ""}${s.pointDifferential}` },

@@ -11,7 +11,7 @@ export function StandingsRow({
   unresolvedTie,
   isQualifying,
   advancementReason,
-  tiebreakerReason,
+  outcomeNote,
   wins,
   losses,
   pointDifferential,
@@ -24,7 +24,7 @@ export function StandingsRow({
   unresolvedTie: boolean;
   isQualifying: boolean;
   advancementReason?: string | null;
-  tiebreakerReason?: string | null;
+  outcomeNote?: string | null;
   wins: number;
   losses: number;
   pointDifferential: number;
@@ -65,14 +65,11 @@ export function StandingsRow({
               )}
             </div>
           )}
-          {!isQualifying && tiebreakerReason && (
-            <span className="text-[10px] text-[var(--color-text-muted)] italic truncate">
-              {tiebreakerReason}
-            </span>
-          )}
-          {unresolvedTie && !advancementReason && !tiebreakerReason && (
-            <span className={`text-xs ${isQualifying ? "text-[var(--color-cream-dark)] opacity-70" : "text-[var(--color-text-muted)]"}`}>
-              (tied)
+          {/* A tie the engine cannot settle is the one thing worth saying
+              mid-bracket, because it needs a coin toss from the organizer. */}
+          {unresolvedTie && (
+            <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+              Coin toss needed
             </span>
           )}
         </span>
@@ -108,10 +105,9 @@ export function StandingsRow({
             ))}
           </div>
 
-          {(advancementReason || tiebreakerReason) && (
+          {outcomeNote && (
             <div className="rounded-md border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
-              <span className="font-bold">⚖️ Standing & Advancement note: </span>
-              <span>{advancementReason ? `Advances — ${advancementReason}` : tiebreakerReason}</span>
+              {outcomeNote}
             </div>
           )}
           {history.length > 0 ? (

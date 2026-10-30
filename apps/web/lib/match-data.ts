@@ -25,6 +25,8 @@ export type MatchListRow = {
   homePointsTotal: number | null;
   awayPointsTotal: number | null;
   resultType: string | null;
+  /** Why an awarded match was awarded, as typed by the scorer. */
+  resultNote: string | null;
   /** Which side won, once a result exists -- drives winner/loser emphasis in the UI. */
   winnerSide: "home" | "away" | null;
   courtName: string | null;
@@ -53,7 +55,7 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
       supabase
         .from("match")
         .select(
-          "id, match_number, status, stage_id, group_id, home_team_id, away_team_id, display_order, court_id, court(name), match_result(winner_team_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type)",
+          "id, match_number, status, stage_id, group_id, home_team_id, away_team_id, display_order, court_id, court(name), match_result(winner_team_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type, result_note)",
         )
         .eq("tournament_id", tournamentId),
       supabase.from("stage").select("id, name, key, sequence, format_key").eq("tournament_id", tournamentId).order("sequence"),
@@ -138,6 +140,7 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
       homePointsTotal: result?.home_points_total ?? null,
       awayPointsTotal: result?.away_points_total ?? null,
       resultType: result?.result_type ?? null,
+      resultNote: result?.result_note ?? null,
       winnerSide: winnerId ? (winnerId === m.home_team_id ? "home" : "away") : null,
       courtName: courtRow?.name ?? null,
       courtLabel: court,

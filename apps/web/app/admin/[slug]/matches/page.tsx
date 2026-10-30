@@ -23,6 +23,18 @@ const STATUS_TONE: Record<string, "neutral" | "gold" | "success" | "navy"> = {
   bye: "neutral",
 };
 
+/**
+ * What the badge says. A forfeit, default and retirement all share the
+ * "forfeit" status, so the badge reads the result type instead -- a default
+ * should not be announced as a forfeit.
+ */
+function statusText(m: { status: string; resultType: string | null }): string {
+  if (m.status === "forfeit" && m.resultType && m.resultType !== "normal") {
+    return m.resultType;
+  }
+  return m.status.replace("_", " ");
+}
+
 export default async function MatchListPage({
   params,
   searchParams,
@@ -87,7 +99,7 @@ export default async function MatchListPage({
                 {m.fullBadgeText ?? `M${m.matchNumber} · ${m.stageName} · ${m.courtLabel}`}
                 {m.round !== null && ` · Round ${m.round + 1}`}
               </span>
-              <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>{m.status.replace("_", " ")}</Badge>
+              <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>{statusText(m)}</Badge>
             </div>
 
           <Link href={`/admin/${slug}/matches/${m.id}`} className="block">
@@ -95,11 +107,20 @@ export default async function MatchListPage({
           </Link>
 
           <div className="flex items-center gap-2 border-t border-[var(--border-subtle)] pt-2">
-            <Link href={`/admin/${slug}/matches/${m.id}`} className="flex-1">
-              <Button variant="outline" size="sm" fullWidth>
-                {m.winnerSide ? "Correct score" : "Enter score"}
-              </Button>
-            </Link>
+            {/* A score can only be entered once the match has been marked live.
+                Scoring an upcoming match means it was played without the court
+                ever being claimed, which is how two matches end up on one court. */}
+            {m.status === "pending" ? (
+              <span className="flex-1 text-xs text-[var(--color-text-muted)]">
+                Mark this match live before entering a score.
+              </span>
+            ) : (
+              <Link href={`/admin/${slug}/matches/${m.id}`} className="flex-1">
+                <Button variant="outline" size="sm" fullWidth>
+                  {m.winnerSide ? "Correct score" : "Enter score"}
+                </Button>
+              </Link>
+            )}
             {m.status === "pending" &&
               (openCourts.length === 0 ? (
                 <span className="text-xs font-semibold text-[var(--color-text-muted)]">

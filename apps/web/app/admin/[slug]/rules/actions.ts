@@ -97,7 +97,7 @@ export async function moveTournamentRule(slug: string, ruleId: string, direction
   const { data: rules } = await supabase
     .from("tournament_rule")
     .select("id, display_order")
-    .eq("tournament_id", tournament.id)
+    .or(`tournament_id.eq.${tournament.id},tournament_id.is.null`)
     .order("display_order");
 
   const ordered = rules ?? [];

@@ -82,7 +82,7 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
                     unresolvedTie={s.unresolvedTie}
                     isQualifying={settled && g.qualifyCount !== null && i < g.qualifyCount}
                     advancementReason={s.advancementReason}
-                    tiebreakerReason={s.tiebreakerReason}
+                    outcomeNote={s.outcomeNote}
                     wins={s.wins}
                     losses={s.losses}
                     pointDifferential={s.pointDifferential}

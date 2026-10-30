@@ -90,10 +90,17 @@ export async function saveMatchScore(
   if (!match || !match.home_team_id || !match.away_team_id) {
     return { ok: false, error: "This match doesn't have both teams assigned yet." };
   }
+  // A score belongs to a match that was actually called to a court. Checked
+  // here as well as in the UI, so a tab left open on an old page cannot
+  // record a result for a match that never started.
+  if (match.status === "pending" || match.status === "scheduled") {
+    return { ok: false, error: "Mark this match live before entering a score." };
+  }
 
   let games: Game[];
   let winnerTeamId: string;
   let resultType: "normal" | "forfeit" | "default" | "retired";
+  let resultNote: string | null = null;
 
   if (payload.kind === "forfeit") {
     const cfg = match.scoring_config as unknown as ScoringConfig;
@@ -111,6 +118,7 @@ export async function saveMatchScore(
     }));
     winnerTeamId = payload.winningTeamId;
     resultType = payload.resultType;
+    resultNote = payload.reason?.trim() || null;
   } else {
     const cfg = match.scoring_config as unknown as ScoringConfig;
     const configIssues = validateScoringConfig(cfg);
@@ -141,6 +149,7 @@ export async function saveMatchScore(
     games,
     winnerTeamId,
     resultType,
+    resultNote,
     actorName: session.name,
   });
 

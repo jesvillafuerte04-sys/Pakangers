@@ -21,6 +21,17 @@ const STATUS_TONE: Record<string, "neutral" | "gold" | "success"> = {
   bye: "neutral",
 };
 
+/**
+ * What the badge says. A forfeit, default and retirement all share the
+ * "forfeit" status, so the badge reads the result type instead -- a default
+ * should not be announced as a forfeit.
+ */
+function statusText(m: { status: string; resultType: string | null }): string {
+  if (m.status === "in_progress") return "Live";
+  if (m.status === "forfeit" && m.resultType && m.resultType !== "normal") return m.resultType;
+  return m.status.replace("_", " ");
+}
+
 export default async function PublicMatchesPage({
   params,
   searchParams,
@@ -66,9 +77,7 @@ export default async function PublicMatchesPage({
                 {m.fullBadgeText ?? `M${m.matchNumber} · ${m.stageName} · ${m.courtLabel}`}
                 {m.round !== null && ` · Round ${m.round + 1}`}
               </span>
-              <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>
-                {m.status === "in_progress" ? "Live" : m.status.replace("_", " ")}
-              </Badge>
+              <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>{statusText(m)}</Badge>
             </div>
             <MatchCardBody match={m} />
           </Card>

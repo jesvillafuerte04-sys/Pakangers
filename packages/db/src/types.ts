@@ -403,6 +403,7 @@ export type Database = {
           match_id: string
           recorded_at: string
           recorded_by: string
+          result_note: string | null
           result_type: string
           winner_team_id: string | null
         }
@@ -415,6 +416,7 @@ export type Database = {
           match_id: string
           recorded_at?: string
           recorded_by: string
+          result_note?: string | null
           result_type?: string
           winner_team_id?: string | null
         }
@@ -427,6 +429,7 @@ export type Database = {
           match_id?: string
           recorded_at?: string
           recorded_by?: string
+          result_note?: string | null
           result_type?: string
           winner_team_id?: string | null
         }

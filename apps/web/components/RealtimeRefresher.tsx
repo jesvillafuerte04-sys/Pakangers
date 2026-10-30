@@ -4,12 +4,21 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@pakangers/db";
 
-// game and match_result have no tournament_id column of their own, but every
-// score write (writeMatchResult) always also updates the match row (status),
-// and every newly-populated bracket match is an insert into match -- so
-// subscribing to these three tournament-scoped tables catches every change
-// that matters without an invalid filter on a column that doesn't exist.
-const TOURNAMENT_SCOPED_TABLES = ["tournament", "stage", "match"] as const;
+// Which column scopes each table to one tournament. "tournament" is keyed on
+// its own id -- filtering it on tournament_id names a column that does not
+// exist, and Realtime rejects the whole subscription when any filter is
+// invalid, which silently killed live updates for every table here.
+const SCOPED_TABLES = [
+  { table: "tournament", column: "id" },
+  { table: "stage", column: "tournament_id" },
+  { table: "match", column: "tournament_id" },
+] as const;
+
+// game and match_result have no tournament id at all, so they are watched
+// unfiltered. A score correction that leaves match.status unchanged shows up
+// only here, and a refresh triggered by another tournament's score is
+// harmless -- it just re-reads this one.
+const UNSCOPED_TABLES = ["match_result", "game"] as const;
 
 /**
  * Subscribes to Supabase Realtime for this tournament and re-runs the
@@ -34,10 +43,17 @@ export function RealtimeRefresher({ tournamentId }: { tournamentId: string }) {
       timeoutRef.current = setTimeout(() => router.refresh(), 500);
     };
 
-    for (const table of TOURNAMENT_SCOPED_TABLES) {
+    for (const { table, column } of SCOPED_TABLES) {
       channel.on(
         "postgres_changes" as never,
-        { event: "*", schema: "public", table, filter: `tournament_id=eq.${tournamentId}` } as never,
+        { event: "*", schema: "public", table, filter: `${column}=eq.${tournamentId}` } as never,
+        scheduleRefresh,
+      );
+    }
+    for (const table of UNSCOPED_TABLES) {
+      channel.on(
+        "postgres_changes" as never,
+        { event: "*", schema: "public", table } as never,
         scheduleRefresh,
       );
     }

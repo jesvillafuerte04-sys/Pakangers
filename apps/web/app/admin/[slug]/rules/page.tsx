@@ -23,10 +23,13 @@ export default async function RulesPage({ params }: PageProps<"/admin/[slug]/rul
   const supabase = getServiceSupabase();
   const [{ data: ruleSets }, { data: rules }] = await Promise.all([
     supabase.from("rule_set").select("id, name, edition_year, source_url").order("edition_year", { ascending: false }),
+    // Shared rules (tournament_id is null) apply to every tournament and are
+    // what the public Info tab shows alongside this tournament's own. They
+    // were not listed here, so there was no way to correct one from the app.
     supabase
       .from("tournament_rule")
-      .select("id, category, title, summary_text, source_ref, display_order")
-      .eq("tournament_id", tournament.id)
+      .select("id, tournament_id, category, title, summary_text, source_ref, display_order")
+      .or(`tournament_id.eq.${tournament.id},tournament_id.is.null`)
       .order("display_order"),
   ]);
 
@@ -113,6 +116,11 @@ export default async function RulesPage({ params }: PageProps<"/admin/[slug]/rul
                   </label>
                   <Input label="Reference (optional)" name="source_ref" defaultValue={rule.source_ref ?? ""} />
                 </div>
+                {rule.tournament_id === null && (
+                  <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                    Shared rule — editing this changes it for every tournament
+                  </span>
+                )}
                 <Input label="Title" name="title" defaultValue={rule.title} required />
                 <Textarea label="Summary" name="summary_text" defaultValue={rule.summary_text} rows={2} required />
                 <div className="flex items-center gap-2">

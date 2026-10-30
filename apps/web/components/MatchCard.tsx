@@ -12,6 +12,14 @@ export type MatchCardData = {
   awayPointsTotal: number | null;
   winnerSide: "home" | "away" | null;
   resultType: string | null;
+  resultNote?: string | null;
+};
+
+/** "default" reads as "Default", and the scorer's reason follows it. */
+const RESULT_TYPE_LABEL: Record<string, string> = {
+  forfeit: "Forfeit",
+  default: "Default",
+  retired: "Retired",
 };
 
 /**
@@ -72,8 +80,11 @@ export function MatchCardBody({ match }: { match: MatchCardData }) {
         outcome={awayOutcome}
       />
       {match.resultType && match.resultType !== "normal" && (
-        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-          {match.resultType}
+        <span className="text-xs text-[var(--color-text-muted)]">
+          <span className="font-semibold uppercase tracking-wide">
+            {RESULT_TYPE_LABEL[match.resultType] ?? match.resultType}
+          </span>
+          {match.resultNote ? <span className="font-normal"> — {match.resultNote}</span> : null}
         </span>
       )}
     </div>
