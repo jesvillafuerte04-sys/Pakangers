@@ -82,7 +82,7 @@ export const getScheduleView = cache(async (tournamentId: string, scheduleConfig
   const stageById = new Map((stages ?? []).map((s) => [s.id, s]));
   const groupById = new Map((groups ?? []).map((g) => [g.id, g]));
 
-  const playable = (matchRows ?? []).filter((m) => m.home_team_id);
+  const playable = (matchRows ?? []).filter((m) => m.home_team_id || m.away_team_id);
 
   const engineMatches: SchedulableMatch[] = playable.map((m) => ({
     id: m.id,
@@ -199,7 +199,7 @@ export async function getSchedulableInputs(tournamentId: string): Promise<{
   return {
     courts: (courtRows ?? []).map((c) => ({ id: c.id, name: c.name, isAvailable: c.is_available })),
     matches: (matchRows ?? [])
-      .filter((m) => m.home_team_id)
+      .filter((m) => m.home_team_id && m.away_team_id)
       .map((m) => {
         const effectiveGroupId = m.group_id
           || (m.home_team_id ? teamGroupIdById.get(m.home_team_id) : null)

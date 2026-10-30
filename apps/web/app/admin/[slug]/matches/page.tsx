@@ -110,7 +110,11 @@ export default async function MatchListPage({
             {/* A score can only be entered once the match has been marked live.
                 Scoring an upcoming match means it was played without the court
                 ever being claimed, which is how two matches end up on one court. */}
-            {m.status === "pending" ? (
+            {!m.isReadyToPlay ? (
+              <span className="flex-1 text-xs text-[var(--color-text-muted)]">
+                Waiting on an earlier match for one of the teams.
+              </span>
+            ) : m.status === "pending" ? (
               <span className="flex-1 text-xs text-[var(--color-text-muted)]">
                 Mark this match live before entering a score.
               </span>
@@ -121,7 +125,7 @@ export default async function MatchListPage({
                 </Button>
               </Link>
             )}
-            {m.status === "pending" &&
+            {m.status === "pending" && m.isReadyToPlay &&
               (openCourts.length === 0 ? (
                 <span className="text-xs font-semibold text-[var(--color-text-muted)]">
                   Add a court first

@@ -56,6 +56,14 @@ export async function markMatchLive(slug: string, matchId: string, formData: For
   if (!courtId) throw new Error("Pick a court before marking this match live.");
 
   const supabase = getServiceSupabase();
+  // A knockout slot can be half filled while its other feeder is still being
+  // played. Sending that to a court would put one team on an empty court.
+  const { data: match } = await supabase
+    .from("match").select("home_team_id, away_team_id").eq("id", matchId).single();
+  if (!match?.home_team_id || !match?.away_team_id) {
+    throw new Error("This match is still waiting for a team, so it cannot go on court yet.");
+  }
+
   const { error } = await supabase
     .from("match")
     .update({ status: "in_progress", court_id: courtId })

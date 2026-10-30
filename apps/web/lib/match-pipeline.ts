@@ -209,7 +209,11 @@ function buildEngineState(snapshot: TournamentSnapshot): EngineState {
         standingsByGroup.set(g.name, standings);
         const groupRow = groupsForStage.find((gr) => gr.name === g.name);
         const letter = groupRow ? alphabet[groupRow.display_order] : undefined;
-        if (letter) {
+        // Only claim the letter if no other bracket already has it. Two
+        // brackets sharing a position would otherwise silently overwrite one
+        // another, and every ref to "Bracket B" would resolve to whichever
+        // was read last -- the same class of bug as the draw lookup.
+        if (letter && !standingsByGroup.has(letter)) {
           standingsByGroup.set(letter, standings);
           standingsByGroup.set(`Bracket ${letter}`, standings);
           standingsByGroup.set(`Pool ${letter}`, standings);
@@ -848,7 +852,10 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
       .map((m) => toEngineMatch(m, snapshot.games, groupNameById, teamGroupIdById));
 
     for (const g of cfg.groups) {
-      const groupRow = groupsForStage.find((gr) => gr.name === g.name)!;
+      // Not asserted: a renamed or deleted bracket would otherwise throw and
+      // take the whole standings page down rather than drop one bracket.
+      const groupRow = groupsForStage.find((gr) => gr.name === g.name);
+      if (!groupRow) continue;
       const groupMatches = stageMatches.filter((m) => m.group === g.name);
       const standings = engineComputeStandings(g.entrantIds, groupMatches, cfg.tiebreakers);
       const qCount = qualifyCountByGroupId.get(groupRow.id) ?? defaultQualifyCount;

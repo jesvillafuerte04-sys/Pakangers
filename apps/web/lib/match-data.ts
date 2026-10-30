@@ -8,6 +8,8 @@ import { continuousMatchNumbers, courtLabel, stageLabel } from "./match-identity
 export type MatchListFilter = "live" | "upcoming" | "completed" | "all";
 
 export type MatchListRow = {
+  /** False while a knockout slot is still waiting on a feeder. */
+  isReadyToPlay: boolean;
   id: string;
   matchNumber: number;
   status: string;
@@ -88,7 +90,10 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
     ctx,
   );
 
-  const playable = (matches ?? []).filter((m) => m.home_team_id);
+  // At least one side known is enough to show the match: the other side
+  // renders as the slot it is waiting on. Testing home alone hid any match
+  // whose away feeder happened to finish first.
+  const playable = (matches ?? []).filter((m) => m.home_team_id || m.away_team_id);
   const sorted = [...playable].sort((a, b) => (numberById.get(a.id) ?? 0) - (numberById.get(b.id) ?? 0));
 
   const stageCounts = new Map<string, number>();
@@ -142,6 +147,7 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
       homePointsTotal: result?.home_points_total ?? null,
       awayPointsTotal: result?.away_points_total ?? null,
       resultType: result?.result_type ?? null,
+      isReadyToPlay: Boolean(m.home_team_id && m.away_team_id),
       resultNote: result?.result_note ?? null,
       recordedAt: result?.recorded_at ?? null,
       winnerSide: winnerId ? (winnerId === m.home_team_id ? "home" : "away") : null,
