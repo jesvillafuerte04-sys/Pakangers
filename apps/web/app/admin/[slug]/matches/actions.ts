@@ -5,7 +5,8 @@ import { requireSession } from "@/lib/session";
 import { getServiceSupabase } from "@/lib/supabase-server";
 import { getTournamentBySlug } from "@/lib/tournament-data";
 import { populateTournament, checkDownstreamInvalidation, writeMatchResult, type AffectedDownstreamMatch } from "@/lib/match-pipeline";
-import { validateScoringConfig, validateGameScore, matchWinner, type Game, type ScoringConfig } from "@pakangers/engine";
+import { getSchedulableInputs, readScheduleOptions } from "@/lib/schedule-data";
+import { autoSchedule, validateScoringConfig, validateGameScore, matchWinner, type Game, type ScoringConfig } from "@pakangers/engine";
 
 export async function startTournament(slug: string): Promise<void> {
   await requireSession();
@@ -16,11 +17,32 @@ export async function startTournament(slug: string): Promise<void> {
   await populateTournament(tournament.id);
 
   const supabase = getServiceSupabase();
+
+  // Give every bracket a court up front -- one bracket per court -- so the
+  // schedule is usable the moment play starts. Anything already placed by hand
+  // is left alone, and courts stay editable on the Schedule page afterwards.
+  const { count: alreadyPlaced } = await supabase
+    .from("match")
+    .select("id", { count: "exact", head: true })
+    .eq("tournament_id", tournament.id)
+    .not("court_id", "is", null);
+
+  if (!alreadyPlaced) {
+    const { matches, courts } = await getSchedulableInputs(tournament.id);
+    const options = readScheduleOptions(tournament.schedule_config);
+    for (const a of autoSchedule(matches, courts, options)) {
+      if (!a.courtId) continue;
+      await supabase.from("match").update({ court_id: a.courtId, display_order: a.round }).eq("id", a.matchId);
+    }
+  }
+
   const { error } = await supabase.from("tournament").update({ status: "in_progress" }).eq("id", tournament.id);
   if (error) throw new Error(error.message);
 
   revalidatePath(`/admin/${slug}`);
   revalidatePath(`/admin/${slug}/matches`);
+  revalidatePath(`/admin/${slug}/schedule`);
+  revalidatePath(`/t/${slug}/matches`);
 }
 
 /**

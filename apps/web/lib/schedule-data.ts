@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { getServiceSupabase } from "./supabase-server";
 import { getTournamentTeamDisplays, type TeamDisplay } from "./team-display";
+import { continuousMatchNumbers, stageLabel } from "./match-identity";
 import {
   detectScheduleConflicts,
   DEFAULT_SCHEDULE_OPTIONS,
@@ -53,10 +54,10 @@ export const getScheduleView = cache(async (tournamentId: string, scheduleConfig
         .from("match")
         .select("id, match_number, status, stage_id, group_id, home_team_id, away_team_id, court_id, display_order")
         .eq("tournament_id", tournamentId),
-      supabase.from("stage").select("id, name, sequence").eq("tournament_id", tournamentId),
+      supabase.from("stage").select("id, name, key, sequence").eq("tournament_id", tournamentId),
       supabase
         .from("tournament_group")
-        .select("id, name, stage!inner(tournament_id)")
+        .select("id, name, display_order, stage!inner(tournament_id)")
         .eq("stage.tournament_id", tournamentId),
       getTournamentTeamDisplays(tournamentId),
     ]);
@@ -67,7 +68,7 @@ export const getScheduleView = cache(async (tournamentId: string, scheduleConfig
     isAvailable: c.is_available,
   }));
   const stageById = new Map((stages ?? []).map((s) => [s.id, s]));
-  const groupNameById = new Map((groups ?? []).map((g) => [g.id, g.name]));
+  const groupById = new Map((groups ?? []).map((g) => [g.id, g]));
 
   const playable = (matchRows ?? []).filter((m) => m.home_team_id);
 
@@ -102,16 +103,14 @@ export const getScheduleView = cache(async (tournamentId: string, scheduleConfig
   const TBD: TeamDisplay = { header: "TBD", subtext: null };
   const seqOf = (stageId: string) => stageById.get(stageId)?.sequence ?? 0;
 
-  const allOrdered = [...(matchRows ?? [])].sort(
-    (a, b) =>
-      seqOf(a.stage_id) - seqOf(b.stage_id) ||
-      (a.group_id ?? "").localeCompare(b.group_id ?? "") ||
-      a.match_number - b.match_number,
+  // Shared with the Matches pages so a match carries the same number everywhere.
+  const continuousNumberByMatchId = continuousMatchNumbers(
+    (matchRows ?? []).map((m) => ({ id: m.id, stageId: m.stage_id, groupId: m.group_id, matchNumber: m.match_number })),
+    {
+      stageSequenceById: new Map((stages ?? []).map((s) => [s.id, s.sequence])),
+      groupOrderById: new Map((groups ?? []).map((g) => [g.id, g.display_order])),
+    },
   );
-  const continuousNumberByMatchId = new Map<string, number>();
-  allOrdered.forEach((m, idx) => {
-    continuousNumberByMatchId.set(m.id, idx + 1);
-  });
 
   const rows: ScheduleRow[] = [...playable]
     .sort(
@@ -121,17 +120,20 @@ export const getScheduleView = cache(async (tournamentId: string, scheduleConfig
         a.match_number - b.match_number,
     )
     .map((m) => {
-      const rawStage = stageById.get(m.stage_id)?.name ?? "";
-      const cleanStage =
-        rawStage.toLowerCase() === "third_place" || rawStage.toLowerCase() === "third place"
-          ? "Fight for Third"
-          : rawStage;
+      const stageRow = stageById.get(m.stage_id);
+      const grp = m.group_id ? groupById.get(m.group_id) : undefined;
+      const label = stageLabel({
+        stageKey: stageRow?.key,
+        stageName: stageRow?.name ?? "",
+        groupName: grp?.name ?? null,
+        groupOrder: grp?.display_order ?? null,
+      });
 
       return {
         matchId: m.id,
         matchNumber: continuousNumberByMatchId.get(m.id) ?? m.match_number,
-        stageName: cleanStage,
-        groupName: m.group_id ? groupNameById.get(m.group_id) ?? null : null,
+        stageName: label.stage,
+        groupName: label.bracket,
         home: m.home_team_id ? teamDisplayById.get(m.home_team_id) ?? TBD : TBD,
         away: m.away_team_id ? teamDisplayById.get(m.away_team_id) ?? TBD : { header: "Bye", subtext: null },
         courtId: m.court_id,

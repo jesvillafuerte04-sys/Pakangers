@@ -21,6 +21,7 @@ import {
   type Game,
 } from "@pakangers/engine";
 import { getTournamentTeamDisplays, type TeamDisplay } from "./team-display";
+import { continuousMatchNumbers, courtLabel, stageLabel } from "./match-identity";
 
 type StageRow = Tables<"stage">;
 type GroupRow = Tables<"tournament_group">;
@@ -876,21 +877,6 @@ export type PublicBracketStage = {
 };
 
 /**
- * Formats stage context so Bracket is never shown for Quarterfinals, Semifinals,
- * Fight for Third, and Championship, and match index within stage is indicated.
- */
-function formatKnockoutStageName(stageKey: string, stageName: string): string {
-  const k = stageKey.toLowerCase();
-  const n = stageName.toLowerCase();
-  if (k.includes("quarter") || n.includes("quarter")) return "Quarterfinals";
-  if (k.includes("semi") || n.includes("semi")) return "Semifinals";
-  if (k.includes("third") || n.includes("third")) return "Fight for Third";
-  if (k.includes("champ") || n.includes("champ") || n.includes("final")) return "Championship";
-  if (k.includes("16") || n.includes("16")) return "Round of 16";
-  return stageName.replace(/Bracket/gi, "").trim() || stageName;
-}
-
-/**
  * Per knockout stage, every planned match -- resolved (real teams, scores if
  * played) or not (a human-readable source label built from the bracket_node's
  * stored ref, e.g. "Pool A -- 1st", never a bare "TBD").
@@ -905,17 +891,42 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
 
   const stageNameByKey = new Map(snapshot.stages.map((s) => [s.key, s.name]));
   const matchIds = snapshot.matches.map((m) => m.id);
-  const [{ data: results }, teamDisplayById] = await Promise.all([
+  const [{ data: results }, teamDisplayById, { data: courts }] = await Promise.all([
     matchIds.length ? supabase.from("match_result").select("*").in("match_id", matchIds) : Promise.resolve({ data: [] as Tables<"match_result">[] }),
     getTournamentTeamDisplays(tournamentId),
+    supabase.from("court").select("id, name").eq("tournament_id", tournamentId),
   ]);
+  const courtNameById = new Map((courts ?? []).map((c) => [c.id, c.name]));
   const resultByMatchId = new Map((results ?? []).map((r) => [r.match_id, r]));
   const BYE_DISPLAY: TeamDisplay = { header: "Bye", subtext: null };
 
-  // Count pool stage matches so continuous match numbering starts right after pools
-  const poolStageIds = new Set(snapshot.stages.filter((s) => s.format_key === "round_robin").map((s) => s.id));
-  const poolMatchesCount = snapshot.matches.filter((m) => poolStageIds.has(m.stage_id)).length;
-  let runningContinuousMatchNumber = poolMatchesCount;
+  // Number every planned slot through the same helper the Matches and Schedule
+  // pages use, so one match carries one number across the whole app. A knockout
+  // slot that has no match row yet is numbered from its bracket_node position.
+  const stageSequenceById = new Map(snapshot.stages.map((s) => [s.id, s.sequence]));
+  const groupOrderById = new Map(snapshot.groups.map((g) => [g.id, g.display_order]));
+
+  const plannedNumbersByStage = new Map<string, number[]>();
+  for (const stage of snapshot.stages) {
+    if (stage.format_key !== "single_elimination") continue;
+    const nums = new Set<number>();
+    snapshot.matches.filter((m) => m.stage_id === stage.id).forEach((m) => nums.add(m.match_number));
+    snapshot.bracketNodes.filter((n) => n.stage_id === stage.id).forEach((n) => nums.add(n.position));
+    plannedNumbersByStage.set(stage.id, [...nums].sort((a, b) => a - b));
+  }
+
+  const slotKey = (stageId: string, num: number) => `${stageId}:${num}`;
+  const numberById = continuousMatchNumbers(
+    [
+      ...snapshot.matches
+        .filter((m) => !plannedNumbersByStage.has(m.stage_id))
+        .map((m) => ({ id: slotKey(m.stage_id, m.match_number), stageId: m.stage_id, groupId: m.group_id, matchNumber: m.match_number })),
+      ...[...plannedNumbersByStage].flatMap(([stageId, nums]) =>
+        nums.map((num) => ({ id: slotKey(stageId, num), stageId, groupId: null, matchNumber: num })),
+      ),
+    ],
+    { stageSequenceById, groupOrderById },
+  );
 
   const bracketStages: PublicBracketStage[] = [];
   for (const stage of snapshot.stages) {
@@ -928,29 +939,19 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
       snapshot.bracketNodes.filter((n) => n.stage_id === stage.id).map((n) => [n.position, n]),
     );
 
-    const numbers = new Set<number>();
-    existing.forEach((m) => numbers.add(m.match_number));
-    nodesByPosition.forEach((_, pos) => numbers.add(pos));
-
-    const sortedNumbers = [...numbers].sort((a, b) => a - b);
-    const cleanStageName = formatKnockoutStageName(stage.key, stage.name);
+    const sortedNumbers = plannedNumbersByStage.get(stage.id) ?? [];
+    const cleanStageName = stageLabel({ stageKey: stage.key, stageName: stage.name }).stage;
     const stageTotalMatches = sortedNumbers.length;
 
     const matches: PublicBracketMatch[] = sortedNumbers.map((num, idx) => {
-      runningContinuousMatchNumber++;
-      const continuousNumber = runningContinuousMatchNumber;
+      const continuousNumber = numberById.get(slotKey(stage.id, num)) ?? num;
       const stageMatchIndex = idx + 1;
 
-      let matchLabel = cleanStageName;
-      if (cleanStageName === "Quarterfinals" || cleanStageName === "Round of 16" || cleanStageName === "Semifinals") {
-        matchLabel = `${cleanStageName} (Match ${stageMatchIndex} of ${stageTotalMatches})`;
-      } else if (cleanStageName === "Fight for Third") {
-        matchLabel = "Fight for Third";
-      } else if (cleanStageName === "Championship") {
-        matchLabel = "Championship";
-      }
+      const matchLabel =
+        stageTotalMatches > 1 ? `${cleanStageName} (Match ${stageMatchIndex} of ${stageTotalMatches})` : cleanStageName;
 
-      const fullBadgeText = `M${continuousNumber} · ${matchLabel}`;
+      const courtRow = existing.find((m) => m.match_number === num);
+      const fullBadgeText = `M${continuousNumber} · ${matchLabel} · ${courtLabel(courtNameById.get(courtRow?.court_id ?? ""))}`;
 
       const match = existing.find((m) => m.match_number === num);
       if (match) {

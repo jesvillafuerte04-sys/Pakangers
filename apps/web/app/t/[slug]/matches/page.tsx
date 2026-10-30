@@ -59,14 +59,11 @@ export default async function PublicMatchesPage({
       )}
 
       {matches.map((m) => {
-        const stageLabel = m.matchLabel ?? (m.groupName ?? m.stageName);
-
         return (
           <Card key={m.id}>
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                M{m.matchNumber} · {stageLabel}
-                {m.courtName && ` · ${m.courtName}`}
+                {m.fullBadgeText ?? `M${m.matchNumber} · ${m.stageName} · ${m.courtLabel}`}
                 {m.round !== null && ` · Round ${m.round + 1}`}
               </span>
               <Badge tone={STATUS_TONE[m.status] ?? "neutral"}>

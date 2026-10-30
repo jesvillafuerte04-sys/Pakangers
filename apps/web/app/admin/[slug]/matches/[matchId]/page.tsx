@@ -28,7 +28,7 @@ export default async function ScoreEntryPage({ params }: PageProps<"/admin/[slug
 
       <Card>
         <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
-          {match.fullBadgeText ?? `Match #${match.matchNumber} · ${match.matchLabel ?? (match.groupName ? (match.groupName.startsWith("Pool") ? match.groupName : `Pool ${match.groupName.replace(/^(Bracket|Pool|Group)\s*/i, "")}`) : match.stageName)}`}
+          {match.fullBadgeText ?? `Match #${match.matchNumber} · ${match.matchLabel ?? match.stageName}`}
         </p>
         <p className="mb-4 text-sm text-[var(--color-text-muted)]">{scoringDescription(match.scoringConfig)}</p>
 

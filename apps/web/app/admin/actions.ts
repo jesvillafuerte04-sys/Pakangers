@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { USAPA_TIEBREAKERS } from "@pakangers/engine";
 import { verifyPasscode, createSession, destroySession, requireSession } from "@/lib/session";
 import { getServiceSupabase } from "@/lib/supabase-server";
 import type { TypedSupabaseClient, Json } from "@pakangers/db";
@@ -61,6 +62,10 @@ async function instantiateFromTemplate(
   const groupIdByStageAndName = new Map<string, string>();
 
   for (const stage of config.stages) {
+    // Every round-robin stage ranks by the USA Pickleball order, whatever the
+    // stored template says -- older templates predate head-to-head.
+    const tiebreakers = stage.formatKey === "round_robin" ? USAPA_TIEBREAKERS : stage.tiebreakers;
+
     const { data: stageRow, error: stageError } = await supabase
       .from("stage")
       .insert({
@@ -71,7 +76,7 @@ async function instantiateFromTemplate(
         format_key: stage.formatKey,
         sequence: stage.sequence,
         scoring_config: stage.scoring as Json,
-        tiebreaker_config: stage.tiebreakers as Json,
+        tiebreaker_config: tiebreakers as Json,
         entrant_config: (stage.entrants ? { entrants: stage.entrants } : {}) as Json,
       })
       .select("id")
@@ -603,7 +608,8 @@ async function deepDuplicateTournament(
           format_key: stg.format_key,
           sequence: stg.sequence,
           scoring_config: stg.scoring_config,
-          tiebreaker_config: stg.tiebreaker_config,
+          tiebreaker_config:
+            stg.format_key === "round_robin" ? (USAPA_TIEBREAKERS as unknown as Json) : stg.tiebreaker_config,
           entrant_config: stg.entrant_config,
         })
         .select("id")
@@ -919,7 +925,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         format_key: "round_robin",
         sequence: currentSequence++,
         scoring_config: poolScoring as unknown as Json,
-        tiebreaker_config: ["match_wins", "head_to_head", "point_differential", "points_scored"] as unknown as Json,
+        tiebreaker_config: USAPA_TIEBREAKERS as unknown as Json,
       })
       .select("id")
       .single();
@@ -1492,12 +1498,40 @@ export async function snakeSeedTeams(slug: string, tournamentId: string, stageId
 }
 
 /** Adds a new pool (e.g. Pool C) to an existing round-robin stage */
+/**
+ * Re-numbers a stage's brackets 0,1,2,... after any add or remove.
+ *
+ * Without this, deleting a bracket from the middle and adding another leaves
+ * two brackets sharing a display_order, which makes bracket order -- and so
+ * match numbering and the one-bracket-per-court assignment -- arbitrary.
+ */
+async function renumberGroups(supabase: TypedSupabaseClient, stageId: string): Promise<void> {
+  const { data: groups } = await supabase
+    .from("tournament_group")
+    .select("id, display_order, name")
+    .eq("stage_id", stageId)
+    .order("display_order")
+    .order("name");
+
+  for (const [i, g] of (groups ?? []).entries()) {
+    if (g.display_order === i) continue;
+    await supabase.from("tournament_group").update({ display_order: i }).eq("id", g.id);
+  }
+}
+
 export async function addPoolGroup(slug: string, stageId: string): Promise<void> {
   await requireSession();
   const supabase = getServiceSupabase();
 
-  const { data: existing } = await supabase.from("tournament_group").select("name").eq("stage_id", stageId).order("display_order");
-  const nextOrder = existing?.length ?? 0;
+  const { data: existing } = await supabase
+    .from("tournament_group")
+    .select("name, display_order")
+    .eq("stage_id", stageId)
+    .order("display_order");
+
+  // One past the highest order in use, not the count -- a gap left by a
+  // deleted bracket would otherwise hand out a duplicate.
+  const nextOrder = (existing ?? []).reduce((max, g) => Math.max(max, g.display_order + 1), 0);
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const name = alphabet[nextOrder] ?? `Pool ${nextOrder + 1}`;
 
@@ -1507,6 +1541,7 @@ export async function addPoolGroup(slug: string, stageId: string): Promise<void>
     display_order: nextOrder,
   });
   if (error) throw new Error(error.message);
+  await renumberGroups(supabase, stageId);
 
   revalidatePath(`/admin/${slug}/setup/groups`);
 }
@@ -1516,9 +1551,16 @@ export async function removePoolGroup(slug: string, groupId: string): Promise<vo
   await requireSession();
   const supabase = getServiceSupabase();
 
+  const { data: removed } = await supabase
+    .from("tournament_group")
+    .select("stage_id")
+    .eq("id", groupId)
+    .maybeSingle();
+
   await supabase.from("team").update({ group_id: null }).eq("group_id", groupId);
   const { error } = await supabase.from("tournament_group").delete().eq("id", groupId);
   if (error) throw new Error(error.message);
+  if (removed?.stage_id) await renumberGroups(supabase, removed.stage_id);
 
   revalidatePath(`/admin/${slug}/setup/groups`);
 }
@@ -1583,6 +1625,8 @@ export async function setBracketCount(slug: string, stageId: string, targetCount
     const { error: delErr } = await supabase.from("tournament_group").delete().in("id", removeIds);
     if (delErr) throw new Error(delErr.message);
   }
+
+  await renumberGroups(supabase, stageId);
 
   // Synchronize qualification rules for all current groups in this stage
   const { data: existingRules } = await supabase

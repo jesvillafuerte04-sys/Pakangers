@@ -41,9 +41,8 @@ function MatchIssues({ row }: { row: ScheduleRow }) {
 }
 
 function MatchLine({ slug, row, canMove }: { slug: string; row: ScheduleRow; canMove: boolean }) {
-  const poolOrStage = row.groupName
-    ? (row.groupName.startsWith("Pool") ? row.groupName : `Pool ${row.groupName.replace(/^(Bracket|Pool|Group)\s*/i, "")}`)
-    : (row.stageName.toLowerCase() === "third_place" || row.stageName.toLowerCase() === "third place" ? "Fight for Third" : row.stageName);
+  // stageName and groupName already arrive formatted from lib/match-identity.
+  const poolOrStage = row.groupName ? `${row.stageName} · ${row.groupName}` : row.stageName;
 
   return (
     <div className="rounded-lg border border-[var(--border-subtle)] p-3">
@@ -241,7 +240,7 @@ export default async function SchedulePage({ params }: PageProps<"/admin/[slug]/
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                      M{row.matchNumber} · {row.groupName ? (row.groupName.startsWith("Pool") ? row.groupName : `Pool ${row.groupName.replace(/^(Bracket|Pool|Group)\s*/i, "")}`) : (row.stageName.toLowerCase() === "third_place" || row.stageName.toLowerCase() === "third place" ? "Fight for Third" : row.stageName)}
+                      M{row.matchNumber} · {row.groupName ? `${row.stageName} · ${row.groupName}` : row.stageName}
                     </span>
                     <TeamMatchup home={row.home} away={row.away} />
                   </div>

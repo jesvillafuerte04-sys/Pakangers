@@ -19,6 +19,29 @@ export type Tiebreaker =
   | 'games_won'
   | 'coin_flip';
 
+/**
+ * The USA Pickleball round-robin tie-break order, in one place so every
+ * template, stage and test uses the same list.
+ *
+ *  1. match_wins                      most matches won
+ *  2. head_to_head                    wins counted only between the tied teams
+ *  3. head_to_head_point_differential the margin in those same matches
+ *  4. point_differential              overall margin across the whole bracket
+ *  5. points_allowed                  fewest points conceded
+ *  6. coin_flip                       organizer decides; flagged, never guessed
+ *
+ * points_scored is deliberately absent: ranking on points scored rewards
+ * running up the score, which USA Pickleball does not do.
+ */
+export const USAPA_TIEBREAKERS: Tiebreaker[] = [
+  'match_wins',
+  'head_to_head',
+  'head_to_head_point_differential',
+  'point_differential',
+  'points_allowed',
+  'coin_flip',
+];
+
 export type Entrant = {
   id: string;
   name: string;

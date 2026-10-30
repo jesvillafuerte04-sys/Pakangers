@@ -123,7 +123,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
     poolCount === 1
       ? "Pool A"
       : poolCount <= 4
-      ? alphabet.slice(0, poolCount).map((l) => `Pool ${l}`).join(" & ")
+      ? alphabet.slice(0, poolCount).map((_, i) => `Bracket ${i + 1}`).join(" & ")
       : `Pools A – ${alphabet[poolCount - 1]} (${poolCount} Pools)`;
 
   return (

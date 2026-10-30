@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { bracketLabel } from "@/lib/match-identity";
 import { renamePoolGroup } from "@/app/admin/actions";
 import { handleActionError } from "@/lib/client-error";
 
@@ -43,8 +44,7 @@ export function BracketNameEditor({ slug, groupId, initialName, isDraft }: Props
     }
   };
 
-  const clean = initialName.replace(/^(bracket|pool|group)\s*/i, "").trim();
-  const displayName = clean ? `Pool ${clean}` : initialName;
+  const displayName = bracketLabel(initialName, null) ?? initialName;
 
   if (!isDraft) {
     return <span className="font-bold text-[var(--color-navy)]">{displayName}</span>;

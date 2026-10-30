@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { bracketLabel } from "@/lib/match-identity";
 import { notFound } from "next/navigation";
 import { getPublicTournament, getLandingSnapshot, getFinalResults } from "@/lib/public-data";
 import { Card } from "@/components/ui/Card";
@@ -44,7 +45,7 @@ export default async function PublicLandingPage({ params }: PageProps<"/t/[slug]
         </Card>
 
         {results.standings.map((g) => {
-          const poolTitle = g.groupName.startsWith("Pool") ? g.groupName : `Pool ${g.groupName.replace(/^(bracket|group)\s*/i, "")}`;
+          const poolTitle = bracketLabel(g.groupName, null) ?? g.groupName;
           return (
             <Card
               key={`${g.stageKey}:${g.groupName}`}
@@ -88,7 +89,7 @@ export default async function PublicLandingPage({ params }: PageProps<"/t/[slug]
           </div>
           <div className="flex flex-col gap-2.5">
             {snapshot.live.map((m) => {
-              const label = m.matchLabel ?? (m.groupName ? (m.groupName.startsWith("Pool") ? m.groupName : `Pool ${m.groupName.replace(/^(bracket|group)\s*/i, "")}`) : m.stageName);
+              const label = m.matchLabel ?? m.stageName;
               return (
                 <Card key={m.id} className="border-l-4 border-l-[var(--color-gold)]">
                   <div className="flex items-center justify-between gap-3">
@@ -125,7 +126,7 @@ export default async function PublicLandingPage({ params }: PageProps<"/t/[slug]
         ) : (
           <div className="flex flex-col gap-2.5">
             {snapshot.upcoming.map((m) => {
-              const label = m.matchLabel ?? (m.groupName ? (m.groupName.startsWith("Pool") ? m.groupName : `Pool ${m.groupName.replace(/^(bracket|group)\s*/i, "")}`) : m.stageName);
+              const label = m.matchLabel ?? m.stageName;
               return (
                 <Card key={m.id}>
                   <div className="flex items-center justify-between gap-3">
@@ -152,7 +153,7 @@ export default async function PublicLandingPage({ params }: PageProps<"/t/[slug]
         <Card title="Standings Leaders">
           <div className="flex flex-col divide-y divide-[var(--border-subtle)]">
             {snapshot.standingsSnippet.map((s) => {
-              const poolLabel = s.groupName.startsWith("Pool") ? s.groupName : `Pool ${s.groupName.replace(/^(bracket|group)\s*/i, "")}`;
+              const poolLabel = bracketLabel(s.groupName, null) ?? s.groupName;
               return (
                 <div key={`${s.stageName}:${s.groupName}`} className="py-3.5 first:pt-1 last:pb-1">
                   <div className="mb-2 flex items-center justify-between">

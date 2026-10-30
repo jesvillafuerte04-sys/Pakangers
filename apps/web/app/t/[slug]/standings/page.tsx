@@ -4,6 +4,7 @@ import { getDisplayStandings } from "@/lib/match-pipeline";
 import { Card } from "@/components/ui/Card";
 import { StandingsRow } from "@/components/StandingsRow";
 import type { Tiebreaker } from "@pakangers/engine";
+import { bracketLabel } from "@/lib/match-identity";
 
 const TIEBREAKER_LABEL: Record<Tiebreaker, string> = {
   match_wins: "match wins",
@@ -29,8 +30,7 @@ function formatTiebreakerNote(tiebreakers: Tiebreaker[]): string {
 }
 
 function formatGroupHeading(groupName: string): string {
-  const clean = groupName.replace(/^(Bracket|Pool|Group)\s*/i, "").trim();
-  return clean ? `Pool ${clean}` : groupName;
+  return bracketLabel(groupName, null) ?? groupName;
 }
 
 export default async function PublicStandingsPage({ params }: PageProps<"/t/[slug]/standings">) {
