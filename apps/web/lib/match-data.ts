@@ -54,7 +54,7 @@ const RESOLVED = ["completed", "forfeit", "bye"];
 const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow[]> => {
   const supabase = getServiceSupabase();
 
-  const [{ data: matches, error }, { data: stages }, { data: groups }, { count: openCourts }, teamDisplayById] =
+  const [{ data: matches, error }, { data: stages }, { data: groups }, { data: teamRows }, { count: openCourts }, teamDisplayById] =
     await Promise.all([
       supabase
         .from("match")
@@ -64,6 +64,7 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
         .eq("tournament_id", tournamentId),
       supabase.from("stage").select("id, name, key, sequence, format_key").eq("tournament_id", tournamentId).order("sequence"),
       supabase.from("tournament_group").select("id, name, display_order, stage!inner(tournament_id)").eq("stage.tournament_id", tournamentId),
+    supabase.from("team").select("id, group_id").eq("tournament_id", tournamentId),
       // How many brackets can run at once, which is what makes the match
       // numbers follow the order the matches are actually called.
       supabase
@@ -77,6 +78,14 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
 
   const stageById = new Map((stages ?? []).map((s) => [s.id, s]));
   const groupById = new Map((groups ?? []).map((g) => [g.id, g]));
+  // A bracket match should name its bracket even when the column was not
+  // stamped -- the teams themselves say which bracket they are in.
+  const groupIdByTeamId = new Map((teamRows ?? []).filter((t) => t.group_id).map((t) => [t.id, t.group_id!]));
+  const bracketOf = (m: { group_id: string | null; home_team_id: string | null; away_team_id: string | null }) =>
+    m.group_id
+    ?? (m.home_team_id ? groupIdByTeamId.get(m.home_team_id) : null)
+    ?? (m.away_team_id ? groupIdByTeamId.get(m.away_team_id) : null)
+    ?? null;
 
   const ctx = {
     stageSequenceById: new Map((stages ?? []).map((s) => [s.id, s.sequence])),
@@ -86,7 +95,7 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
   // Every match is numbered, TBD knockout slots included, so a number assigned
   // before the event is still that match's number once the bracket resolves.
   const numberById = continuousMatchNumbers(
-    (matches ?? []).map((m) => ({ id: m.id, stageId: m.stage_id, groupId: m.group_id, matchNumber: m.match_number })),
+    (matches ?? []).map((m) => ({ id: m.id, stageId: m.stage_id, groupId: bracketOf(m), matchNumber: m.match_number })),
     ctx,
   );
 
@@ -107,7 +116,8 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
     const courtRow = Array.isArray(m.court) ? m.court[0] : m.court;
     const winnerId = result?.winner_team_id ?? null;
     const stage = stageById.get(m.stage_id);
-    const group = m.group_id ? groupById.get(m.group_id) : undefined;
+    const resolvedGroupId = bracketOf(m);
+    const group = resolvedGroupId ? groupById.get(resolvedGroupId) : undefined;
 
     const continuousMatchNumber = numberById.get(m.id) ?? m.match_number;
     const curIdx = (stageCurrentIndex.get(m.stage_id) ?? 0) + 1;

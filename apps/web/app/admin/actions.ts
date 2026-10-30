@@ -357,12 +357,85 @@ export async function removePlayerFromTeam(slug: string, teamId: string, playerI
   revalidatePath(`/admin/${slug}/setup/teams`);
 }
 
+/**
+ * Throws away a bracket's unplayed round-robin matches so they are rebuilt
+ * from its current line-up.
+ *
+ * The round robin is generated from whoever is in the bracket at the time and
+ * never revisited, so moving one team afterwards left the old fixtures in
+ * place and added new ones on top: teams that had already been drawn together
+ * met twice, and pairings that only exist in the new line-up were missing
+ * entirely. Clearing the unplayed matches lets populateTournament lay the
+ * bracket out again correctly.
+ *
+ * Matches that have been played, or are on court right now, are never
+ * touched -- the caller is told instead, because silently deleting a recorded
+ * result to tidy a bracket would be far worse than refusing.
+ */
+async function regenerateBracketMatches(
+  supabase: TypedSupabaseClient,
+  tournamentId: string,
+  teamIds: string[],
+): Promise<void> {
+  if (teamIds.length === 0) return;
+
+  const { data: affected } = await supabase
+    .from("match")
+    .select("id, status, stage!inner(format_key)")
+    .eq("tournament_id", tournamentId)
+    .eq("stage.format_key", "round_robin")
+    .or(teamIds.map((id) => `home_team_id.eq.${id},away_team_id.eq.${id}`).join(","));
+
+  const rows = affected ?? [];
+  const played = rows.filter((m) => !["pending", "scheduled"].includes(m.status));
+  if (played.length > 0) {
+    throw new Error(
+      `${played.length} of this bracket's matches have already started or been scored. ` +
+        "Correct or clear those results first, then move the team.",
+    );
+  }
+
+  const ids = rows.map((m) => m.id);
+  if (ids.length > 0) {
+    await supabase.from("game").delete().in("match_id", ids);
+    await supabase.from("match_result").delete().in("match_id", ids);
+    const { error } = await supabase.from("match").delete().in("id", ids);
+    if (error) throw new Error(error.message);
+  }
+
+  await populateTournament(tournamentId);
+}
+
 export async function assignTeamToGroup(slug: string, teamId: string, groupId: string | null): Promise<void> {
   await requireSession();
   const supabase = getServiceSupabase();
+
+  const { data: team } = await supabase.from("team").select("tournament_id, group_id").eq("id", teamId).single();
+  if (!team) throw new Error("Team not found");
+  if (team.group_id === groupId) return;
+
   const { error } = await supabase.from("team").update({ group_id: groupId }).eq("id", teamId);
   if (error) throw new Error(error.message);
+
+  // Both brackets change shape -- the one losing the team and the one gaining
+  // it -- so every fixture either of them holds has to be laid out again.
+  const { data: siblings } = await supabase
+    .from("team")
+    .select("id")
+    .eq("tournament_id", team.tournament_id)
+    .in("group_id", [team.group_id, groupId].filter((g): g is string => Boolean(g)));
+
+  await regenerateBracketMatches(
+    supabase,
+    team.tournament_id,
+    [...new Set([teamId, ...(siblings ?? []).map((t) => t.id)])],
+  );
+
   revalidatePath(`/admin/${slug}/setup/groups`);
+  revalidatePath(`/admin/${slug}/matches`);
+  revalidatePath(`/admin/${slug}/schedule`);
+  revalidatePath(`/t/${slug}/matches`);
+  revalidatePath(`/t/${slug}/standings`);
 }
 
 export async function lockTournament(slug: string): Promise<void> {
@@ -1406,9 +1479,8 @@ export async function snakeSeedTeams(slug: string, tournamentId: string, stageId
     await supabase.from("team").update({ group_id: targetGroup.id }).eq("id", teams[i]!.id);
   }
 
-  await populateTournament(tournamentId).catch((err) => {
-    console.warn("populateTournament after snakeSeedTeams non-fatal error:", err);
-  });
+  // Every bracket's line-up has just changed, so the old fixtures are stale.
+  await regenerateBracketMatches(supabase, tournamentId, teams.map((t) => t.id));
 
   revalidatePath(`/admin/${slug}/setup/groups`);
   revalidatePath(`/admin/${slug}/setup/review`);

@@ -235,14 +235,57 @@ function autoScheduleGreedy(
 }
 
 /**
- * Assigns matches to courts, one bracket per court.
+ * Shares the courts out between the brackets.
  *
- * Each court keeps its own queue, so a bracket plays its whole round robin on
- * a single court and the courts fill up evenly. A bracket the organizer has
- * pinned goes on that court; the rest are spread over the courts with the
- * shortest queues, which reproduces the old wave behaviour when nothing is
- * pinned. Knockout matches follow once the brackets are done, scheduled
- * greedily so no team plays twice at once.
+ * A pinned bracket takes the court it was pinned to and nothing else. What is
+ * left is divided between the remaining brackets: with more courts than
+ * brackets each one gets several and plays its round robin in parallel, and
+ * with more brackets than courts they take one each and the surplus queues
+ * behind them. Earlier brackets get the extra court when it does not divide.
+ */
+function courtsPerBracket(
+  groupOrders: number[],
+  pinnedByGroup: Map<number, SchedulableCourt>,
+  usableCourts: SchedulableCourt[],
+): Map<number, SchedulableCourt[]> {
+  const result = new Map<number, SchedulableCourt[]>();
+
+  const claimed = new Set<string>();
+  for (const [ord, court] of pinnedByGroup) {
+    result.set(ord, [court]);
+    claimed.add(court.id);
+  }
+
+  const free = usableCourts.filter((c) => !claimed.has(c.id));
+  const unpinned = groupOrders.filter((o) => !pinnedByGroup.has(o));
+  if (unpinned.length === 0) return result;
+
+  // Nothing free: the unpinned brackets share the whole set and queue up.
+  const pool = free.length > 0 ? free : usableCourts;
+
+  let next = 0;
+  for (const [i, ord] of unpinned.entries()) {
+    const share = Math.max(1, Math.floor(pool.length / unpinned.length) + (i < pool.length % unpinned.length ? 1 : 0));
+    const mine: SchedulableCourt[] = [];
+    for (let k = 0; k < share; k++) {
+      mine.push(pool[next % pool.length]!);
+      next++;
+    }
+    result.set(ord, mine);
+  }
+
+  return result;
+}
+
+/**
+ * Assigns matches to courts.
+ *
+ * A bracket is played on the courts allotted to it and nowhere else, so the
+ * whole of Bracket A happens on Court 1 (and Court 2, if the courts allow).
+ * Within a bracket the matches are placed greedily, which is what keeps a
+ * team out of two matches at once -- seven teams cannot fill four courts no
+ * matter how many are free. Knockout matches follow once the brackets are
+ * done.
  */
 export function autoSchedule(
   matches: SchedulableMatch[],
@@ -269,45 +312,40 @@ export function autoSchedule(
     const ord = m.groupOrder!;
     groupsMap.set(ord, [...(groupsMap.get(ord) ?? []), m]);
   }
+  const ordered = [...groupsMap.keys()].sort((a, b) => a - b);
 
-  /** How many matches are already queued on each court. */
+  const pinnedByGroup = new Map<number, SchedulableCourt>();
+  for (const ord of ordered) {
+    const pinnedId = groupsMap.get(ord)!.find((m) => m.pinnedCourtId)?.pinnedCourtId ?? null;
+    const court = pinnedId ? usableCourts.find((c) => c.id === pinnedId) : undefined;
+    if (court) pinnedByGroup.set(ord, court);
+  }
+
+  const allotted = courtsPerBracket(ordered, pinnedByGroup, usableCourts);
+
+  /** The next free round on each court, so brackets sharing one queue up. */
   const nextRound = new Map<string, number>(usableCourts.map((c) => [c.id, 0]));
   const assignments: ScheduleAssignment[] = [];
 
-  // A pinned bracket claims its court first, so an unpinned bracket is never
-  // given a court that the organizer has already spoken for.
-  const ordered = [...groupsMap.keys()].sort((a, b) => a - b);
-  const courtForGroup = new Map<number, SchedulableCourt>();
-
   for (const ord of ordered) {
-    const pinned = groupsMap.get(ord)!.find((m) => m.pinnedCourtId)?.pinnedCourtId ?? null;
-    const court = pinned ? usableCourts.find((c) => c.id === pinned) : undefined;
-    if (court) courtForGroup.set(ord, court);
-  }
+    const mine = allotted.get(ord) ?? [usableCourts[0]!];
+    const startRound = Math.min(...mine.map((c) => nextRound.get(c.id) ?? 0));
+    const placed = autoScheduleGreedy(
+      groupsMap.get(ord)!.sort((a, b) => a.matchNumber - b.matchNumber),
+      mine,
+      opts,
+      startRound,
+    );
+    assignments.push(...placed);
 
-  for (const ord of ordered) {
-    let court = courtForGroup.get(ord);
-    if (!court) {
-      // The shortest queue, counting the brackets already placed. Ties go to
-      // the court that comes first, so bracket order follows court order.
-      const load = (c: SchedulableCourt) =>
-        ordered
-          .filter((o) => courtForGroup.get(o)?.id === c.id)
-          .reduce((n, o) => n + (groupsMap.get(o)?.length ?? 0), 0);
-      court = usableCourts.reduce((best, c) => (load(c) < load(best) ? c : best), usableCourts[0]!);
-      courtForGroup.set(ord, court);
+    for (const a of placed) {
+      if (!a.courtId || a.round === null) continue;
+      nextRound.set(a.courtId, Math.max(nextRound.get(a.courtId) ?? 0, a.round + 1));
     }
-
-    const gMatches = groupsMap.get(ord)!.sort((a, b) => a.matchNumber - b.matchNumber);
-    let round = nextRound.get(court.id)!;
-    for (const m of gMatches) {
-      assignments.push({ matchId: m.id, courtId: court.id, round: round++ });
-    }
-    nextRound.set(court.id, round);
   }
 
   if (nonGroupMatches.length > 0) {
-    const bracketsDone = Math.max(...nextRound.values());
+    const bracketsDone = Math.max(0, ...nextRound.values());
     assignments.push(...autoScheduleGreedy(nonGroupMatches, usableCourts, opts, bracketsDone));
   }
 
