@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getTournamentBySlug } from "@/lib/tournament-data";
 import { getMatchDetail } from "@/lib/match-data";
 import { Card } from "@/components/ui/Card";
@@ -40,8 +40,12 @@ export default async function ScoreEntryPage({
   const tournament = await getTournamentBySlug(slug);
   if (!tournament) notFound();
 
+  // A match can legitimately stop existing while this page is open: moving a
+  // team between brackets redraws that bracket's fixtures. Sending the
+  // organizer back to the match list is a far better answer than a bare 404
+  // on a page they reached by clicking a link that was valid a moment ago.
   const match = await getMatchDetail(matchId);
-  if (!match) notFound();
+  if (!match) redirect(`/admin/${slug}/matches?filter=${from}`);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-6">
