@@ -115,6 +115,25 @@ export type Match = {
   source: 'generated' | 'manual';
 };
 
+/**
+ * Which tiebreaker separated one entrant from the one directly above it, and
+ * the two values that criterion compared.
+ *
+ * Recorded by the engine as it ranks, rather than reconstructed afterwards:
+ * an explanation worked out separately from the decision will eventually
+ * disagree with it, and a standing that explains itself wrongly is worse than
+ * one that says nothing.
+ */
+export type SeparationReason = {
+  tiebreaker: Tiebreaker;
+  /** This entrant's value for that criterion. */
+  value: number;
+  /** The value of the entrant immediately above. */
+  aboveValue: number;
+  /** How many entrants were still level when this criterion was applied. */
+  tiedCount: number;
+};
+
 export type Standing = {
   entrantId: string;
   rank: number;
@@ -128,6 +147,8 @@ export type Standing = {
   winPercentage: number;
   /** True when this team's rank could not be fully resolved by the configured tiebreakers. */
   unresolvedTie: boolean;
+  /** Null for the top entrant of a bracket, and whenever nothing was tied. */
+  separatedFromAbove?: SeparationReason | null;
 };
 
 export type Advancement = {

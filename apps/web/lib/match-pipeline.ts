@@ -11,6 +11,7 @@ import {
   type MatchStatus,
   type MatchSide,
   type Standing,
+  type SeparationReason,
   type StageConfig,
   type ScoringConfig,
   type Tiebreaker,
@@ -642,134 +643,70 @@ export type DisplayStandingsGroup = {
  * Computes clear explanation of why an entrant is at their current standing position
  * and why they advance (or why they are placed where they are when there's a tie).
  */
-function computeAdvancementAndTieReasons(
+/**
+ * Puts the engine's own decision into words.
+ *
+ * The criterion and both values come from the ranking itself, so the wording
+ * cannot drift from what actually happened. The previous version worked the
+ * reason out separately with its own simplified rules and said things that
+ * were not true: a bracket settled on head-to-head was reported as won on
+ * point differential, quoting a figure that was in fact the worst of the
+ * tied teams.
+ */
+function describeSeparation(reason: SeparationReason): string {
+  const { tiebreaker, value, aboveValue, tiedCount } = reason;
+  const signed = (n: number) => `${n >= 0 ? "+" : ""}${n}`;
+  const amongTied = tiedCount > 2 ? ` among the ${tiedCount} level on wins` : "";
+
+  switch (tiebreaker) {
+    case "match_wins":
+      return `More matches won (${aboveValue} to ${value})`;
+    case "win_percentage":
+      return `Better win rate (${Math.round(aboveValue * 100)}% to ${Math.round(value * 100)}%)`;
+    case "head_to_head":
+      return `Won head-to-head${amongTied} (${aboveValue} ${aboveValue === 1 ? "win" : "wins"} to ${value})`;
+    case "head_to_head_point_differential":
+      return `Better head-to-head point difference${amongTied} (${signed(aboveValue)} to ${signed(value)})`;
+    case "point_differential":
+      return `Better point difference (${signed(aboveValue)} to ${signed(value)})`;
+    case "points_scored":
+      return `More points scored (${aboveValue} to ${value})`;
+    case "points_allowed":
+      // metricValue negates this one, because fewer allowed is better.
+      return `Fewer points allowed (${-aboveValue} to ${-value})`;
+    case "games_won":
+      return `More games won (${aboveValue} to ${value})`;
+    case "coin_flip":
+      return "Settled by coin toss";
+    default:
+      return "Won the tiebreaker";
+  }
+}
+
+/**
+ * Why each advancing team is in, in its own words.
+ *
+ * A team's place is only interesting against the team it finished directly
+ * above, so the note for rank N describes what separated rank N+1 from it.
+ * Only the teams that got through carry one: a team that is out is out, and
+ * explaining the gap between 4th and 5th tells nobody anything they needed.
+ */
+function advancementNotes(
   standings: Standing[],
-  groupMatches: EngineMatch[],
   qualifyCount: number | null,
-  teamDisplayById: Map<string, TeamDisplay>,
-): Map<string, { advancementReason: string | null; tiebreakerReason: string | null }> {
-  const result = new Map<string, { advancementReason: string | null; tiebreakerReason: string | null }>();
+): Map<string, string> {
+  const notes = new Map<string, string>();
+  if (qualifyCount === null) return notes;
 
-  const hasStarted = standings.some((s) => s.wins > 0 || s.losses > 0 || s.pointsFor > 0);
-  if (!hasStarted) {
-    for (const s of standings) {
-      result.set(s.entrantId, { advancementReason: null, tiebreakerReason: null });
-    }
-    return result;
+  for (let i = 0; i < Math.min(qualifyCount, standings.length); i++) {
+    const here = standings[i]!;
+    const reason = standings[i + 1]?.separatedFromAbove;
+    notes.set(
+      here.entrantId,
+      reason ? describeSeparation(reason) : `Outright ${here.wins}-${here.losses} record`,
+    );
   }
-
-  for (let i = 0; i < standings.length; i++) {
-    const s = standings[i]!;
-    const isQualifying = qualifyCount !== null && i < qualifyCount;
-    const tiedWith = standings.filter((o) => o.entrantId !== s.entrantId && o.wins === s.wins);
-
-    if (tiedWith.length === 0) {
-      // Outright record
-      const advNote = isQualifying ? `Outright ${s.wins}–${s.losses} record` : null;
-      result.set(s.entrantId, { advancementReason: advNote, tiebreakerReason: null });
-      continue;
-    }
-
-    if (tiedWith.length === 1) {
-      const other = tiedWith[0]!;
-      const isAhead = s.rank < other.rank;
-      const otherName = teamDisplayById.get(other.entrantId)?.header ?? "opponent";
-
-      const h2hMatches = groupMatches.filter(
-        (m) =>
-          RESOLVED_STATUSES.includes(m.status) &&
-          ((m.homeEntrantId === s.entrantId && m.awayEntrantId === other.entrantId) ||
-            (m.homeEntrantId === other.entrantId && m.awayEntrantId === s.entrantId)),
-      );
-      let sH2HWins = 0;
-      let otherH2HWins = 0;
-      for (const m of h2hMatches) {
-        const winner = matchWinner(m.scoringConfig, m.games);
-        if (winner === "home") {
-          if (m.homeEntrantId === s.entrantId) sH2HWins++;
-          else otherH2HWins++;
-        } else if (winner === "away") {
-          if (m.awayEntrantId === s.entrantId) sH2HWins++;
-          else otherH2HWins++;
-        }
-      }
-
-      if (isAhead) {
-        if (sH2HWins > otherH2HWins) {
-          const reason = `Won head-to-head vs ${otherName}`;
-          result.set(s.entrantId, {
-            advancementReason: isQualifying ? reason : null,
-            tiebreakerReason: reason,
-          });
-        } else if (s.pointDifferential !== other.pointDifferential) {
-          const diffSign = s.pointDifferential >= 0 ? "+" : "";
-          const otherDiffSign = other.pointDifferential >= 0 ? "+" : "";
-          const reason = `Point differential (${diffSign}${s.pointDifferential} vs ${otherDiffSign}${other.pointDifferential})`;
-          result.set(s.entrantId, {
-            advancementReason: isQualifying ? `Won tiebreaker on point diff` : null,
-            tiebreakerReason: reason,
-          });
-        } else if (s.pointsFor !== other.pointsFor) {
-          const reason = `Points scored (${s.pointsFor} vs ${other.pointsFor} pts)`;
-          result.set(s.entrantId, {
-            advancementReason: isQualifying ? `Won tiebreaker on points scored` : null,
-            tiebreakerReason: reason,
-          });
-        } else if (s.unresolvedTie) {
-          result.set(s.entrantId, {
-            advancementReason: isQualifying ? `Tied on every tiebreaker` : null,
-            tiebreakerReason: `Tied with ${otherName} on every tiebreaker`,
-          });
-        } else {
-          result.set(s.entrantId, {
-            advancementReason: isQualifying ? `Won tiebreaker` : null,
-            tiebreakerReason: `Tiebreaker over ${otherName}`,
-          });
-        }
-      } else {
-        if (otherH2HWins > sH2HWins) {
-          result.set(s.entrantId, {
-            advancementReason: null,
-            tiebreakerReason: `Behind ${otherName} on head-to-head`,
-          });
-        } else if (s.pointDifferential !== other.pointDifferential) {
-          result.set(s.entrantId, {
-            advancementReason: null,
-            tiebreakerReason: `Behind ${otherName} on point differential`,
-          });
-        } else {
-          result.set(s.entrantId, {
-            advancementReason: null,
-            tiebreakerReason: `Tied with ${otherName}`,
-          });
-        }
-      }
-    } else {
-      // 3-way or multi-way tie
-      const minRank = Math.min(s.rank, ...tiedWith.map((o) => o.rank));
-      if (s.rank === minRank) {
-        if (s.pointDifferential !== tiedWith[0]!.pointDifferential) {
-          const diffSign = s.pointDifferential >= 0 ? "+" : "";
-          result.set(s.entrantId, {
-            advancementReason: isQualifying ? `Won multi-way tiebreaker on point diff (${diffSign}${s.pointDifferential})` : null,
-            tiebreakerReason: `Won multi-way tiebreaker on point differential (${diffSign}${s.pointDifferential})`,
-          });
-        } else {
-          result.set(s.entrantId, {
-            advancementReason: isQualifying ? `Won multi-way tiebreaker` : null,
-            tiebreakerReason: `Won multi-way tiebreaker`,
-          });
-        }
-      } else {
-        result.set(s.entrantId, {
-          advancementReason: isQualifying ? `Advances via tiebreaker criteria` : null,
-          tiebreakerReason: `Tied on ${s.wins} wins (${tiedWith.length + 1}-way tie)`,
-        });
-      }
-    }
-  }
-
-  return result;
+  return notes;
 }
 
 /** Every resolved match a given entrant played within a group, for the standings drill-down. */
@@ -859,7 +796,7 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
       const groupMatches = stageMatches.filter((m) => m.group === g.name);
       const standings = engineComputeStandings(g.entrantIds, groupMatches, cfg.tiebreakers);
       const qCount = qualifyCountByGroupId.get(groupRow.id) ?? defaultQualifyCount;
-      const reasonsMap = computeAdvancementAndTieReasons(standings, groupMatches, qCount, teamDisplayById);
+      const notes = advancementNotes(standings, qCount);
       const groupIsComplete =
         groupMatches.length > 0 && groupMatches.every((m) => RESOLVED_STATUSES.includes(m.status));
 
@@ -871,32 +808,19 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
         qualifyCount: qCount,
         isComplete: groupIsComplete,
         standings: standings.map((s, i) => {
-          const reasons = reasonsMap.get(s.entrantId);
-          // Nothing advances or is eliminated until the bracket is finished,
-          // so no reason is shown before then -- a half-played bracket full of
-          // "won multi-way tiebreaker" notes reads as though places are settled.
+          // Nothing is decided until the bracket is finished, so no note is
+          // shown before then. Only the teams that got through carry one: a
+          // team that is out is out, and explaining the gap between 4th and
+          // 5th tells nobody anything they needed.
           const qualifies = qCount !== null && i < qCount;
-          // Below the line, a tie-break note only explains anything when the
-          // tie reached the cut. "Eliminated — won head-to-head vs the team
-          // below you" says nothing about why you went out, so 4th and 5th
-          // just read "Eliminated". The team one place short still gets its
-          // reason, because that tie is the one that kept them out.
-          const contestedTheCut = qCount !== null && i === qCount;
-          const why = qualifies
-            ? reasons?.advancementReason ?? reasons?.tiebreakerReason ?? null
-            : contestedTheCut
-              ? reasons?.tiebreakerReason ?? null
-              : null;
-          // "Advances — behind X on head-to-head" reads as a contradiction,
-          // so an advancing team that lost a tiebreak is placed, not beaten.
-          const verb = qualifies ? (why?.startsWith("Behind") ? `Advances in ${ordinal(i + 1)}` : "Advances") : "Eliminated";
+          const why = groupIsComplete && qualifies ? notes.get(s.entrantId) ?? null : null;
           const outcomeNote =
-            !groupIsComplete || qCount === null ? null : `${verb}${why ? ` — ${why.replace(/^Behind/, "behind")}` : ""}`;
+            !groupIsComplete || qCount === null ? null : qualifies ? `Advances — ${why}` : "Eliminated";
 
           return {
             ...s,
             team: teamDisplayById.get(s.entrantId) ?? { header: "Unknown", subtext: null },
-            advancementReason: groupIsComplete ? reasons?.advancementReason ?? null : null,
+            advancementReason: why,
             outcomeNote,
             stats: [
               { k: "W–L", v: `${s.wins}-${s.losses}` },

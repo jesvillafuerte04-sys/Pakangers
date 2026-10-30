@@ -1,4 +1,4 @@
-import type { Match, Standing, Tiebreaker } from './types.ts';
+import type { Match, SeparationReason, Standing, Tiebreaker } from './types.ts';
 import { gameWinner, matchWinner } from './scoring.ts';
 
 type Row = {
@@ -121,6 +121,16 @@ function partitionByKey(group: Standing[], keyOf: (s: Standing) => number): Stan
   return out;
 }
 
+/** The value a tiebreaker compares, for one entrant within a tied group. */
+function valueFor(s: Standing, group: Standing[], matches: Match[], tb: Tiebreaker): number {
+  if (tb === 'head_to_head' || tb === 'head_to_head_point_differential') {
+    const ids = group.map((g) => g.entrantId);
+    const metric = tb === 'head_to_head' ? headToHeadWins(ids, matches) : headToHeadPointDiff(ids, matches);
+    return metric.get(s.entrantId) ?? 0;
+  }
+  return metricValue(s, tb);
+}
+
 /**
  * Applies one tiebreaker to a tied group, returning ordered sub-groups.
  * A single returned group means this tiebreaker could not separate anyone.
@@ -155,6 +165,19 @@ function rankGroup(group: Standing[], matches: Match[], tiebreakers: Tiebreaker[
   for (const tb of tiebreakers) {
     const parts = applyTiebreaker(group, matches, tb);
     if (parts.length > 1) {
+      // This criterion is what separated each sub-group from the one above it,
+      // so the boundary is recorded on the entrant that starts each sub-group.
+      for (let i = 1; i < parts.length; i++) {
+        const first = parts[i]![0]!;
+        const lastAbove = parts[i - 1]![parts[i - 1]!.length - 1]!;
+        const reason: SeparationReason = {
+          tiebreaker: tb,
+          value: valueFor(first, group, matches, tb),
+          aboveValue: valueFor(lastAbove, group, matches, tb),
+          tiedCount: group.length,
+        };
+        first.separatedFromAbove = reason;
+      }
       return parts.flatMap((part) => rankGroup(part, matches, tiebreakers));
     }
   }
