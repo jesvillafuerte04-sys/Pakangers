@@ -95,3 +95,27 @@ test('teams level on wins are compared only on matches between themselves', () =
   const jessa = table.find((s) => s.entrantId === 'Jessa')!.separatedFromAbove!;
   assert.ok(jessa.value < 4, 'the head-to-head count is within the tied group, not the full round robin');
 });
+
+test('every team below the top carries a reason -- none reads as an outright finish', () => {
+  // The bug this guards: the boundary was recorded before the sub-group was
+  // ordered, so it landed on the wrong team. The team that actually sat on
+  // the boundary had no reason, and the app showed "Outright 4-2 record" for
+  // a team that was one of four level on wins.
+  const table = standings();
+  for (const s of table.slice(1)) {
+    assert.ok(
+      s.separatedFromAbove,
+      `${s.entrantId} at rank ${s.rank} has no reason, so it would read as finishing outright`,
+    );
+  }
+});
+
+test('the note shown to the organizer names the four-way tie, not an outright record', () => {
+  const table = standings();
+  // Rank 2's note is built from rank 3's reason -- that is the boundary it
+  // sits on. It must describe the four-way head-to-head.
+  const third = table[2]!.separatedFromAbove!;
+  assert.equal(third.tiebreaker, 'head_to_head');
+  assert.equal(third.tiedCount, 4, 'the note must say four teams were level, not two');
+  assert.equal(table[2]!.entrantId, 'Jessa');
+});

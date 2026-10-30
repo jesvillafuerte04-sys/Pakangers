@@ -165,20 +165,27 @@ function rankGroup(group: Standing[], matches: Match[], tiebreakers: Tiebreaker[
   for (const tb of tiebreakers) {
     const parts = applyTiebreaker(group, matches, tb);
     if (parts.length > 1) {
-      // This criterion is what separated each sub-group from the one above it,
-      // so the boundary is recorded on the entrant that starts each sub-group.
-      for (let i = 1; i < parts.length; i++) {
-        const first = parts[i]![0]!;
-        const lastAbove = parts[i - 1]![parts[i - 1]!.length - 1]!;
-        const reason: SeparationReason = {
+      // Rank inside each sub-group first. Recording the boundary before that
+      // put the reason on whichever entrant happened to be listed first, not
+      // on the one that ends up first once the sub-group is ordered -- so the
+      // team that really sat on the boundary was left with no reason at all,
+      // and read as an outright finish when it had in fact won a tiebreak.
+      const ranked = parts.map((part) => rankGroup(part, matches, tiebreakers));
+
+      for (let i = 1; i < ranked.length; i++) {
+        const first = ranked[i]![0]!;
+        const above = ranked[i - 1]!;
+        // Values are measured against the group as it stood when this
+        // criterion was applied, so a head-to-head count is the mini table
+        // among all the teams that were level, not just these two.
+        first.separatedFromAbove = {
           tiebreaker: tb,
           value: valueFor(first, group, matches, tb),
-          aboveValue: valueFor(lastAbove, group, matches, tb),
+          aboveValue: valueFor(above[above.length - 1]!, group, matches, tb),
           tiedCount: group.length,
         };
-        first.separatedFromAbove = reason;
       }
-      return parts.flatMap((part) => rankGroup(part, matches, tiebreakers));
+      return ranked.flat();
     }
   }
 
