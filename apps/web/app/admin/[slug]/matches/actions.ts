@@ -74,6 +74,31 @@ export async function markMatchLive(slug: string, matchId: string, formData: For
   revalidatePath(`/admin/${slug}/schedule`);
 }
 
+/**
+ * Re-runs the draw: fills any knockout slot whose feeders have since been
+ * decided, and brings every stage status up to date.
+ *
+ * This normally happens as a side effect of saving a score, which is enough
+ * while results are still coming in. It is not enough when a bracket finished
+ * some time ago, or when the draw itself was rewired -- then there is no next
+ * score to trigger it and the knockout sits empty with nothing to press.
+ */
+export async function refreshDraw(slug: string): Promise<void> {
+  await requireSession();
+  const tournament = await getTournamentBySlug(slug);
+  if (!tournament) throw new Error("Tournament not found");
+
+  await populateTournament(tournament.id);
+
+  revalidatePath(`/admin/${slug}`);
+  revalidatePath(`/admin/${slug}/matches`);
+  revalidatePath(`/admin/${slug}/schedule`);
+  revalidatePath(`/t/${slug}`);
+  revalidatePath(`/t/${slug}/matches`);
+  revalidatePath(`/t/${slug}/bracket`);
+  revalidatePath(`/t/${slug}/standings`);
+}
+
 export type ScorePayload =
   | { kind: "score"; games: { homeScore: number; awayScore: number }[] }
   | { kind: "forfeit"; winningTeamId: string; resultType: "forfeit" | "default" | "retired"; reason?: string };

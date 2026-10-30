@@ -1547,9 +1547,36 @@ export async function removePoolGroup(slug: string, groupId: string): Promise<vo
 
   const { data: removed } = await supabase
     .from("tournament_group")
-    .select("stage_id")
+    .select("stage_id, name, stage!inner(tournament_id)")
     .eq("id", groupId)
     .maybeSingle();
+
+  // The knockout draw is wired to bracket letters. Removing a bracket the
+  // draw still asks for leaves a slot that can never be filled: the quarter
+  // final waits forever on "Bracket D - 2nd", and the organizer sees a match
+  // that never becomes playable. Blocked here, because the fix is to pick a
+  // playoff format that matches the number of brackets.
+  const tournamentId = (Array.isArray(removed?.stage) ? removed?.stage[0] : removed?.stage)?.tournament_id;
+  if (removed && tournamentId) {
+    const { data: nodes } = await supabase
+      .from("bracket_node")
+      .select("home_ref, away_ref, stage!inner(tournament_id, name)")
+      .eq("stage.tournament_id", tournamentId);
+
+    const letter = removed.name.replace(/^(Bracket|Pool|Group)\s*/i, "").trim().toUpperCase();
+    const wantsThisBracket = (ref: unknown) => {
+      const r = ref as { kind?: string; group?: string } | null;
+      return r?.kind === "group_rank" && (r.group ?? "").trim().toUpperCase() === letter;
+    };
+    const dependent = (nodes ?? []).filter((n) => wantsThisBracket(n.home_ref) || wantsThisBracket(n.away_ref));
+    if (dependent.length > 0) {
+      const stageName = (Array.isArray(dependent[0]!.stage) ? dependent[0]!.stage[0] : dependent[0]!.stage)?.name ?? "the knockout round";
+      throw new Error(
+        `${stageName} still draws ${dependent.length === 1 ? "a team" : "teams"} from Bracket ${letter}. ` +
+          "Change the playoff format to one that matches the number of brackets you want, then remove it.",
+      );
+    }
+  }
 
   await supabase.from("team").update({ group_id: null }).eq("group_id", groupId);
   const { error } = await supabase.from("tournament_group").delete().eq("id", groupId);

@@ -3,7 +3,7 @@ import { cache } from "react";
 import { getServiceSupabase } from "./supabase-server";
 import type { ScoringConfig } from "@pakangers/engine";
 import { getTeamDisplayMap, getTournamentTeamDisplays, type TeamDisplay } from "./team-display";
-import { continuousMatchNumbers, courtLabel, stageLabel } from "./match-identity";
+import { continuousMatchNumbers, courtLabel, slotSourceLabel, stageLabel, type SlotSource } from "./match-identity";
 
 export type MatchListFilter = "live" | "upcoming" | "completed" | "all";
 
@@ -54,7 +54,7 @@ const RESOLVED = ["completed", "forfeit", "bye"];
 const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow[]> => {
   const supabase = getServiceSupabase();
 
-  const [{ data: matches, error }, { data: stages }, { data: groups }, { data: teamRows }, { count: openCourts }, teamDisplayById] =
+  const [{ data: matches, error }, { data: stages }, { data: groups }, { data: teamRows }, { data: nodeRows }, { count: openCourts }, teamDisplayById] =
     await Promise.all([
       supabase
         .from("match")
@@ -65,6 +65,11 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
       supabase.from("stage").select("id, name, key, sequence, format_key").eq("tournament_id", tournamentId).order("sequence"),
       supabase.from("tournament_group").select("id, name, display_order, stage!inner(tournament_id)").eq("stage.tournament_id", tournamentId),
     supabase.from("team").select("id, group_id").eq("tournament_id", tournamentId),
+    // What each knockout slot is waiting on, so an unfilled side can say so.
+    supabase
+      .from("bracket_node")
+      .select("stage_id, position, home_ref, away_ref, stage!inner(tournament_id)")
+      .eq("stage.tournament_id", tournamentId),
       // How many brackets can run at once, which is what makes the match
       // numbers follow the order the matches are actually called.
       supabase
@@ -81,6 +86,9 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
   // A bracket match should name its bracket even when the column was not
   // stamped -- the teams themselves say which bracket they are in.
   const groupIdByTeamId = new Map((teamRows ?? []).filter((t) => t.group_id).map((t) => [t.id, t.group_id!]));
+  const nodeByStageAndNumber = new Map(
+    (nodeRows ?? []).map((n) => [`${n.stage_id}:${n.position}`, n]),
+  );
   const bracketOf = (m: { group_id: string | null; home_team_id: string | null; away_team_id: string | null }) =>
     m.group_id
     ?? (m.home_team_id ? groupIdByTeamId.get(m.home_team_id) : null)
@@ -110,6 +118,17 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
     stageCounts.set(m.stage_id, (stageCounts.get(m.stage_id) ?? 0) + 1);
   }
   const stageCurrentIndex = new Map<string, number>();
+
+  /**
+   * A side with no team: a real bye only when the match says so, otherwise
+   * the slot it is still waiting on.
+   */
+  const emptySide = (m: { stage_id: string; match_number: number; status: string }, side: "home" | "away"): TeamDisplay => {
+    if (m.status === "bye") return BYE;
+    const node = nodeByStageAndNumber.get(`${m.stage_id}:${m.match_number}`);
+    const ref = (side === "home" ? node?.home_ref : node?.away_ref) as SlotSource | undefined;
+    return { header: slotSourceLabel(ref), subtext: null };
+  };
 
   return sorted.map((m) => {
     const result = Array.isArray(m.match_result) ? m.match_result[0] : m.match_result;
@@ -150,8 +169,8 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
       matchLabel,
       fullBadgeText,
       groupName: label.bracket,
-      home: m.home_team_id ? teamDisplayById.get(m.home_team_id) ?? TBD : TBD,
-      away: m.away_team_id ? teamDisplayById.get(m.away_team_id) ?? TBD : BYE,
+      home: m.home_team_id ? teamDisplayById.get(m.home_team_id) ?? TBD : emptySide(m, "home"),
+      away: m.away_team_id ? teamDisplayById.get(m.away_team_id) ?? TBD : emptySide(m, "away"),
       homeGamesWon: result?.home_games_won ?? null,
       awayGamesWon: result?.away_games_won ?? null,
       homePointsTotal: result?.home_points_total ?? null,

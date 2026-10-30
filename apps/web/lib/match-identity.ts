@@ -145,3 +145,44 @@ export function continuousMatchNumbers(
 
   return new Map(ordered.map((m, i) => [m.id, i + 1]));
 }
+
+/** What a knockout slot is waiting on, as stored on the bracket node. */
+export type SlotSource =
+  | { kind: "group_rank"; group: string; rank: number }
+  | { kind: "match_outcome"; stage: string; match: number; outcome: "winner" | "loser" }
+  | { kind: string; [key: string]: unknown };
+
+const ORDINALS = ["", "1st", "2nd", "3rd"];
+const ordinal = (n: number) => ORDINALS[n] ?? `${n}th`;
+
+/** "QF", "SF", "R16" -- short enough to sit inside a bracket node. */
+function shortStage(stageKey: string): string {
+  const k = stageKey.toLowerCase();
+  if (k.includes("16")) return "R16";
+  if (k.includes("quarter")) return "QF";
+  if (k.includes("semi")) return "SF";
+  if (k.includes("third")) return "3rd";
+  return "Final";
+}
+
+/**
+ * Where a slot's team will come from: "Bracket A — 1st", "Winner of QF M3".
+ *
+ * An empty slot is never a bye. A bye is a match with nobody on one side at
+ * all, which the match's own status records; a slot waiting on an earlier
+ * result just has not been filled yet, and saying "Bye" there tells the
+ * organizer a team has a free pass when it does not.
+ */
+export function slotSourceLabel(source: SlotSource | null | undefined): string {
+  if (!source) return "TBD";
+
+  if (source.kind === "group_rank" && typeof source.group === "string" && typeof source.rank === "number") {
+    return `${bracketLabel(source.group, null) ?? source.group} — ${ordinal(source.rank)}`;
+  }
+  if (source.kind === "match_outcome" && typeof source.stage === "string" && typeof source.match === "number") {
+    const who = source.outcome === "loser" ? "Loser" : "Winner";
+    return `${who} of ${shortStage(source.stage)} M${source.match}`;
+  }
+  if (source.kind === "bye") return "Bye";
+  return "TBD";
+}
