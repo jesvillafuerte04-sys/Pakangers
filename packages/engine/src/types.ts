@@ -90,6 +90,17 @@ export type Game = {
   awayScore: number;
 };
 
+/**
+ * The score recorded when a match is awarded rather than played out -- a
+ * forfeit, a default (no-show) or a retirement.
+ *
+ * Pakangers records these as 6-0 rather than 11-0 or 15-0. The winner still
+ * gets a clear win and a real point differential for the standings, without
+ * the inflated margin that a full walkover score would hand them over teams
+ * that actually had to play.
+ */
+export const AWARDED_MATCH_SCORE = { winner: 6, loser: 0 } as const;
+
 export type MatchStatus = 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'forfeit' | 'bye';
 
 export type Match = {

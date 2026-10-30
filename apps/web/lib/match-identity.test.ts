@@ -3,12 +3,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { bracketLabel, continuousMatchNumbers, courtLabel, stageLabel } from "./match-identity.ts";
 
-test("brackets are labelled by number, whatever they are stored as", () => {
-  assert.equal(bracketLabel("A", 0), "Bracket 1");
-  assert.equal(bracketLabel("Bracket C", 2), "Bracket 3");
-  assert.equal(bracketLabel("Pool B", null), "Bracket 2");
-  assert.equal(bracketLabel("2", null), "Bracket 2");
-  assert.equal(bracketLabel(null, 3), "Bracket 4");
+test("brackets are labelled by letter, whatever they are stored as", () => {
+  assert.equal(bracketLabel("A", 0), "Bracket A");
+  assert.equal(bracketLabel("Bracket C", 2), "Bracket C");
+  assert.equal(bracketLabel("Pool B", null), "Bracket B");
+  assert.equal(bracketLabel("2", null), "Bracket B", "a legacy numbered bracket reads as its letter");
+  assert.equal(bracketLabel(null, 3), "Bracket D");
+  assert.equal(bracketLabel("H", 7), "Bracket H", "eight brackets reach H");
   assert.equal(bracketLabel(null, null), null);
 });
 
@@ -24,8 +25,8 @@ test("knockout stages use the organizer's own wording", () => {
 test("a round-robin match reads as Elimination plus its bracket", () => {
   const label = stageLabel({ stageKey: "pools", stageName: "Pool Stage", groupName: "B", groupOrder: 1 });
   assert.equal(label.stage, "Elimination");
-  assert.equal(label.bracket, "Bracket 2");
-  assert.equal(label.full, "Elimination · Bracket 2");
+  assert.equal(label.bracket, "Bracket B");
+  assert.equal(label.full, "Elimination · Bracket B");
 });
 
 test("a court always reads as something", () => {

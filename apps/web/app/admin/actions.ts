@@ -869,28 +869,38 @@ export async function configureTournamentStages(slug: string, formData: FormData
   const advancePerPool = Math.min(2, Math.max(1, parseInt(String(formData.get("advance_per_pool") ?? "2"), 10)));
   const includeThirdPlace = formData.get("include_third_place") === "true";
 
-  const pointsToWin = parseInt(String(formData.get("points_to_win") ?? "15"), 10) || 15;
+  const pointsToWin = parseInt(String(formData.get("points_to_win") ?? "11"), 10) || 11;
   const winBy = String(formData.get("win_by") ?? "sudden_death");
   const bestOf = parseInt(String(formData.get("best_of") ?? "1"), 10) || 1;
   const scoringType = String(formData.get("scoring_type") ?? "side_out");
 
-  // Round-specific scoring rules
-  const poolPoints = parseInt(String(formData.get("pool_points_to_win") ?? String(pointsToWin)), 10) || pointsToWin;
+  const num = (field: string, fallback: number) =>
+    parseInt(String(formData.get(field) ?? String(fallback)), 10) || fallback;
+
+  // Scoring per round. The Pakangers defaults are 11 sudden death through the
+  // brackets and the early knockout, 15 sudden death in the semis, and 15 win
+  // by 2 for both medal matches, with the championship capped at 21.
+  const poolPoints = num("pool_points_to_win", pointsToWin);
   const poolWinBy = String(formData.get("pool_win_by") ?? winBy);
 
-  const earlyPoints = pointsToWin;
-  const earlyWinBy = winBy;
-
-  const semisPoints = parseInt(String(formData.get("semis_points_to_win") ?? String(pointsToWin)), 10) || pointsToWin;
+  const semisPoints = num("semis_points_to_win", 15);
   const semisWinBy = String(formData.get("semis_win_by") ?? "sudden_death");
 
-  const finalsPoints = parseInt(String(formData.get("finals_points_to_win") ?? String(pointsToWin)), 10) || pointsToWin;
-  const finalsWinBy = String(formData.get("finals_win_by") ?? "win_by_two");
+  const thirdPoints = num("third_points_to_win", 15);
+  const thirdWinBy = String(formData.get("third_win_by") ?? "win_by_two");
 
+  const champPoints = num("champ_points_to_win", 15);
+  const champWinBy = String(formData.get("champ_win_by") ?? "win_by_two");
+  // 0 (or anything at or below points-to-win) means no cap -- deuce runs on.
+  const rawCap = num("champ_cap", 21);
+  const champCap = champWinBy === "win_by_two" && rawCap > champPoints ? rawCap : undefined;
+
+  // Round of 16 and quarter finals share the bracket-stage scoring.
   const poolScoring = { pointsToWin: poolPoints, winBy: poolWinBy, bestOf, scoringType };
-  const earlyScoring = { pointsToWin: earlyPoints, winBy: earlyWinBy, bestOf, scoringType };
+  const earlyScoring = poolScoring;
   const semisScoring = { pointsToWin: semisPoints, winBy: semisWinBy, bestOf, scoringType };
-  const finalsScoring = { pointsToWin: finalsPoints, winBy: finalsWinBy, bestOf, scoringType };
+  const thirdScoring = { pointsToWin: thirdPoints, winBy: thirdWinBy, bestOf, scoringType };
+  const champScoring = { pointsToWin: champPoints, winBy: champWinBy, bestOf, scoringType, ...(champCap ? { cap: champCap } : {}) };
 
   // 1. Unassign all teams from groups first
   await supabase.from("team").update({ group_id: null }).eq("tournament_id", tournament.id);
@@ -1128,7 +1138,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         name: "Fight for Third",
         format_key: "single_elimination",
         sequence: currentSequence++,
-        scoring_config: finalsScoring as unknown as Json,
+        scoring_config: thirdScoring as unknown as Json,
         tiebreaker_config: [] as unknown as Json,
         entrant_config: {
           entrants: [
@@ -1146,7 +1156,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
       name: "Championship",
       format_key: "single_elimination",
       sequence: currentSequence++,
-      scoring_config: finalsScoring as unknown as Json,
+      scoring_config: champScoring as unknown as Json,
       tiebreaker_config: [] as unknown as Json,
       entrant_config: {
         entrants: [
@@ -1274,7 +1284,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         name: "Fight for Third",
         format_key: "single_elimination",
         sequence: currentSequence++,
-        scoring_config: finalsScoring as unknown as Json,
+        scoring_config: thirdScoring as unknown as Json,
         tiebreaker_config: [] as unknown as Json,
         entrant_config: {
           entrants: [
@@ -1292,7 +1302,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
       name: "Championship",
       format_key: "single_elimination",
       sequence: currentSequence++,
-      scoring_config: finalsScoring as unknown as Json,
+      scoring_config: champScoring as unknown as Json,
       tiebreaker_config: [] as unknown as Json,
       entrant_config: {
         entrants: [
@@ -1374,7 +1384,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         name: "Fight for Third",
         format_key: "single_elimination",
         sequence: currentSequence++,
-        scoring_config: finalsScoring as unknown as Json,
+        scoring_config: thirdScoring as unknown as Json,
         tiebreaker_config: [] as unknown as Json,
         entrant_config: {
           entrants: [
@@ -1392,7 +1402,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
       name: "Championship",
       format_key: "single_elimination",
       sequence: currentSequence++,
-      scoring_config: finalsScoring as unknown as Json,
+      scoring_config: champScoring as unknown as Json,
       tiebreaker_config: [] as unknown as Json,
       entrant_config: {
         entrants: [
@@ -1425,7 +1435,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         name: "Championship",
         format_key: "single_elimination",
         sequence: currentSequence++,
-        scoring_config: finalsScoring as unknown as Json,
+        scoring_config: champScoring as unknown as Json,
         tiebreaker_config: [] as unknown as Json,
         entrant_config: finalsEntrantConfig as unknown as Json,
       })

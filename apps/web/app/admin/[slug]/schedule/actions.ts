@@ -66,6 +66,37 @@ export async function setCourtAvailability(slug: string, courtId: string, isAvai
   revalidateSchedule(slug);
 }
 
+/**
+ * Pins a bracket to a court, or frees it with a null court.
+ *
+ * Elimination runs one bracket per court, and the organizer picks which court
+ * rather than taking whatever the auto-assigner chose. Matches already on a
+ * court are moved across straight away, so the change is visible without
+ * re-running the assigner; matches already played are left where they were.
+ */
+export async function assignBracketToCourt(
+  slug: string,
+  groupId: string,
+  courtId: string | null,
+): Promise<void> {
+  await requireTournament(slug);
+  const supabase = getServiceSupabase();
+
+  const { error } = await supabase.from("tournament_group").update({ court_id: courtId }).eq("id", groupId);
+  if (error) throw new Error(error.message);
+
+  if (courtId) {
+    const { error: moveError } = await supabase
+      .from("match")
+      .update({ court_id: courtId })
+      .eq("group_id", groupId)
+      .not("status", "in", "(completed,forfeit,bye)");
+    if (moveError) throw new Error(moveError.message);
+  }
+
+  revalidateSchedule(slug);
+}
+
 export async function setMinRestRounds(slug: string, formData: FormData): Promise<void> {
   const tournament = await requireTournament(slug);
   const raw = Number(formData.get("minRestRounds") ?? 1);

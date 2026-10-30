@@ -1,5 +1,4 @@
-import type { TeamDisplay, PlayerDisplayInfo } from "@/lib/team-display";
-import { TeamAvatarGroup } from "./PlayerAvatar";
+import type { TeamDisplay } from "@/lib/team-display";
 
 /**
  * The minimum a match needs to render as a card. Both MatchListRow and the
@@ -19,17 +18,18 @@ export type MatchCardData = {
  * One side of a match: player names (and optional team name) on the left, that
  * side's score hard-right. Once a result exists the winner stays full-strength
  * and the loser fades, so a completed match reads at a glance.
+ *
+ * Names only -- no player photos. On a phone at courtside the avatars ate the
+ * width the names needed, and a scorer reads the nickname, not the face.
  */
 function MatchSide({
   header,
   subtext,
-  players,
   score,
   outcome,
 }: {
   header: string;
   subtext: string | null;
-  players?: PlayerDisplayInfo[];
   score: number | null;
   outcome: "won" | "lost" | "undecided";
 }) {
@@ -40,9 +40,6 @@ function MatchSide({
   return (
     <div className={`flex items-center justify-between gap-3 ${outcome === "lost" ? "opacity-60" : ""}`}>
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-        {players && players.length > 0 && (
-          <TeamAvatarGroup players={players} size="sm" />
-        )}
         <div className="min-w-0 flex-1">
           <div className={`${nameWeight} ${nameColor} leading-tight truncate`}>{header}</div>
           {subtext && <div className="text-xs text-[var(--color-text-muted)] opacity-80 truncate">{subtext}</div>}
@@ -65,14 +62,12 @@ export function MatchCardBody({ match }: { match: MatchCardData }) {
       <MatchSide
         header={match.home.header}
         subtext={match.home.subtext}
-        players={match.home.players}
         score={match.homePointsTotal}
         outcome={homeOutcome}
       />
       <MatchSide
         header={match.away.header}
         subtext={match.away.subtext}
-        players={match.away.players}
         score={match.awayPointsTotal}
         outcome={awayOutcome}
       />

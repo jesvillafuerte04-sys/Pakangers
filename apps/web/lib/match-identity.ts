@@ -27,15 +27,26 @@ export type StageLabel = {
   full: string;
 };
 
-/** Bracket "A" reads as Bracket 1, "B" as Bracket 2, and so on. */
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/**
+ * Brackets read as letters: Bracket A, Bracket B, and so on.
+ *
+ * Groups are stored as single letters, but older data and hand-typed names
+ * also appear as "1", "Pool B" or "Bracket 3", so a number is converted back
+ * to its letter and the stored position is the fallback.
+ */
 export function bracketLabel(groupName: string | null | undefined, groupOrder: number | null | undefined): string | null {
-  if (!groupName && groupOrder === null) return null;
+  if (!groupName && (groupOrder === null || groupOrder === undefined)) return null;
 
   const stripped = (groupName ?? "").replace(/^(Bracket|Pool|Group)\s*/i, "").trim();
 
-  if (/^\d+$/.test(stripped)) return `Bracket ${stripped}`;
-  if (/^[A-Z]$/i.test(stripped)) return `Bracket ${stripped.toUpperCase().charCodeAt(0) - 64}`;
-  if (typeof groupOrder === "number") return `Bracket ${groupOrder + 1}`;
+  if (/^[A-Z]$/i.test(stripped)) return `Bracket ${stripped.toUpperCase()}`;
+  if (/^\d+$/.test(stripped)) {
+    const letter = LETTERS[Number(stripped) - 1];
+    if (letter) return `Bracket ${letter}`;
+  }
+  if (typeof groupOrder === "number" && LETTERS[groupOrder]) return `Bracket ${LETTERS[groupOrder]}`;
   return stripped ? `Bracket ${stripped}` : null;
 }
 

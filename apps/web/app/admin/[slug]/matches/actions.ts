@@ -6,7 +6,7 @@ import { getServiceSupabase } from "@/lib/supabase-server";
 import { getTournamentBySlug } from "@/lib/tournament-data";
 import { populateTournament, checkDownstreamInvalidation, writeMatchResult, type AffectedDownstreamMatch } from "@/lib/match-pipeline";
 import { getSchedulableInputs, readScheduleOptions } from "@/lib/schedule-data";
-import { autoSchedule, validateScoringConfig, validateGameScore, matchWinner, type Game, type ScoringConfig } from "@pakangers/engine";
+import { autoSchedule, validateScoringConfig, validateGameScore, matchWinner, AWARDED_MATCH_SCORE, type Game, type ScoringConfig } from "@pakangers/engine";
 
 export async function startTournament(slug: string): Promise<void> {
   await requireSession();
@@ -99,10 +99,15 @@ export async function saveMatchScore(
     const cfg = match.scoring_config as unknown as ScoringConfig;
     const gamesNeeded = Math.ceil(cfg.bestOf / 2);
     const winnerIsHome = payload.winningTeamId === match.home_team_id;
+    // A forfeit, default or retirement is recorded as 6-0, not as the stage's
+    // full winning score -- see AWARDED_MATCH_SCORE. The normal score
+    // validator is deliberately skipped here: 6 is below points-to-win, which
+    // is exactly what makes an awarded result look different on the sheet.
+    const { winner, loser } = AWARDED_MATCH_SCORE;
     games = Array.from({ length: gamesNeeded }, (_, i) => ({
       gameNumber: i + 1,
-      homeScore: winnerIsHome ? cfg.pointsToWin : 0,
-      awayScore: winnerIsHome ? 0 : cfg.pointsToWin,
+      homeScore: winnerIsHome ? winner : loser,
+      awayScore: winnerIsHome ? loser : winner,
     }));
     winnerTeamId = payload.winningTeamId;
     resultType = payload.resultType;

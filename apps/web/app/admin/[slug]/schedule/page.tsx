@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { TeamMatchup } from "@/components/TeamMatchup";
 import {
   addCourt,
+  assignBracketToCourt,
   assignMatchToCourt,
   autoAssignSchedule,
   clearSchedule,
@@ -92,7 +93,7 @@ export default async function SchedulePage({ params }: PageProps<"/admin/[slug]/
   const tournament = await getTournamentBySlug(slug);
   if (!tournament) notFound();
 
-  const { courts, rows, options, generalIssues } = await getScheduleView(tournament.id, tournament.schedule_config);
+  const { courts, brackets, rows, options, generalIssues } = await getScheduleView(tournament.id, tournament.schedule_config);
 
   const unscheduled = rows.filter((r) => r.courtId === null);
   const byCourt = new Map(courts.map((c) => [c.id, rows.filter((r) => r.courtId === c.id)]));
@@ -166,6 +167,51 @@ export default async function SchedulePage({ params }: PageProps<"/admin/[slug]/
           <Button type="submit">Add</Button>
         </form>
       </Card>
+
+      {brackets.length > 0 && (
+        <Card title="Brackets & courts">
+          <p className="text-sm text-[var(--color-text-muted)]">
+            One bracket, one court. Pick the court for each bracket and its matches move there straight away. A bracket
+            left on <strong>Not set</strong> is given a free court automatically when the tournament starts.
+          </p>
+          <div className="mt-3 flex flex-col gap-2">
+            {brackets.map((bracket) => {
+              const court = courts.find((c) => c.id === bracket.courtId);
+              return (
+                <div
+                  key={bracket.groupId}
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border-subtle)] p-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-bold text-[var(--color-navy)]">{bracket.label}</div>
+                    <div className="text-xs text-[var(--color-text-muted)]">
+                      {bracket.matchCount} {bracket.matchCount === 1 ? "match" : "matches"}
+                      {court && !court.isAvailable && " · this court is marked unavailable"}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {courts.map((c) => (
+                      <form key={c.id} action={assignBracketToCourt.bind(null, slug, bracket.groupId, c.id)}>
+                        <Button type="submit" variant={bracket.courtId === c.id ? "primary" : "outline"} size="sm">
+                          {c.name}
+                        </Button>
+                      </form>
+                    ))}
+                    <form action={assignBracketToCourt.bind(null, slug, bracket.groupId, null)}>
+                      <Button type="submit" variant={bracket.courtId === null ? "secondary" : "outline"} size="sm">
+                        Not set
+                      </Button>
+                    </form>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {courts.length === 0 && (
+            <p className="mt-2 text-xs text-[var(--color-error)]">Add a court above before assigning brackets.</p>
+          )}
+        </Card>
+      )}
 
       <Card title="Auto-assign">
         <form action={setMinRestRounds.bind(null, slug)} className="flex items-end gap-2">

@@ -25,6 +25,12 @@ export type SchedulableMatch = {
   groupId?: string | null;
   /** Optional group/bracket display order (0 for Bracket A, 1 for Bracket B, etc.). */
   groupOrder?: number | null;
+  /**
+   * The court this match's bracket has been pinned to by the organizer.
+   * When set, the bracket is played there and the auto-assigner only chooses
+   * courts for the brackets left unpinned.
+   */
+  pinnedCourtId?: string | null;
 };
 
 export type SchedulableCourt = {
@@ -229,12 +235,15 @@ function autoScheduleGreedy(
 }
 
 /**
-  * Assigns matches to courts.
-  * When matches have groupOrder/groupId information, it assigns 1 bracket per court
-  * in waves (e.g. Brackets A and B on Courts 1 and 2 until complete, then Brackets C and D
-  * on Courts 1 and 2), followed by knockout stages.
-  * When no group information is present, it uses greedy list scheduling.
-  */
+ * Assigns matches to courts, one bracket per court.
+ *
+ * Each court keeps its own queue, so a bracket plays its whole round robin on
+ * a single court and the courts fill up evenly. A bracket the organizer has
+ * pinned goes on that court; the rest are spread over the courts with the
+ * shortest queues, which reproduces the old wave behaviour when nothing is
+ * pinned. Knockout matches follow once the brackets are done, scheduled
+ * greedily so no team plays twice at once.
+ */
 export function autoSchedule(
   matches: SchedulableMatch[],
   courts: SchedulableCourt[],
@@ -247,68 +256,59 @@ export function autoSchedule(
     return pending.map((m) => ({ matchId: m.id, courtId: null, round: null }));
   }
 
-  const hasGroupInfo = pending.some((m) => m.groupOrder !== undefined && m.groupOrder !== null);
-
-  if (!hasGroupInfo) {
+  const inGroup = (m: SchedulableMatch) => m.groupOrder !== undefined && m.groupOrder !== null;
+  if (!pending.some(inGroup)) {
     return autoScheduleGreedy(pending, usableCourts, opts, 0);
   }
 
-  // 1. Separate group matches from non-group (e.g. playoff/knockout) matches
-  const groupMatches = pending.filter((m) => m.groupOrder !== undefined && m.groupOrder !== null);
-  const nonGroupMatches = pending
-    .filter((m) => m.groupOrder === undefined || m.groupOrder === null)
-    .sort(bySortOrder);
+  const groupMatches = pending.filter(inGroup);
+  const nonGroupMatches = pending.filter((m) => !inGroup(m)).sort(bySortOrder);
 
-  const assignments: ScheduleAssignment[] = [];
-
-  // Group matches by groupOrder
   const groupsMap = new Map<number, SchedulableMatch[]>();
   for (const m of groupMatches) {
     const ord = m.groupOrder!;
-    const list = groupsMap.get(ord) ?? [];
-    list.push(m);
-    groupsMap.set(ord, list);
+    groupsMap.set(ord, [...(groupsMap.get(ord) ?? []), m]);
   }
 
-  const sortedGroupOrders = [...groupsMap.keys()].sort((a, b) => a - b);
-  const numCourts = usableCourts.length;
-  let currentWaveStartRound = 0;
+  /** How many matches are already queued on each court. */
+  const nextRound = new Map<string, number>(usableCourts.map((c) => [c.id, 0]));
+  const assignments: ScheduleAssignment[] = [];
 
-  // Process groups in waves of size numCourts
-  for (let i = 0; i < sortedGroupOrders.length; i += numCourts) {
-    const waveGroupOrders = sortedGroupOrders.slice(i, i + numCourts);
-    let maxRoundsInWave = 0;
+  // A pinned bracket claims its court first, so an unpinned bracket is never
+  // given a court that the organizer has already spoken for.
+  const ordered = [...groupsMap.keys()].sort((a, b) => a - b);
+  const courtForGroup = new Map<number, SchedulableCourt>();
 
-    for (let cIdx = 0; cIdx < waveGroupOrders.length; cIdx++) {
-      const gOrder = waveGroupOrders[cIdx]!;
-      const court = usableCourts[cIdx]!;
-      const gMatches = (groupsMap.get(gOrder) ?? []).sort((a, b) => a.matchNumber - b.matchNumber);
+  for (const ord of ordered) {
+    const pinned = groupsMap.get(ord)!.find((m) => m.pinnedCourtId)?.pinnedCourtId ?? null;
+    const court = pinned ? usableCourts.find((c) => c.id === pinned) : undefined;
+    if (court) courtForGroup.set(ord, court);
+  }
 
-      maxRoundsInWave = Math.max(maxRoundsInWave, gMatches.length);
-
-      for (let mIdx = 0; mIdx < gMatches.length; mIdx++) {
-        const m = gMatches[mIdx]!;
-        assignments.push({
-          matchId: m.id,
-          courtId: court.id,
-          round: currentWaveStartRound + mIdx,
-        });
-      }
+  for (const ord of ordered) {
+    let court = courtForGroup.get(ord);
+    if (!court) {
+      // The shortest queue, counting the brackets already placed. Ties go to
+      // the court that comes first, so bracket order follows court order.
+      const load = (c: SchedulableCourt) =>
+        ordered
+          .filter((o) => courtForGroup.get(o)?.id === c.id)
+          .reduce((n, o) => n + (groupsMap.get(o)?.length ?? 0), 0);
+      court = usableCourts.reduce((best, c) => (load(c) < load(best) ? c : best), usableCourts[0]!);
+      courtForGroup.set(ord, court);
     }
 
-    currentWaveStartRound += maxRoundsInWave;
+    const gMatches = groupsMap.get(ord)!.sort((a, b) => a.matchNumber - b.matchNumber);
+    let round = nextRound.get(court.id)!;
+    for (const m of gMatches) {
+      assignments.push({ matchId: m.id, courtId: court.id, round: round++ });
+    }
+    nextRound.set(court.id, round);
   }
 
-  // Schedule any remaining non-group matches (e.g. Semifinals, Finals)
-  // starting at currentWaveStartRound
   if (nonGroupMatches.length > 0) {
-    const nonGroupAssignments = autoScheduleGreedy(
-      nonGroupMatches,
-      usableCourts,
-      opts,
-      currentWaveStartRound,
-    );
-    assignments.push(...nonGroupAssignments);
+    const bracketsDone = Math.max(...nextRound.values());
+    assignments.push(...autoScheduleGreedy(nonGroupMatches, usableCourts, opts, bracketsDone));
   }
 
   return assignments;

@@ -804,6 +804,7 @@ export type Database = {
       }
       tournament_group: {
         Row: {
+          court_id: string | null
           created_at: string
           display_order: number
           id: string
@@ -811,6 +812,7 @@ export type Database = {
           stage_id: string
         }
         Insert: {
+          court_id?: string | null
           created_at?: string
           display_order?: number
           id?: string
@@ -818,6 +820,7 @@ export type Database = {
           stage_id: string
         }
         Update: {
+          court_id?: string | null
           created_at?: string
           display_order?: number
           id?: string
@@ -825,6 +828,13 @@ export type Database = {
           stage_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tournament_group_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "court"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tournament_group_stage_id_fkey"
             columns: ["stage_id"]

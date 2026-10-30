@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateTeams, validateQualificationRule } from '../src/validation.ts';
 import { validateScoringConfig, validateGameScore } from '../src/scoring.ts';
+import type { ScoringConfig } from '../src/types.ts';
 
 test('detects a player assigned to two teams', () => {
   const players = [{ id: 'p1', name: 'Maria Cruz' }];
@@ -88,4 +89,23 @@ test('game score: a tied score has no winner', () => {
 test('game score: a win-by-two score that hits the cap exactly is valid', () => {
   const cfg = { pointsToWin: 11, winBy: 'win_by_two' as const, bestOf: 1 as const, scoringType: 'side_out' as const, cap: 15 };
   assert.deepEqual(validateGameScore(cfg, { gameNumber: 1, homeScore: 15, awayScore: 14 }), []);
+});
+
+/**
+ * The championship default: 15, win by 2, capped at 21. The cap matters --
+ * without it a deuce can run on forever, and with it the scorer needs 21-20
+ * to be a legal final score even though the margin is one.
+ */
+test('championship: 15 win-by-2 capped at 21 accepts the scores it should', () => {
+  const champ: ScoringConfig = { pointsToWin: 15, winBy: 'win_by_two', cap: 21, bestOf: 1, scoringType: 'side_out' };
+  assert.deepEqual(validateScoringConfig(champ), [], 'a cap above points-to-win is a valid config');
+
+  const ok = (h: number, a: number) =>
+    validateGameScore(champ, { gameNumber: 1, homeScore: h, awayScore: a });
+
+  assert.deepEqual(ok(15, 13), [], '15-13 clears the two-point margin');
+  assert.deepEqual(ok(18, 16), [], 'a deuce below the cap is fine');
+  assert.deepEqual(ok(21, 20), [], 'at the cap a one-point win is legal');
+  assert.equal(ok(15, 14).length, 1, '15-14 below the cap misses the margin');
+  assert.equal(ok(22, 20).length, 1, 'nothing may go past the cap');
 });

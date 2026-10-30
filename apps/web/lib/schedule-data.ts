@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { getServiceSupabase } from "./supabase-server";
 import { getTournamentTeamDisplays, type TeamDisplay } from "./team-display";
-import { continuousMatchNumbers, stageLabel } from "./match-identity";
+import { bracketLabel, continuousMatchNumbers, stageLabel } from "./match-identity";
 import {
   detectScheduleConflicts,
   DEFAULT_SCHEDULE_OPTIONS,
@@ -29,8 +29,19 @@ export type ScheduleRow = {
   issues: ValidationIssue[];
 };
 
+/** A bracket and the court the organizer has pinned it to, if any. */
+export type BracketCourt = {
+  groupId: string;
+  /** "Bracket A" -- already formatted. */
+  label: string;
+  displayOrder: number;
+  courtId: string | null;
+  matchCount: number;
+};
+
 export type ScheduleView = {
   courts: SchedulableCourt[];
+  brackets: BracketCourt[];
   rows: ScheduleRow[];
   options: ScheduleOptions;
   /** Only ever populated with issues that aren't tied to a single match. */
@@ -57,8 +68,9 @@ export const getScheduleView = cache(async (tournamentId: string, scheduleConfig
       supabase.from("stage").select("id, name, key, sequence").eq("tournament_id", tournamentId),
       supabase
         .from("tournament_group")
-        .select("id, name, display_order, stage!inner(tournament_id)")
-        .eq("stage.tournament_id", tournamentId),
+        .select("id, name, display_order, court_id, stage!inner(tournament_id)")
+        .eq("stage.tournament_id", tournamentId)
+        .order("display_order"),
       getTournamentTeamDisplays(tournamentId),
     ]);
 
@@ -143,7 +155,22 @@ export const getScheduleView = cache(async (tournamentId: string, scheduleConfig
       };
     });
 
-  return { courts, rows, options, generalIssues };
+  const matchesPerGroup = new Map<string, number>();
+  for (const m of matchRows ?? []) {
+    if (m.group_id) matchesPerGroup.set(m.group_id, (matchesPerGroup.get(m.group_id) ?? 0) + 1);
+  }
+
+  const brackets: BracketCourt[] = (groups ?? [])
+    .map((g) => ({
+      groupId: g.id,
+      label: bracketLabel(g.name, g.display_order) ?? g.name,
+      displayOrder: g.display_order,
+      courtId: g.court_id,
+      matchCount: matchesPerGroup.get(g.id) ?? 0,
+    }))
+    .sort((a, b) => a.displayOrder - b.displayOrder || a.label.localeCompare(b.label));
+
+  return { courts, brackets, rows, options, generalIssues };
 });
 
 /** Matches + courts in the shape autoSchedule wants, without the display extras. */
@@ -159,12 +186,13 @@ export async function getSchedulableInputs(tournamentId: string): Promise<{
       .select("id, match_number, status, stage_id, group_id, home_team_id, away_team_id")
       .eq("tournament_id", tournamentId),
     supabase.from("stage").select("id, sequence").eq("tournament_id", tournamentId),
-    supabase.from("tournament_group").select("id, display_order").in("stage_id", (await supabase.from("stage").select("id").eq("tournament_id", tournamentId)).data?.map(s => s.id) ?? []),
+    supabase.from("tournament_group").select("id, display_order, court_id").in("stage_id", (await supabase.from("stage").select("id").eq("tournament_id", tournamentId)).data?.map(s => s.id) ?? []),
     supabase.from("team").select("id, group_id").eq("tournament_id", tournamentId),
   ]);
 
   const seqByStage = new Map((stages ?? []).map((s) => [s.id, s.sequence]));
   const groupOrderByGroupId = new Map((groups ?? []).map((g) => [g.id, g.display_order]));
+  const pinnedCourtByGroupId = new Map((groups ?? []).map((g) => [g.id, g.court_id]));
   const teamGroupIdById = new Map((teams ?? []).filter((t) => t.group_id).map((t) => [t.id, t.group_id!]));
 
   return {
@@ -185,6 +213,7 @@ export async function getSchedulableInputs(tournamentId: string): Promise<{
           isResolved: RESOLVED.includes(m.status),
           groupId: effectiveGroupId,
           groupOrder,
+          pinnedCourtId: effectiveGroupId ? pinnedCourtByGroupId.get(effectiveGroupId) ?? null : null,
         };
       }),
   };

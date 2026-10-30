@@ -199,7 +199,7 @@ export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDeta
               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
                 Home
               </span>
-              <TeamLine display={match.home} />
+              <TeamLine display={match.home} showPhotos={false} />
             </div>
             <div className="shrink-0">
               <input
@@ -229,7 +229,7 @@ export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDeta
               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
                 Away
               </span>
-              <TeamLine display={match.away} />
+              <TeamLine display={match.away} showPhotos={false} />
             </div>
             <div className="shrink-0">
               <input
@@ -256,7 +256,7 @@ export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDeta
         onClick={() => setShowForfeit(true)}
         className="text-sm font-medium text-[var(--color-text-muted)] underline"
       >
-        Forfeit / default / retired instead
+        Forfeit / default / retired instead (recorded 6-0)
       </button>
     </div>
   );
