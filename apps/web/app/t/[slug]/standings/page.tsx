@@ -29,6 +29,18 @@ function formatTiebreakerNote(tiebreakers: Tiebreaker[]): string {
   return `Ties are broken by: ${allButLast}, then ${last}.`;
 }
 
+/**
+ * Whether an unbreakable tie is worth a coin toss.
+ *
+ * Only ties that reach the advancing line matter: inside the top N it decides
+ * the seeding into the knockout, and one place below it decides who gets in
+ * at all. A tie for 4th and 5th in a bracket where two advance changes
+ * nothing, so flagging it just asks the organizer to toss a coin for nothing.
+ */
+function reachesTheLine(index: number, qualifyCount: number | null): boolean {
+  return qualifyCount !== null && index <= qualifyCount;
+}
+
 function formatGroupHeading(groupName: string): string {
   return bracketLabel(groupName, null) ?? groupName;
 }
@@ -51,9 +63,10 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
   return (
     <div className="flex flex-col gap-5">
       {groups.map((g) => {
-        // Nothing is marked as advancing until every match in the bracket has
-        // been played: a team sitting first at the halfway point has not
-        // qualified, and showing it as "Advancing" reads as though it has.
+        // Nothing is decided until every match in the bracket has been played:
+        // a team sitting first at the halfway point has not qualified, and an
+        // unplayed bracket is nothing but ties. So the advancing highlight,
+        // the outcome note and the coin-toss flag all wait for this.
         const settled = g.isComplete;
         return (
           <Card key={`${g.stageKey}:${g.groupName}`}>
@@ -79,7 +92,7 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
                   <StandingsRow
                     rank={s.rank}
                     team={s.team}
-                    unresolvedTie={s.unresolvedTie}
+                    needsCoinToss={settled && s.unresolvedTie && reachesTheLine(i, g.qualifyCount)}
                     isQualifying={settled && g.qualifyCount !== null && i < g.qualifyCount}
                     advancementReason={s.advancementReason}
                     outcomeNote={s.outcomeNote}

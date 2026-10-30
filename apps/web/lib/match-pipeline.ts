@@ -673,8 +673,8 @@ function computeAdvancementAndTieReasons(
           });
         } else if (s.unresolvedTie) {
           result.set(s.entrantId, {
-            advancementReason: isQualifying ? `Tied — coin toss needed` : null,
-            tiebreakerReason: `Tied with ${otherName} — coin toss needed`,
+            advancementReason: isQualifying ? `Tied on every tiebreaker` : null,
+            tiebreakerReason: `Tied with ${otherName} on every tiebreaker`,
           });
         } else {
           result.set(s.entrantId, {

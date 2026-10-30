@@ -8,7 +8,7 @@ import type { StandingStat, StandingHistoryEntry } from "@/lib/match-pipeline";
 export function StandingsRow({
   rank,
   team,
-  unresolvedTie,
+  needsCoinToss,
   isQualifying,
   advancementReason,
   outcomeNote,
@@ -21,7 +21,12 @@ export function StandingsRow({
 }: {
   rank: number;
   team: TeamDisplay;
-  unresolvedTie: boolean;
+  /**
+   * A tie the tie-break order could not settle, in a bracket that has finished.
+   * The caller gates this on the bracket being complete: before then every tie
+   * is temporary, and an unplayed bracket is nothing but ties.
+   */
+  needsCoinToss: boolean;
   isQualifying: boolean;
   advancementReason?: string | null;
   outcomeNote?: string | null;
@@ -65,9 +70,7 @@ export function StandingsRow({
               )}
             </div>
           )}
-          {/* A tie the engine cannot settle is the one thing worth saying
-              mid-bracket, because it needs a coin toss from the organizer. */}
-          {unresolvedTie && (
+          {needsCoinToss && (
             <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
               Coin toss needed
             </span>
