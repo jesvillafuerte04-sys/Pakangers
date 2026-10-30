@@ -218,13 +218,20 @@ function buildEngineState(snapshot: TournamentSnapshot): EngineState {
     }
   }
 
+  // Keyed on the real match number only.
+  //
+  // This used to also alias each match by its position in the array, which
+  // silently corrupted the draw: a stage whose matches are created as their
+  // feeders resolve does not hold every number, so the 3rd row present could
+  // be match 8 -- and writing "round_of_16:3" for it overwrote the real match
+  // 3. The quarter final asking for the winner of match 3 then got the winner
+  // of match 8, and once a match is written with the wrong teams it is never
+  // revisited, so the mistake sticks for the rest of the tournament.
   const matchesByStageAndNumber = new Map<string, EngineMatch>();
   for (const stage of snapshot.stages) {
-    const list = engineMatchesByStageId.get(stage.id) ?? [];
-    list.forEach((m, idx) => {
+    for (const m of engineMatchesByStageId.get(stage.id) ?? []) {
       matchesByStageAndNumber.set(`${stage.key}:${m.matchNumber}`, m);
-      matchesByStageAndNumber.set(`${stage.key}:${idx + 1}`, m);
-    });
+    }
   }
 
   return {
@@ -277,24 +284,57 @@ export async function populateTournament(tournamentId: string): Promise<void> {
     const planned = plannedByStageKey.get(stage.key)!;
 
     for (const pm of planned) {
-      if (existingByStageAndNumber.has(`${stage.key}:${pm.matchNumber}`)) continue;
-
       const home = resolveMatchSide(pm.home, ctx);
       const away = resolveMatchSide(pm.away, ctx);
       const isBracketStage = stage.format_key === "single_elimination";
 
-      if (home.kind === "unresolved" || away.kind === "unresolved") {
-        if (isBracketStage) await ensureBracketNode(supabase, stage.id, pm, bracketNodeByKey, null);
+      const homeTeamId = home.kind === "team" ? home.id : null;
+      const awayTeamId = away.kind === "team" ? away.id : null;
+      const bothSettled = home.kind !== "unresolved" && away.kind !== "unresolved";
+
+      // A match already on the board gets the sides that have since become
+      // known. Each half of a knockout tie is decided by its own feeder, so a
+      // semifinalist takes their place as soon as they win, without waiting
+      // for the other quarter final to finish. A side already filled is never
+      // rewritten -- it may have been corrected by hand -- and a match that
+      // has been played is left alone entirely.
+      const already = existingByStageAndNumber.get(`${stage.key}:${pm.matchNumber}`);
+      if (already) {
+        if (RESOLVED_STATUSES.includes(already.status as MatchStatus) || already.status === "in_progress") continue;
+
+        const patch: { home_team_id?: string; away_team_id?: string; status?: MatchStatus } = {};
+        if (!already.home_team_id && homeTeamId) patch.home_team_id = homeTeamId;
+        if (!already.away_team_id && awayTeamId) patch.away_team_id = awayTeamId;
+
+        const homeAfter = already.home_team_id ?? patch.home_team_id ?? null;
+        const awayAfter = already.away_team_id ?? patch.away_team_id ?? null;
+        if (already.status === "pending" && bothSettled && (home.kind === "bye" || away.kind === "bye") && (homeAfter || awayAfter)) {
+          patch.status = "bye";
+        }
+
+        if (Object.keys(patch).length > 0) {
+          const { data: updated, error } = await supabase
+            .from("match").update(patch).eq("id", already.id).select("*").single();
+          if (error) throw new Error(error.message);
+          if (updated) {
+            existingByStageAndNumber.set(`${stage.key}:${pm.matchNumber}`, updated);
+            ctx.matchesByStageAndNumber.set(`${stage.key}:${pm.matchNumber}`, toEngineMatch(updated, [], new Map()));
+          }
+        }
         continue;
       }
 
-      const homeTeamId = home.kind === "team" ? home.id : null;
-      const awayTeamId = away.kind === "team" ? away.id : null;
+      // Nothing known about either side yet: record the shape of the draw and
+      // wait. A bye still counts as settled, so it is not "nothing known".
+      if (!homeTeamId && !awayTeamId && !bothSettled) {
+        if (isBracketStage) await ensureBracketNode(supabase, stage.id, pm, bracketNodeByKey, null);
+        continue;
+      }
       const groupId = (pm.group ? groupIdByStageAndName.get(`${stage.id}:${pm.group}`) : null)
         ?? (homeTeamId ? state.teamGroupIdById.get(homeTeamId) : null)
         ?? (awayTeamId ? state.teamGroupIdById.get(awayTeamId) : null)
         ?? null;
-      const status: MatchStatus = home.kind === "bye" || away.kind === "bye" ? "bye" : "pending";
+      const status: MatchStatus = bothSettled && (home.kind === "bye" || away.kind === "bye") ? "bye" : "pending";
 
       const { data: inserted, error } = await supabase
         .from("match")
@@ -829,13 +869,22 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
           // so no reason is shown before then -- a half-played bracket full of
           // "won multi-way tiebreaker" notes reads as though places are settled.
           const qualifies = qCount !== null && i < qCount;
+          // Below the line, a tie-break note only explains anything when the
+          // tie reached the cut. "Eliminated — won head-to-head vs the team
+          // below you" says nothing about why you went out, so 4th and 5th
+          // just read "Eliminated". The team one place short still gets its
+          // reason, because that tie is the one that kept them out.
+          const contestedTheCut = qCount !== null && i === qCount;
           const why = qualifies
             ? reasons?.advancementReason ?? reasons?.tiebreakerReason ?? null
-            : reasons?.tiebreakerReason ?? null;
+            : contestedTheCut
+              ? reasons?.tiebreakerReason ?? null
+              : null;
+          // "Advances — behind X on head-to-head" reads as a contradiction,
+          // so an advancing team that lost a tiebreak is placed, not beaten.
+          const verb = qualifies ? (why?.startsWith("Behind") ? `Advances in ${ordinal(i + 1)}` : "Advances") : "Eliminated";
           const outcomeNote =
-            !groupIsComplete || qCount === null
-              ? null
-              : `${qualifies ? "Advances" : "Eliminated"}${why ? ` — ${why}` : ""}`;
+            !groupIsComplete || qCount === null ? null : `${verb}${why ? ` — ${why.replace(/^Behind/, "behind")}` : ""}`;
 
           return {
             ...s,
@@ -872,13 +921,19 @@ function labelForSlotRef(ref: MatchSide, stageNameByKey: Map<string, string>): T
       const groupLabel = groupClean ? `Pool ${groupClean}` : ref.group;
       return `${groupLabel} — ${ordinal(ref.rank)}`;
     }
-    const rawStageName = stageNameByKey.get(ref.stage) ?? ref.stage;
-    let cleanStage = rawStageName;
-    if (cleanStage.toLowerCase().includes("semi")) cleanStage = "Semifinals";
-    else if (cleanStage.toLowerCase().includes("quarter")) cleanStage = "Quarterfinals";
-    else if (cleanStage.toLowerCase().includes("third")) cleanStage = "Fight for Third";
-    else if (cleanStage.toLowerCase().includes("champ") || cleanStage.toLowerCase().includes("final")) cleanStage = "Championship";
-    return `${ref.outcome === "winner" ? "Winner" : "Loser"} of ${cleanStage} Match #${ref.match}`;
+    // Short enough to fit a bracket node: "Winner of QF M3", not
+    // "Winner of Quarterfinals Match #3", which truncates to nothing useful.
+    const raw = (stageNameByKey.get(ref.stage) ?? ref.stage).toLowerCase();
+    const short = raw.includes("16")
+      ? "R16"
+      : raw.includes("quarter")
+        ? "QF"
+        : raw.includes("semi")
+          ? "SF"
+          : raw.includes("third")
+            ? "3rd"
+            : "Final";
+    return `${ref.outcome === "winner" ? "Winner" : "Loser"} of ${short} M${ref.match}`;
   })();
   return { header, subtext: null };
 }
@@ -992,6 +1047,16 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
       if (match) {
         const result = resultByMatchId.get(match.id);
         const winnerId = result?.winner_team_id ?? null;
+        // An empty side is only a bye once the match says so. Otherwise the
+        // other half of the tie simply has not been decided yet, and the slot
+        // should say where its team will come from.
+        const slotNode = nodesByPosition.get(num);
+        const emptySide = (ref: unknown): TeamDisplay =>
+          match.status === "bye"
+            ? BYE_DISPLAY
+            : slotNode
+              ? labelForSlotRef(ref as MatchSide, stageNameByKey)
+              : { header: "TBD", subtext: null };
         return {
           matchNumber: continuousNumber,
           stageMatchIndex,
@@ -999,8 +1064,12 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
           matchLabel,
           fullBadgeText,
           status: match.status,
-          home: match.home_team_id ? teamDisplayById.get(match.home_team_id) ?? { header: "Unknown", subtext: null } : BYE_DISPLAY,
-          away: match.away_team_id ? teamDisplayById.get(match.away_team_id) ?? { header: "Unknown", subtext: null } : BYE_DISPLAY,
+          home: match.home_team_id
+            ? teamDisplayById.get(match.home_team_id) ?? { header: "Unknown", subtext: null }
+            : emptySide(slotNode?.home_ref),
+          away: match.away_team_id
+            ? teamDisplayById.get(match.away_team_id) ?? { header: "Unknown", subtext: null }
+            : emptySide(slotNode?.away_ref),
           homePointsTotal: result?.home_points_total ?? null,
           awayPointsTotal: result?.away_points_total ?? null,
           winnerSide: winnerId ? (winnerId === match.home_team_id ? ("home" as const) : ("away" as const)) : null,

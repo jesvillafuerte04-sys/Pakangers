@@ -5,6 +5,20 @@ import { getMatchDetail } from "@/lib/match-data";
 import { Card } from "@/components/ui/Card";
 import { ScoreEntryForm } from "./ScoreEntryForm";
 
+/**
+ * A recorded-at time in the tournament's own timezone.
+ *
+ * toLocaleString() uses whatever zone the machine rendering the page is in --
+ * on Vercel that is UTC, so a Manila event showed times eight hours out.
+ */
+function formatInVenueTime(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-PH", {
+    timeZone,
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(iso));
+}
+
 function scoringDescription(cfg: { pointsToWin: number; winBy: string; bestOf: number; cap?: number }): string {
   const winBy = cfg.winBy === "win_by_two" ? "win by 2" : "sudden death";
   const capText = cfg.cap ? `, capped at ${cfg.cap}` : "";
@@ -44,7 +58,7 @@ export default async function ScoreEntryPage({
         {match.priorResult && (
           <p className="mb-4 rounded-lg bg-[var(--surface-sunken)] px-3 py-2 text-sm text-[var(--color-text-muted)]">
             Previously recorded by {match.priorResult.recordedBy} at{" "}
-            {new Date(match.priorResult.recordedAt).toLocaleString()}
+            {formatInVenueTime(match.priorResult.recordedAt, match.timezone)}
             {match.priorResult.resultType !== "normal" ? ` (${match.priorResult.resultType})` : ""}.
           </p>
         )}

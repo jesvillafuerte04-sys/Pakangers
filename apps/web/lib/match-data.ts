@@ -27,6 +27,8 @@ export type MatchListRow = {
   resultType: string | null;
   /** Why an awarded match was awarded, as typed by the scorer. */
   resultNote: string | null;
+  /** When the result was recorded, for ordering the completed list. */
+  recordedAt: string | null;
   /** Which side won, once a result exists -- drives winner/loser emphasis in the UI. */
   winnerSide: "home" | "away" | null;
   courtName: string | null;
@@ -55,7 +57,7 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
       supabase
         .from("match")
         .select(
-          "id, match_number, status, stage_id, group_id, home_team_id, away_team_id, display_order, court_id, court(name), match_result(winner_team_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type, result_note)",
+          "id, match_number, status, stage_id, group_id, home_team_id, away_team_id, display_order, court_id, court(name), match_result(winner_team_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type, result_note, recorded_at)",
         )
         .eq("tournament_id", tournamentId),
       supabase.from("stage").select("id, name, key, sequence, format_key").eq("tournament_id", tournamentId).order("sequence"),
@@ -141,6 +143,7 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
       awayPointsTotal: result?.away_points_total ?? null,
       resultType: result?.result_type ?? null,
       resultNote: result?.result_note ?? null,
+      recordedAt: result?.recorded_at ?? null,
       winnerSide: winnerId ? (winnerId === m.home_team_id ? "home" : "away") : null,
       courtName: courtRow?.name ?? null,
       courtLabel: court,
@@ -153,7 +156,22 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
 export async function getMatchList(tournamentId: string, filter: MatchListFilter = "upcoming"): Promise<MatchListRow[]> {
   const rows = await getAllMatchRows(tournamentId);
   if (filter === "all") return rows;
-  if (filter === "completed") return rows.filter((r) => RESOLVED.includes(r.status));
+  // Newest first: a scorer or a spectator checking results wants the match
+  // that just finished, not the first one of the morning. Ordered by when the
+  // result was recorded rather than by match number, because matches are not
+  // scored in numerical order -- a later court often finishes first.
+  if (filter === "completed") {
+    return rows
+      .filter((r) => RESOLVED.includes(r.status))
+      .sort((a, b) => {
+        const at = a.recordedAt ? Date.parse(a.recordedAt) : null;
+        const bt = b.recordedAt ? Date.parse(b.recordedAt) : null;
+        if (at !== null && bt !== null && at !== bt) return bt - at;
+        if (at !== null && bt === null) return -1;
+        if (at === null && bt !== null) return 1;
+        return b.matchNumber - a.matchNumber;
+      });
+  }
   if (filter === "live") return rows.filter((r) => r.status === "in_progress");
   return rows.filter((r) => r.status === "pending" || r.status === "scheduled");
 }
@@ -188,6 +206,8 @@ export type MatchDetail = {
   scoringConfig: ScoringConfig;
   existingGames: { gameNumber: number; homeScore: number; awayScore: number }[];
   priorResult: { resultType: string; recordedBy: string; recordedAt: string } | null;
+  /** IANA zone the tournament runs in, so times read as local to the venue. */
+  timezone: string;
 };
 
 export async function getMatchDetail(matchId: string): Promise<MatchDetail | null> {
@@ -195,7 +215,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail | nul
   const { data: match } = await supabase
     .from("match")
     .select(
-      "id, tournament_id, match_number, status, stage_id, group_id, home_team_id, away_team_id, scoring_config, stage(name, key), tournament_group(name), game(game_number, home_score, away_score), match_result(result_type, recorded_by, recorded_at)",
+      "id, tournament_id, match_number, status, stage_id, group_id, home_team_id, away_team_id, scoring_config, tournament(timezone), stage(name, key), tournament_group(name), game(game_number, home_score, away_score), match_result(result_type, recorded_by, recorded_at)",
     )
     .eq("id", matchId)
     .single();
@@ -205,6 +225,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail | nul
   const stage = Array.isArray(match.stage) ? match.stage[0] : match.stage;
   const group = Array.isArray(match.tournament_group) ? match.tournament_group[0] : match.tournament_group;
   const result = Array.isArray(match.match_result) ? match.match_result[0] : match.match_result;
+  const tournamentRow = Array.isArray(match.tournament) ? match.tournament[0] : match.tournament;
 
   const allRows = await getAllMatchRows(match.tournament_id);
   const matchingRow = allRows.find((r) => r.id === match.id);
@@ -215,6 +236,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchDetail | nul
     status: match.status,
     stageName: matchingRow?.stageName ?? (stage?.name ?? ""),
     stageKey: matchingRow?.stageKey ?? stage?.key,
+    timezone: tournamentRow?.timezone ?? "Asia/Manila",
     matchLabel: matchingRow?.matchLabel,
     fullBadgeText: matchingRow?.fullBadgeText,
     groupName: matchingRow?.groupName ?? (group?.name ?? null),
