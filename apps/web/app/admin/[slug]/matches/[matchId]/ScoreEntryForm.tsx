@@ -199,7 +199,7 @@ export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDeta
               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
                 Home
               </span>
-              <TeamLine display={match.home} showPhotos={false} />
+              <TeamLine display={match.home} />
             </div>
             <div className="shrink-0">
               <input
@@ -229,7 +229,7 @@ export function ScoreEntryForm({ slug, match }: { slug: string; match: MatchDeta
               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
                 Away
               </span>
-              <TeamLine display={match.away} showPhotos={false} />
+              <TeamLine display={match.away} />
             </div>
             <div className="shrink-0">
               <input

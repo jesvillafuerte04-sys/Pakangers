@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { formatTeamDisplay } from "@/lib/team-display";
-import { PlayerAvatar, TeamAvatarGroup } from "@/components/PlayerAvatar";
 import { TeamNameEditor } from "../groups/TeamNameEditor";
 
 export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug]/setup/teams">) {
@@ -33,7 +32,7 @@ export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug
 
   const supabase = getServiceSupabase();
   const [{ data: players }, { data: teams }] = await Promise.all([
-    supabase.from("player").select("id, first_name, last_name, avatar_url").eq("tournament_id", tournament.id).order("first_name"),
+    supabase.from("player").select("id, first_name, last_name").eq("tournament_id", tournament.id).order("first_name"),
     supabase.from("team").select("id, name, team_number").eq("tournament_id", tournament.id).order("team_number", { ascending: true, nullsFirst: false }).order("name"),
   ]);
 
@@ -123,16 +122,15 @@ export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug
         {teams?.map((team) => {
           const memberIds = membersByTeam.get(team.id) ?? [];
           const full = memberIds.length >= division.team_size;
-          const memberPlayers = memberIds.map((pid) => {
-            const p = playerById.get(pid);
-            return p ? { id: p.id, name: `${p.first_name} ${p.last_name}`.trim(), avatarUrl: p.avatar_url } : null;
-          }).filter((p): p is NonNullable<typeof p> => Boolean(p));
-          const display = formatTeamDisplay(team.name, memberPlayers.map(p => p.name), memberPlayers);
+          const memberNames = memberIds
+            .map((pid) => playerById.get(pid))
+            .filter((p): p is NonNullable<typeof p> => Boolean(p))
+            .map((p) => `${p.first_name} ${p.last_name}`.trim());
+          const display = formatTeamDisplay(team.name, memberNames);
           return (
             <Card key={team.id} accent={false} className="border border-[var(--border-subtle)]">
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <TeamAvatarGroup players={memberPlayers} size="sm" />
                   <div>
                     <TeamNameEditor
                       slug={slug}
@@ -162,14 +160,7 @@ export default async function SetupTeamsPage({ params }: PageProps<"/admin/[slug
                   const player = playerById.get(pid);
                   return (
                     <div key={pid} className="flex items-center justify-between rounded-lg bg-[var(--surface-sunken)] px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <PlayerAvatar
-                          name={player ? `${player.first_name} ${player.last_name}` : pid}
-                          avatarUrl={player?.avatar_url}
-                          size="xs"
-                        />
-                        <span>{player ? `${player.first_name} ${player.last_name}` : pid}</span>
-                      </div>
+                      <span>{player ? `${player.first_name} ${player.last_name}` : pid}</span>
                       <form action={removePlayerFromTeam.bind(null, slug, team.id, pid)}>
                         <button type="submit" className="text-xs font-medium text-[var(--color-error)] hover:underline">
                           Remove

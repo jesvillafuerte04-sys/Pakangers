@@ -35,46 +35,81 @@ test("a court always reads as something", () => {
   assert.equal(courtLabel("   "), "Court TBA");
 });
 
-test("match numbers run 1..N across stages, by bracket order not by group id", () => {
-  const ctx = {
-    stageSequenceById: new Map([["pools", 1], ["semis", 2]]),
-    // Bracket order deliberately disagrees with the alphabetical order of the ids.
-    groupOrderById: new Map([["zzz-first", 0], ["aaa-second", 1]]),
-  };
-  const numbers = continuousMatchNumbers(
-    [
-      { id: "s2", stageId: "semis", groupId: null, matchNumber: 2 },
-      { id: "b2m1", stageId: "pools", groupId: "aaa-second", matchNumber: 1 },
-      { id: "b1m2", stageId: "pools", groupId: "zzz-first", matchNumber: 2 },
-      { id: "s1", stageId: "semis", groupId: null, matchNumber: 1 },
-      { id: "b1m1", stageId: "pools", groupId: "zzz-first", matchNumber: 1 },
-    ],
-    ctx,
-  );
+/** Four brackets of three matches each, plus two semifinals. */
+function sampleDraw() {
+  const matches = [];
+  for (let g = 0; g < 4; g++) {
+    for (let n = 1; n <= 3; n++) {
+      matches.push({ id: `g${g}m${n}`, stageId: "pools", groupId: `grp${g}`, matchNumber: g * 10 + n });
+    }
+  }
+  matches.push({ id: "s1", stageId: "semis", groupId: null, matchNumber: 1 });
+  matches.push({ id: "s2", stageId: "semis", groupId: null, matchNumber: 2 });
+  return matches;
+}
 
-  assert.deepEqual([...numbers.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => id), [
-    "b1m1",
-    "b1m2",
-    "b2m1",
-    "s1",
-    "s2",
+const CTX = {
+  stageSequenceById: new Map([["pools", 1], ["semis", 2]]),
+  groupOrderById: new Map([["grp0", 0], ["grp1", 1], ["grp2", 2], ["grp3", 3]]),
+};
+
+const inOrder = (numbers: Map<string, number>) =>
+  [...numbers.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => id);
+
+test("brackets playing at the same time take turns, one match each", () => {
+  // Four courts, so brackets A-D all run at once: A1, B1, C1, D1, A2, B2, ...
+  const numbers = continuousMatchNumbers(sampleDraw(), { ...CTX, bracketsPerBatch: 4 });
+
+  assert.deepEqual(inOrder(numbers), [
+    "g0m1", "g1m1", "g2m1", "g3m1",
+    "g0m2", "g1m2", "g2m2", "g3m2",
+    "g0m3", "g1m3", "g2m3", "g3m3",
+    "s1", "s2",
   ]);
-  assert.deepEqual([...numbers.values()].sort((a, b) => a - b), [1, 2, 3, 4, 5]);
+  assert.equal(numbers.get("g1m1"), 2, "the first match of Bracket B is M2, not M4");
 });
 
-test("numbering is stable as TBD knockout slots fill in", () => {
-  const ctx = {
-    stageSequenceById: new Map([["pools", 1], ["semis", 2]]),
-    groupOrderById: new Map([["g", 0]]),
-  };
-  const all = [
-    { id: "p1", stageId: "pools", groupId: "g", matchNumber: 1 },
-    { id: "p2", stageId: "pools", groupId: "g", matchNumber: 2 },
-    { id: "s1", stageId: "semis", groupId: null, matchNumber: 1 },
-    { id: "s2", stageId: "semis", groupId: null, matchNumber: 2 },
-  ];
-  const before = continuousMatchNumbers(all, ctx);
-  const after = continuousMatchNumbers([...all].reverse(), ctx);
+test("a second batch of brackets starts only after the first finishes", () => {
+  // Two courts: brackets A and B play out, then C and D take the same courts.
+  const numbers = continuousMatchNumbers(sampleDraw(), { ...CTX, bracketsPerBatch: 2 });
+
+  assert.deepEqual(inOrder(numbers), [
+    "g0m1", "g1m1", "g0m2", "g1m2", "g0m3", "g1m3",
+    "g2m1", "g3m1", "g2m2", "g3m2", "g2m3", "g3m3",
+    "s1", "s2",
+  ]);
+});
+
+test("without a court count every bracket is treated as running at once", () => {
+  const numbers = continuousMatchNumbers(sampleDraw(), CTX);
+  assert.deepEqual(inOrder(numbers).slice(0, 4), ["g0m1", "g1m1", "g2m1", "g3m1"]);
+});
+
+test("match numbers are unique and run 1..N with no gaps", () => {
+  const numbers = continuousMatchNumbers(sampleDraw(), { ...CTX, bracketsPerBatch: 4 });
+  const values = [...numbers.values()].sort((a, b) => a - b);
+  assert.equal(new Set(values).size, values.length);
+  assert.deepEqual(values, values.map((_, i) => i + 1));
+});
+
+test("numbering does not depend on the order the matches arrive in", () => {
+  const draw = sampleDraw();
+  const before = continuousMatchNumbers(draw, { ...CTX, bracketsPerBatch: 4 });
+  const after = continuousMatchNumbers([...draw].reverse(), { ...CTX, bracketsPerBatch: 4 });
   assert.deepEqual([...before.entries()].sort(), [...after.entries()].sort());
-  assert.equal(before.get("s2"), 4, "the last semifinal keeps the number it was printed with");
+  assert.equal(before.get("s2"), 14, "the last semifinal keeps the number it was printed with");
+});
+
+test("brackets of different sizes still interleave, the short one just drops out", () => {
+  // Bracket A has three matches, Bracket B only one.
+  const numbers = continuousMatchNumbers(
+    [
+      { id: "a1", stageId: "pools", groupId: "grp0", matchNumber: 1 },
+      { id: "a2", stageId: "pools", groupId: "grp0", matchNumber: 2 },
+      { id: "a3", stageId: "pools", groupId: "grp0", matchNumber: 3 },
+      { id: "b1", stageId: "pools", groupId: "grp1", matchNumber: 1 },
+    ],
+    { ...CTX, bracketsPerBatch: 2 },
+  );
+  assert.deepEqual(inOrder(numbers), ["a1", "b1", "a2", "a3"]);
 });

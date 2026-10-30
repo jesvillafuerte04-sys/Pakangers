@@ -28,7 +28,7 @@ export type Tiebreaker =
  *  3. head_to_head_point_differential the margin in those same matches
  *  4. point_differential              overall margin across the whole bracket
  *  5. points_allowed                  fewest points conceded
- *  6. coin_flip                       organizer decides; flagged, never guessed
+ *  6. coin_flip                       decided by coin toss; flagged, never guessed
  *
  * points_scored is deliberately absent: ranking on points scored rewards
  * running up the score, which USA Pickleball does not do.

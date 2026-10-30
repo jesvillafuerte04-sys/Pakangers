@@ -82,10 +82,25 @@ export type NumberableMatch = {
 export type NumberingContext = {
   stageSequenceById: Map<string, number>;
   groupOrderById: Map<string, number>;
+  /**
+   * How many brackets are played at the same time -- one per court.
+   *
+   * Brackets A-D run together on courts 1-4, then E-H take the same courts.
+   * Matches are numbered in the order they are actually played, so within a
+   * batch the brackets take turns. Leave it out and every bracket is treated
+   * as running at once.
+   */
+  bracketsPerBatch?: number;
 };
 
 /**
- * Continuous match numbers, 1..N, across every stage of a tournament.
+ * Continuous match numbers, 1..N, in playing order.
+ *
+ * Within a stage the brackets playing at the same time take turns, so the
+ * numbers run M1 Bracket A, M2 Bracket B, M3 Bracket C, M4 Bracket D, M5
+ * Bracket A again -- which is the order the matches are called to the courts,
+ * and therefore the order the Up Next list should show them in. Once the first
+ * batch of brackets has finished, the next batch starts where it left off.
  *
  * Every match is numbered, including knockout matches whose teams are still
  * TBD, so the number printed on a scoresheet before the event is the number
@@ -98,9 +113,31 @@ export function continuousMatchNumbers(
   const seq = (m: NumberableMatch) => ctx.stageSequenceById.get(m.stageId) ?? 0;
   const grp = (m: NumberableMatch) => (m.groupId ? ctx.groupOrderById.get(m.groupId) ?? 0 : -1);
 
+  // Where each match sits inside its own bracket: its 1st match, 2nd, and so on.
+  const positionInBracket = new Map<string, number>();
+  const byGroup = new Map<string, NumberableMatch[]>();
+  for (const m of matches) {
+    if (!m.groupId) continue;
+    byGroup.set(m.groupId, [...(byGroup.get(m.groupId) ?? []), m]);
+  }
+  for (const group of byGroup.values()) {
+    group
+      .sort((a, b) => a.matchNumber - b.matchNumber || a.id.localeCompare(b.id))
+      .forEach((m, i) => positionInBracket.set(m.id, i));
+  }
+
+  // One batch per set of courts. Without a court count every bracket is in
+  // batch 0, which still interleaves them -- just all at once.
+  const perBatch = ctx.bracketsPerBatch && ctx.bracketsPerBatch > 0 ? ctx.bracketsPerBatch : Infinity;
+  const batch = (m: NumberableMatch) => (m.groupId ? Math.floor(grp(m) / perBatch) : 0);
+
   const ordered = [...matches].sort(
     (a, b) =>
       seq(a) - seq(b) ||
+      // Bracket matches come before anything loose in the same stage.
+      Number(Boolean(b.groupId)) - Number(Boolean(a.groupId)) ||
+      batch(a) - batch(b) ||
+      (positionInBracket.get(a.id) ?? 0) - (positionInBracket.get(b.id) ?? 0) ||
       grp(a) - grp(b) ||
       a.matchNumber - b.matchNumber ||
       a.id.localeCompare(b.id), // last resort, so the order is never arbitrary

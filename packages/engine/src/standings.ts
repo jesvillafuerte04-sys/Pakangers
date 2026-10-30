@@ -75,7 +75,7 @@ function metricValue(s: Standing, tb: Tiebreaker): number {
     case 'points_scored': return s.pointsFor;
     case 'points_allowed': return -s.pointsAgainst; // fewer allowed is better
     case 'games_won': return s.gamesWon;
-    case 'coin_flip': return 0; // engine can't flip a coin — always inconclusive, left for the organizer
+    case 'coin_flip': return 0; // the engine can't toss a coin — always inconclusive, flagged for a real toss
     default: return 0;
   }
 }

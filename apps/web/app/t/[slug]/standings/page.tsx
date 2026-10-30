@@ -15,7 +15,7 @@ const TIEBREAKER_LABEL: Record<Tiebreaker, string> = {
   points_scored: "points scored",
   points_allowed: "points allowed",
   games_won: "games won",
-  coin_flip: "organizer decision",
+  coin_flip: "coin toss",
 };
 
 function formatTiebreakerNote(tiebreakers: Tiebreaker[]): string {
@@ -51,7 +51,10 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
   return (
     <div className="flex flex-col gap-5">
       {groups.map((g) => {
-        const hasStarted = g.standings.some((s) => s.wins > 0 || s.losses > 0 || s.pointsFor > 0);
+        // Nothing is marked as advancing until every match in the bracket has
+        // been played: a team sitting first at the halfway point has not
+        // qualified, and showing it as "Advancing" reads as though it has.
+        const settled = g.isComplete;
         return (
           <Card key={`${g.stageKey}:${g.groupName}`}>
             <div className="mb-3 flex items-baseline justify-between gap-2">
@@ -59,8 +62,14 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
                 {formatGroupHeading(g.groupName)}
               </h3>
               {g.qualifyCount !== null && (
-                <span className="whitespace-nowrap rounded-full bg-[var(--color-gold)] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-navy)]">
-                  Top {g.qualifyCount} advance
+                <span
+                  className={`whitespace-nowrap rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                    settled
+                      ? "bg-[var(--color-gold)] text-[var(--color-navy)]"
+                      : "bg-[var(--surface-sunken)] text-[var(--color-text-muted)]"
+                  }`}
+                >
+                  Top {g.qualifyCount} advance{settled ? "" : " · bracket in progress"}
                 </span>
               )}
             </div>
@@ -71,7 +80,7 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
                     rank={s.rank}
                     team={s.team}
                     unresolvedTie={s.unresolvedTie}
-                    isQualifying={hasStarted && g.qualifyCount !== null && i < g.qualifyCount}
+                    isQualifying={settled && g.qualifyCount !== null && i < g.qualifyCount}
                     advancementReason={s.advancementReason}
                     tiebreakerReason={s.tiebreakerReason}
                     wins={s.wins}
@@ -81,7 +90,7 @@ export default async function PublicStandingsPage({ params }: PageProps<"/t/[slu
                     stats={s.stats}
                     history={s.history}
                   />
-                  {hasStarted && g.qualifyCount !== null && i === g.qualifyCount - 1 && i < g.standings.length - 1 && (
+                  {settled && g.qualifyCount !== null && i === g.qualifyCount - 1 && i < g.standings.length - 1 && (
                     <div className="my-2 flex items-center gap-2">
                       <div className="h-0 flex-1 border-t-2 border-dashed border-[var(--color-error)]" />
                       <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide text-[var(--color-error)]">

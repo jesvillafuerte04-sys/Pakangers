@@ -571,6 +571,11 @@ export type DisplayStandingsGroup = {
   groupName: string;
   tiebreakers: Tiebreaker[];
   qualifyCount: number | null;
+  /**
+   * Every match in this bracket has a result. The top-N highlight waits for
+   * this, because a team leading at the halfway point has not qualified yet.
+   */
+  isComplete: boolean;
   standings: (Standing & {
     team: TeamDisplay;
     advancementReason?: string | null;
@@ -659,8 +664,8 @@ function computeAdvancementAndTieReasons(
           });
         } else if (s.unresolvedTie) {
           result.set(s.entrantId, {
-            advancementReason: isQualifying ? `Tied (pending coin flip)` : null,
-            tiebreakerReason: `Tied with ${otherName} (coin flip needed)`,
+            advancementReason: isQualifying ? `Tied — coin toss needed` : null,
+            tiebreakerReason: `Tied with ${otherName} — coin toss needed`,
           });
         } else {
           result.set(s.entrantId, {
@@ -806,6 +811,7 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
         groupName: g.name,
         tiebreakers: cfg.tiebreakers,
         qualifyCount: qCount,
+        isComplete: groupMatches.length > 0 && groupMatches.every((m) => RESOLVED_STATUSES.includes(m.status)),
         standings: standings.map((s) => {
           const reasons = reasonsMap.get(s.entrantId);
           return {
@@ -894,7 +900,7 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
   const [{ data: results }, teamDisplayById, { data: courts }] = await Promise.all([
     matchIds.length ? supabase.from("match_result").select("*").in("match_id", matchIds) : Promise.resolve({ data: [] as Tables<"match_result">[] }),
     getTournamentTeamDisplays(tournamentId),
-    supabase.from("court").select("id, name").eq("tournament_id", tournamentId),
+    supabase.from("court").select("id, name, is_available").eq("tournament_id", tournamentId),
   ]);
   const courtNameById = new Map((courts ?? []).map((c) => [c.id, c.name]));
   const resultByMatchId = new Map((results ?? []).map((r) => [r.match_id, r]));
@@ -925,7 +931,13 @@ export async function getPublicBracket(tournamentId: string): Promise<PublicBrac
         nums.map((num) => ({ id: slotKey(stageId, num), stageId, groupId: null, matchNumber: num })),
       ),
     ],
-    { stageSequenceById, groupOrderById },
+    {
+      stageSequenceById,
+      groupOrderById,
+      // One bracket per court, so the courts decide how many brackets are
+      // interleaved before the numbering moves on to the next batch.
+      bracketsPerBatch: (courts ?? []).filter((c) => c.is_available).length || undefined,
+    },
   );
 
   const bracketStages: PublicBracketStage[] = [];

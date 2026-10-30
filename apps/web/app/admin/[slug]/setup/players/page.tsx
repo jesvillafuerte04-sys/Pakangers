@@ -5,7 +5,6 @@ import { addPlayers, removePlayer } from "@/app/admin/actions";
 import { Card } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { PlayerPhotoUpload } from "./PlayerPhotoUpload";
 
 export default async function SetupPlayersPage({ params }: PageProps<"/admin/[slug]/setup/players">) {
   const { slug } = await params;
@@ -15,7 +14,7 @@ export default async function SetupPlayersPage({ params }: PageProps<"/admin/[sl
   const supabase = getServiceSupabase();
   const { data: players } = await supabase
     .from("player")
-    .select("id, first_name, last_name, dupr_id, avatar_url")
+    .select("id, first_name, last_name, dupr_id")
     .eq("tournament_id", tournament.id)
     .order("first_name");
 
@@ -43,12 +42,9 @@ export default async function SetupPlayersPage({ params }: PageProps<"/admin/[sl
           {players?.length === 0 && <p className="py-3 text-sm text-[var(--color-text-muted)]">No players yet.</p>}
           {players?.map((p) => (
             <div key={p.id} className="flex items-center justify-between py-3 gap-3">
-              <PlayerPhotoUpload
-                slug={slug}
-                playerId={p.id}
-                playerName={`${p.first_name} ${p.last_name}`}
-                avatarUrl={p.avatar_url}
-              />
+              <span className="min-w-0 flex-1 truncate font-medium text-[var(--color-navy)]">
+                {`${p.first_name} ${p.last_name}`.trim()}
+              </span>
               <div className="flex items-center gap-3">
                 {p.dupr_id && (
                   <span className="text-xs text-[var(--color-text-muted)]">DUPR: {p.dupr_id}</span>

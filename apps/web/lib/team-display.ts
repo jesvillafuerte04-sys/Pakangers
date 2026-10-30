@@ -2,42 +2,33 @@ import "server-only";
 import { cache } from "react";
 import { getServiceSupabase } from "./supabase-server";
 
-export type PlayerDisplayInfo = {
-  id?: string;
-  name: string;
-  avatarUrl: string | null;
-};
-
 export type TeamDisplay = {
   header: string;
   subtext: string | null;
-  players?: PlayerDisplayInfo[];
 };
 
 /** Player names lead for singles/doubles; squad names lead for Team Wars (3+ players). */
 export function formatTeamDisplay(
   teamName: string | null | undefined,
   playerNames: string[],
-  players?: PlayerDisplayInfo[],
 ): TeamDisplay {
   const trimmedName = (teamName ?? "").trim();
   // Team Wars / Squads (3+ players): Squad name leads, player list is subtext
   if (playerNames.length > 2 && trimmedName) {
-    return { header: trimmedName, subtext: playerNames.join(", "), players };
+    return { header: trimmedName, subtext: playerNames.join(", ") };
   }
   // Singles: Single player name leads
   if (playerNames.length === 1) {
     return {
       header: playerNames[0]!,
       subtext: trimmedName && trimmedName.toLowerCase() !== playerNames[0]!.toLowerCase() ? trimmedName : null,
-      players,
     };
   }
   // Doubles
   if (playerNames.length > 0) {
-    return { header: playerNames.join(" / "), subtext: trimmedName || null, players };
+    return { header: playerNames.join(" / "), subtext: trimmedName || null };
   }
-  return { header: trimmedName || "Unnamed team", subtext: null, players };
+  return { header: trimmedName || "Unnamed team", subtext: null };
 }
 
 type TeamWithMembers = {
@@ -45,25 +36,21 @@ type TeamWithMembers = {
   name: string;
   team_member: {
     position: number;
-    player: { id: string; first_name: string; last_name: string; avatar_url: string | null } | null;
+    player: { id: string; first_name: string; last_name: string } | null;
   }[];
 };
 
 /** Shapes a joined team row into its display form, ordering players by roster position. */
 export function teamDisplayFromJoined(team: TeamWithMembers): TeamDisplay {
   const sortedMembers = [...(team.team_member ?? [])].sort((a, b) => a.position - b.position);
-  const players: PlayerDisplayInfo[] = sortedMembers
+  const playerNames = sortedMembers
     .filter((m): m is typeof m & { player: NonNullable<typeof m.player> } => Boolean(m.player))
-    .map((m) => ({
-      id: m.player.id,
-      name: `${m.player.first_name} ${m.player.last_name}`.trim(),
-      avatarUrl: m.player.avatar_url,
-    }));
-  const playerNames = players.map((p) => p.name).filter(Boolean);
-  return formatTeamDisplay(team.name, playerNames, players);
+    .map((m) => `${m.player.first_name} ${m.player.last_name}`.trim())
+    .filter(Boolean);
+  return formatTeamDisplay(team.name, playerNames);
 }
 
-const TEAM_WITH_MEMBERS_SELECT = "id, name, team_member(position, player(id, first_name, last_name, avatar_url))";
+const TEAM_WITH_MEMBERS_SELECT = "id, name, team_member(position, player(id, first_name, last_name))";
 
 /**
  * Every team in a tournament, keyed by id, as one round trip -- the nested

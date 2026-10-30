@@ -121,6 +121,7 @@ export const getScheduleView = cache(async (tournamentId: string, scheduleConfig
     {
       stageSequenceById: new Map((stages ?? []).map((s) => [s.id, s.sequence])),
       groupOrderById: new Map((groups ?? []).map((g) => [g.id, g.display_order])),
+      bracketsPerBatch: courts.filter((c) => c.isAvailable).length || undefined,
     },
   );
 

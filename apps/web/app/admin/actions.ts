@@ -293,93 +293,6 @@ export async function removePlayer(slug: string, playerId: string): Promise<void
   revalidatePath(`/admin/${slug}/setup/players`);
 }
 
-export async function updatePlayerAvatar(
-  slug: string,
-  playerId: string,
-  formData: FormData,
-): Promise<{ ok: boolean; error?: string; avatarUrl?: string }> {
-  await requireSession();
-  const supabase = getServiceSupabase();
-
-  const file = formData.get("photo") as File | null;
-  if (!file || file.size === 0) {
-    return { ok: false, error: "No image file provided" };
-  }
-
-  // Reject files over 500KB (client already compresses to ~30KB)
-  if (file.size > 524288) {
-    return { ok: false, error: "Image file is too large. Please select a smaller photo." };
-  }
-
-  try {
-    const ext = "webp";
-    const path = `${playerId}.${ext}`;
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Upload directly as webp file to Supabase Storage
-    const { error: uploadErr } = await supabase.storage
-      .from("player-avatars")
-      .upload(path, buffer, {
-        contentType: "image/webp",
-        upsert: true,
-      });
-
-    if (uploadErr) {
-      return { ok: false, error: `Storage upload failed: ${uploadErr.message}` };
-    }
-
-    const { data: urlData } = supabase.storage
-      .from("player-avatars")
-      .getPublicUrl(path);
-
-    const finalAvatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-
-    // Store ONLY the short public URL in database
-    const { error: dbError } = await supabase
-      .from("player")
-      .update({ avatar_url: finalAvatarUrl })
-      .eq("id", playerId);
-
-    if (dbError) throw new Error(dbError.message);
-
-    revalidatePath(`/admin/${slug}/setup/players`);
-    revalidatePath(`/admin/${slug}/setup/teams`);
-    revalidatePath(`/admin/${slug}/matches`);
-    revalidatePath(`/t/${slug}`);
-    revalidatePath(`/t/${slug}/matches`);
-    revalidatePath(`/t/${slug}/standings`);
-    revalidatePath(`/t/${slug}/bracket`);
-
-    return { ok: true, avatarUrl: finalAvatarUrl };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to upload photo";
-    return { ok: false, error: message };
-  }
-}
-
-export async function removePlayerAvatar(slug: string, playerId: string): Promise<void> {
-  await requireSession();
-  const supabase = getServiceSupabase();
-  const { error } = await supabase.from("player").update({ avatar_url: null }).eq("id", playerId);
-  if (error) throw new Error(error.message);
-
-  // Best effort delete from storage
-  try {
-    await supabase.storage.from("player-avatars").remove([`${playerId}.webp`]);
-  } catch {
-    // Ignore storage deletion errors
-  }
-
-  revalidatePath(`/admin/${slug}/setup/players`);
-  revalidatePath(`/admin/${slug}/setup/teams`);
-  revalidatePath(`/admin/${slug}/matches`);
-  revalidatePath(`/t/${slug}`);
-  revalidatePath(`/t/${slug}/matches`);
-  revalidatePath(`/t/${slug}/standings`);
-  revalidatePath(`/t/${slug}/bracket`);
-}
-
 export async function createTeam(slug: string, tournamentId: string, divisionId: string, formData: FormData): Promise<void> {
   await requireSession();
   const supabase = getServiceSupabase();
@@ -678,7 +591,7 @@ async function deepDuplicateTournament(
   // 6. Copy player
   const { data: players } = await supabase
     .from("player")
-    .select("id, first_name, last_name, contact, dupr_id, skill_rating, notes, avatar_url")
+    .select("id, first_name, last_name, contact, dupr_id, skill_rating, notes")
     .eq("tournament_id", sourceId);
 
   const playerIdMap = new Map<string, string>();
@@ -694,7 +607,6 @@ async function deepDuplicateTournament(
           dupr_id: p.dupr_id,
           skill_rating: p.skill_rating,
           notes: p.notes,
-          avatar_url: p.avatar_url,
         })
         .select("id")
         .single();

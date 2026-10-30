@@ -48,17 +48,25 @@ const RESOLVED = ["completed", "forfeit", "bye"];
 const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow[]> => {
   const supabase = getServiceSupabase();
 
-  const [{ data: matches, error }, { data: stages }, { data: groups }, teamDisplayById] = await Promise.all([
-    supabase
-      .from("match")
-      .select(
-        "id, match_number, status, stage_id, group_id, home_team_id, away_team_id, display_order, court_id, court(name), match_result(winner_team_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type)",
-      )
-      .eq("tournament_id", tournamentId),
-    supabase.from("stage").select("id, name, key, sequence, format_key").eq("tournament_id", tournamentId).order("sequence"),
-    supabase.from("tournament_group").select("id, name, display_order, stage!inner(tournament_id)").eq("stage.tournament_id", tournamentId),
-    getTournamentTeamDisplays(tournamentId),
-  ]);
+  const [{ data: matches, error }, { data: stages }, { data: groups }, { count: openCourts }, teamDisplayById] =
+    await Promise.all([
+      supabase
+        .from("match")
+        .select(
+          "id, match_number, status, stage_id, group_id, home_team_id, away_team_id, display_order, court_id, court(name), match_result(winner_team_id, home_games_won, away_games_won, home_points_total, away_points_total, result_type)",
+        )
+        .eq("tournament_id", tournamentId),
+      supabase.from("stage").select("id, name, key, sequence, format_key").eq("tournament_id", tournamentId).order("sequence"),
+      supabase.from("tournament_group").select("id, name, display_order, stage!inner(tournament_id)").eq("stage.tournament_id", tournamentId),
+      // How many brackets can run at once, which is what makes the match
+      // numbers follow the order the matches are actually called.
+      supabase
+        .from("court")
+        .select("id", { count: "exact", head: true })
+        .eq("tournament_id", tournamentId)
+        .eq("is_available", true),
+      getTournamentTeamDisplays(tournamentId),
+    ]);
   if (error) throw new Error(error.message);
 
   const stageById = new Map((stages ?? []).map((s) => [s.id, s]));
@@ -67,6 +75,7 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
   const ctx = {
     stageSequenceById: new Map((stages ?? []).map((s) => [s.id, s.sequence])),
     groupOrderById: new Map((groups ?? []).map((g) => [g.id, g.display_order])),
+    bracketsPerBatch: openCourts ?? undefined,
   };
   // Every match is numbered, TBD knockout slots included, so a number assigned
   // before the event is still that match's number once the bracket resolves.
