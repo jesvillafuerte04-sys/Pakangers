@@ -89,11 +89,14 @@ const getAllMatchRows = cache(async (tournamentId: string): Promise<MatchListRow
   const nodeByStageAndNumber = new Map(
     (nodeRows ?? []).map((n) => [`${n.stage_id}:${n.position}`, n]),
   );
-  const bracketOf = (m: { group_id: string | null; home_team_id: string | null; away_team_id: string | null }) =>
-    m.group_id
-    ?? (m.home_team_id ? groupIdByTeamId.get(m.home_team_id) : null)
-    ?? (m.away_team_id ? groupIdByTeamId.get(m.away_team_id) : null)
-    ?? null;
+  // Knockout matches have no bracket, whatever pool their teams came from.
+  const bracketOf = (m: { stage_id: string; group_id: string | null; home_team_id: string | null; away_team_id: string | null }) =>
+    stageById.get(m.stage_id)?.format_key === "single_elimination"
+      ? null
+      : m.group_id
+        ?? (m.home_team_id ? groupIdByTeamId.get(m.home_team_id) : null)
+        ?? (m.away_team_id ? groupIdByTeamId.get(m.away_team_id) : null)
+        ?? null;
 
   const ctx = {
     stageSequenceById: new Map((stages ?? []).map((s) => [s.id, s.sequence])),

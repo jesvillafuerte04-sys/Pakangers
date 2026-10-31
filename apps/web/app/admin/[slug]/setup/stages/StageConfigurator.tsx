@@ -25,7 +25,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
   // Round-specific scoring rules. Pakangers defaults:
   //   Pools & early knockout  11, sudden death
   //   Semi-Finals             15, sudden death
-  //   Fight for 3rd Place     15, win by 2
+  //   Fight for 3rd Place     15, sudden death
   //   Championship            15, win by 2, capped at 21
   const [poolPointsToWin, setPoolPointsToWin] = useState(11);
   const [poolWinBy, setPoolWinBy] = useState("sudden_death");
@@ -34,7 +34,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
   const [semisWinBy, setSemisWinBy] = useState("sudden_death");
 
   const [thirdPointsToWin, setThirdPointsToWin] = useState(15);
-  const [thirdWinBy, setThirdWinBy] = useState("win_by_two");
+  const [thirdWinBy, setThirdWinBy] = useState("sudden_death");
 
   const [champPointsToWin, setChampPointsToWin] = useState(15);
   const [champWinBy, setChampWinBy] = useState("win_by_two");
@@ -325,7 +325,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
                   ⚡ Opposite Pools ({poolCount >= 8 ? "A1 vs H2" : "A1 vs D2"})
                 </span>
                 <span className={`mt-0.5 text-xs ${crossoverStyle === "opposite" ? "text-gray-200" : "text-[var(--color-text-muted)]"}`}>
-                  Local standard: Top seeds face the furthest runner-up ({poolCount >= 8 ? "A1 vs H2, B1 vs G2, C1 vs F2, D1 vs E2" : "A1 vs D2, B1 vs C2"}).
+                  Local standard: Top seeds face the furthest runner-up ({poolCount >= 8 ? "A1 vs H2, B1 vs G2, C1 vs F2, D1 vs E2" : "A1 vs D2, B1 vs C2"}), and each bracket's 1st and 2nd land in opposite halves.
                 </span>
               </button>
 
@@ -485,8 +485,8 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
                   disabled={!isDraft || isPending}
                   className="rounded-lg border border-[var(--border-subtle)] bg-white px-2.5 py-1.5 text-xs font-bold text-[var(--color-navy)]"
                 >
-                  <option value="win_by_two">Win by 2 (Deuce)</option>
                   <option value="sudden_death">Sudden Death (1st to point)</option>
+                  <option value="win_by_two">Win by 2 (Deuce)</option>
                 </select>
               </div>
             </div>
@@ -628,7 +628,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
           </div>
 
           <p className="mt-3 border-t border-[var(--border-subtle)] pt-2 text-center text-xs text-[var(--color-text-muted)]">
-            Scoring: Pools ({poolPointsToWin} pts {poolWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Semis ({semisPointsToWin} pts {semisWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · 3rd Place ({thirdPointsToWin} pts {thirdWinBy === "win_by_two" ? "win by 2" : "sudden death"}) · Championship ({champPointsToWin} pts {champWinBy === "win_by_two" ? "win by 2" : "sudden death"}{champWinBy === "win_by_two" && champCap > 0 ? ", up to " + champCap : ""}) · {scoringType === "side_out" ? "Side-out" : "Rally"} · {bestOf === 1 ? "1 game" : "Best of 3"}
+            Scoring: Pools ({poolPointsToWin} pts {poolWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Semis ({semisPointsToWin} pts {semisWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · 3rd Place ({thirdPointsToWin} pts {thirdWinBy === "sudden_death" ? "sudden death" : "win by 2"}) · Championship ({champPointsToWin} pts {champWinBy === "win_by_two" ? "win by 2" : "sudden death"}{champWinBy === "win_by_two" && champCap > 0 ? ", up to " + champCap : ""}) · {scoringType === "side_out" ? "Side-out" : "Rally"} · {bestOf === 1 ? "1 game" : "Best of 3"}
           </p>
         </div>
 

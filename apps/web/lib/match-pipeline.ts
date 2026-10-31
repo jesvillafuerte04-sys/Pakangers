@@ -335,10 +335,16 @@ export async function populateTournament(tournamentId: string): Promise<void> {
         if (isBracketStage) await ensureBracketNode(supabase, stage.id, pm, bracketNodeByKey, null);
         continue;
       }
-      const groupId = (pm.group ? groupIdByStageAndName.get(`${stage.id}:${pm.group}`) : null)
-        ?? (homeTeamId ? state.teamGroupIdById.get(homeTeamId) : null)
-        ?? (awayTeamId ? state.teamGroupIdById.get(awayTeamId) : null)
-        ?? null;
+      // Only a pool match belongs to a bracket. A knockout match used to take
+      // its home team's pool here, so a semifinal read as "Bracket B" and the
+      // Matches and Schedule pages numbered it differently from the Bracket
+      // page, which numbers knockout slots with no bracket at all.
+      const groupId = isBracketStage
+        ? null
+        : (pm.group ? groupIdByStageAndName.get(`${stage.id}:${pm.group}`) : null)
+          ?? (homeTeamId ? state.teamGroupIdById.get(homeTeamId) : null)
+          ?? (awayTeamId ? state.teamGroupIdById.get(awayTeamId) : null)
+          ?? null;
       const status: MatchStatus = bothSettled && (home.kind === "bye" || away.kind === "bye") ? "bye" : "pending";
 
       const { data: inserted, error } = await supabase

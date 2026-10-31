@@ -863,8 +863,8 @@ export async function configureTournamentStages(slug: string, formData: FormData
     parseInt(String(formData.get(field) ?? String(fallback)), 10) || fallback;
 
   // Scoring per round. The Pakangers defaults are 11 sudden death through the
-  // brackets and the early knockout, 15 sudden death in the semis, and 15 win
-  // by 2 for both medal matches, with the championship capped at 21.
+  // brackets and the early knockout, 15 sudden death in the semis and the
+  // fight for third, and 15 win by 2 capped at 21 for the championship.
   const poolPoints = num("pool_points_to_win", pointsToWin);
   const poolWinBy = String(formData.get("pool_win_by") ?? winBy);
 
@@ -872,7 +872,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
   const semisWinBy = String(formData.get("semis_win_by") ?? "sudden_death");
 
   const thirdPoints = num("third_points_to_win", 15);
-  const thirdWinBy = String(formData.get("third_win_by") ?? "win_by_two");
+  const thirdWinBy = String(formData.get("third_win_by") ?? "sudden_death");
 
   const champPoints = num("champ_points_to_win", 15);
   const champWinBy = String(formData.get("champ_win_by") ?? "win_by_two");
@@ -948,17 +948,20 @@ export async function configureTournamentStages(slug: string, formData: FormData
     let r16EntrantConfig: Record<string, unknown> = {};
     if (includePools && poolCount === 8 && advancePerPool >= 2) {
       // If opposite crossover (user's preferred local format): A1 vs H2, B1 vs G2, C1 vs F2, D1 vs E2, etc.
+      // Ordered so the bracket winners only meet from the quarterfinals on in
+      // pairs (A/D, B/C, E/H, F/G) and every bracket's 1st and 2nd sit in
+      // opposite halves -- the same draw as the Pakangers Open template.
       if (crossoverStyle === "opposite") {
         r16EntrantConfig = {
           entrants: [
             { match: 1, home: { kind: "group_rank", group: "A", rank: 1 }, away: { kind: "group_rank", group: "H", rank: 2 } },
-            { match: 2, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "G", rank: 2 } },
-            { match: 3, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 2 } },
-            { match: 4, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "E", rank: 2 } },
+            { match: 2, home: { kind: "group_rank", group: "D", rank: 1 }, away: { kind: "group_rank", group: "E", rank: 2 } },
+            { match: 3, home: { kind: "group_rank", group: "B", rank: 1 }, away: { kind: "group_rank", group: "G", rank: 2 } },
+            { match: 4, home: { kind: "group_rank", group: "C", rank: 1 }, away: { kind: "group_rank", group: "F", rank: 2 } },
             { match: 5, home: { kind: "group_rank", group: "E", rank: 1 }, away: { kind: "group_rank", group: "D", rank: 2 } },
-            { match: 6, home: { kind: "group_rank", group: "F", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 2 } },
-            { match: 7, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
-            { match: 8, home: { kind: "group_rank", group: "H", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
+            { match: 6, home: { kind: "group_rank", group: "H", rank: 1 }, away: { kind: "group_rank", group: "A", rank: 2 } },
+            { match: 7, home: { kind: "group_rank", group: "F", rank: 1 }, away: { kind: "group_rank", group: "C", rank: 2 } },
+            { match: 8, home: { kind: "group_rank", group: "G", rank: 1 }, away: { kind: "group_rank", group: "B", rank: 2 } },
           ],
         };
       } else {
