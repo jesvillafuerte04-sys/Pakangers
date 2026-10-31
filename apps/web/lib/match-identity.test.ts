@@ -18,7 +18,7 @@ test("knockout stages use the organizer's own wording", () => {
   assert.equal(of("round_of_16", "Round of 16"), "Round of 16");
   assert.equal(of("quarterfinals", "Quarterfinals"), "Quarter Finals");
   assert.equal(of("semifinals", "Semifinals"), "Semi-Finals");
-  assert.equal(of("third_place", "Third Place"), "Fight for 3rd Place");
+  assert.equal(of("third_place", "Third Place"), "3rd Place");
   assert.equal(of("championship", "Championship"), "Championship");
 });
 

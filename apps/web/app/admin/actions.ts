@@ -9,6 +9,7 @@ import type { TypedSupabaseClient, Json } from "@pakangers/db";
 import { getTournamentBySlug } from "@/lib/tournament-data";
 import { serializeTournamentAsTemplate, type TemplateConfig } from "@/lib/template-config";
 import { populateTournament } from "@/lib/match-pipeline";
+import { familyPairName, isPlaceholderTeamName, parsePlayerLine } from "@/lib/team-naming";
 
 export type UnlockState = { error?: string };
 
@@ -272,16 +273,20 @@ export async function addPlayers(slug: string, tournamentId: string, formData: F
   const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
   if (lines.length === 0) return;
 
-  const rows = lines.map((line) => {
-    const parts = line.split(/\s+/);
-    const first_name = parts[0] ?? line;
-    const last_name = parts.slice(1).join(" ") || "";
-    return { tournament_id: tournamentId, first_name, last_name };
-  });
+  const rows = lines.map((line) => ({ tournament_id: tournamentId, ...parsePlayerLine(line) }));
 
   const { error } = await supabase.from("player").insert(rows);
   if (error) throw new Error(error.message);
 
+  revalidatePath(`/admin/${slug}/setup/players`);
+}
+
+export async function updatePlayerNickname(slug: string, playerId: string, formData: FormData): Promise<void> {
+  await requireSession();
+  const supabase = getServiceSupabase();
+  const nickname = String(formData.get("nickname") ?? "").trim() || null;
+  const { error } = await supabase.from("player").update({ nickname }).eq("id", playerId);
+  if (error) throw new Error(error.message);
   revalidatePath(`/admin/${slug}/setup/players`);
 }
 
@@ -345,6 +350,19 @@ export async function assignPlayerToTeam(slug: string, teamId: string, formData:
 
   const { error } = await supabase.from("team_member").insert({ team_id: teamId, player_id: playerId, position });
   if (error) throw new Error(error.message);
+
+  // A doubles team still carrying a made-up name takes its players' family
+  // names once both are in: "Bacud X Ramayla".
+  if (position === 2) {
+    const [{ data: team }, { data: members }] = await Promise.all([
+      supabase.from("team").select("name").eq("id", teamId).single(),
+      supabase.from("team_member").select("position, player(last_name)").eq("team_id", teamId).order("position"),
+    ]);
+    const lastNames = (members ?? []).map((m) => m.player?.last_name ?? "").filter(Boolean);
+    if (team && isPlaceholderTeamName(team.name) && lastNames.length === 2) {
+      await supabase.from("team").update({ name: familyPairName(lastNames) }).eq("id", teamId);
+    }
+  }
 
   revalidatePath(`/admin/${slug}/setup/teams`);
 }
@@ -1123,7 +1141,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         tournament_id: tournament.id,
         division_id: division.id,
         key: "third_place",
-        name: "Fight for Third",
+        name: "3rd Place",
         format_key: "single_elimination",
         sequence: currentSequence++,
         scoring_config: thirdScoring as unknown as Json,
@@ -1269,7 +1287,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         tournament_id: tournament.id,
         division_id: division.id,
         key: "third_place",
-        name: "Fight for Third",
+        name: "3rd Place",
         format_key: "single_elimination",
         sequence: currentSequence++,
         scoring_config: thirdScoring as unknown as Json,
@@ -1369,7 +1387,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         tournament_id: tournament.id,
         division_id: division.id,
         key: "third_place",
-        name: "Fight for Third",
+        name: "3rd Place",
         format_key: "single_elimination",
         sequence: currentSequence++,
         scoring_config: thirdScoring as unknown as Json,
@@ -1749,7 +1767,7 @@ export async function randomizeDoublesPartners(
       .insert({
         tournament_id: tournamentId,
         division_id: divisionId,
-        name: `Team ${nextTeamNumber}`,
+        name: familyPairName([p1.last_name, p2.last_name]) || `Team ${nextTeamNumber}`,
         team_number: nextTeamNumber,
       })
       .select("id")

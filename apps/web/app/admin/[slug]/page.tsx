@@ -5,7 +5,7 @@ import { getMatchProgress } from "@/lib/match-data";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { refreshDraw, startTournament } from "./matches/actions";
+import { startTournament } from "./matches/actions";
 import { PublicShareCard } from "./PublicShareCard";
 import { unlockTournament } from "@/app/admin/actions";
 import { DeleteTournamentButton } from "@/app/admin/DeleteTournamentButton";
@@ -117,15 +117,9 @@ export default async function TournamentDashboardPage({ params }: PageProps<"/ad
             {matchProgress?.completed ?? 0} of {matchProgress?.total ?? 0} matches complete
           </p>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-            The draw moves on by itself as scores go in. Use Update the draw if a knockout round is
-            still empty after its bracket finished.
+            The draw moves on by itself as scores go in.
           </p>
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <form action={refreshDraw.bind(null, slug)} className="sm:col-span-2">
-              <Button type="submit" variant="outline" fullWidth>
-                🔄 Update the draw
-              </Button>
-            </form>
             <Link href={`/admin/${slug}/matches`}>
               <Button fullWidth size="lg">🎾 Go to matches</Button>
             </Link>

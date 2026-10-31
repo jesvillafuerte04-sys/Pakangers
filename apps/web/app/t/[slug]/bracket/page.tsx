@@ -18,24 +18,27 @@ const RESOLVED = ["completed", "forfeit", "bye"];
  */
 const TREE_STAGES = ["quarterfinals", "semifinals", "championship"] as const;
 
+function toTreeRound(s: PublicBracketStage): BracketTreeRound {
+  return {
+    stageKey: s.stageKey,
+    stageName: s.stageName,
+    matches: s.matches.map((m) => ({
+      matchNumber: m.matchNumber,
+      status: m.status,
+      // header is the team name once known, and the slot's source until then
+      // ("Bracket A — 1st"), which is exactly what an empty node should say.
+      home: { label: m.home.header, score: m.homePointsTotal, isWinner: m.winnerSide === "home" },
+      away: { label: m.away.header, score: m.awayPointsTotal, isWinner: m.winnerSide === "away" },
+    })),
+  };
+}
+
 function toTreeRounds(stages: PublicBracketStage[]): BracketTreeRound[] {
   const order = new Map<string, number>(TREE_STAGES.map((k, i) => [k, i]));
-
   return stages
     .filter((s) => order.has(s.stageKey) && s.matches.length > 0)
     .sort((a, b) => order.get(a.stageKey)! - order.get(b.stageKey)!)
-    .map((s) => ({
-      stageKey: s.stageKey,
-      stageName: s.stageName,
-      matches: s.matches.map((m) => ({
-        matchNumber: m.matchNumber,
-        status: m.status,
-        // header is the team name once known, and the slot's source until then
-        // ("Bracket A — 1st"), which is exactly what an empty node should say.
-        home: { label: m.home.header, score: m.homePointsTotal, isWinner: m.winnerSide === "home" },
-        away: { label: m.away.header, score: m.awayPointsTotal, isWinner: m.winnerSide === "away" },
-      })),
-    }));
+    .map(toTreeRound);
 }
 
 export default async function PublicBracketPage({ params }: PageProps<"/t/[slug]/bracket">) {
@@ -57,6 +60,8 @@ export default async function PublicBracketPage({ params }: PageProps<"/t/[slug]
   // A single column is a card, not a bracket. The tree only earns its place
   // once there is a path through it to trace.
   const showTree = treeRounds.length > 1;
+  // Its own small graphic under the main draw, since it does not feed the final.
+  const thirdPlace = stages.find((s) => s.stageKey === "third_place" && s.matches.length > 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -66,6 +71,11 @@ export default async function PublicBracketPage({ params }: PageProps<"/t/[slug]
             Quarter Finals onward. Scroll sideways for the later rounds, and tap a match to jump to its card below.
           </p>
           <BracketTree rounds={treeRounds} />
+          {thirdPlace && (
+            <div className="mt-4 border-t border-[var(--border-subtle)] pt-3">
+              <BracketTree rounds={[{ ...toTreeRound(thirdPlace), stageName: "3rd Place" }]} />
+            </div>
+          )}
         </Card>
       )}
 

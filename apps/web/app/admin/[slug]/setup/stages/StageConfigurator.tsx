@@ -25,7 +25,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
   // Round-specific scoring rules. Pakangers defaults:
   //   Pools & early knockout  11, sudden death
   //   Semi-Finals             15, sudden death
-  //   Fight for 3rd Place     15, sudden death
+  //   3rd Place               15, sudden death
   //   Championship            15, win by 2, capped at 21
   const [poolPointsToWin, setPoolPointsToWin] = useState(11);
   const [poolWinBy, setPoolWinBy] = useState("sudden_death");
@@ -456,10 +456,10 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
               </div>
             </div>
 
-            {/* Round 3: Fight for 3rd Place */}
+            {/* Round 3: 3rd Place */}
             <div className="flex flex-col gap-2.5 rounded-xl border border-[var(--border-subtle)] bg-white p-3.5 shadow-xs">
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-                <span className="text-xs font-bold text-[var(--color-navy)]">Fight for 3rd Place</span>
+                <span className="text-xs font-bold text-[var(--color-navy)]">3rd Place</span>
                 <span className="rounded-full bg-[var(--surface-sunken)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-navy)]">
                   Bronze
                 </span>

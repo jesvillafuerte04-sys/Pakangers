@@ -659,7 +659,7 @@ export type DisplayStandingsGroup = {
  * point differential, quoting a figure that was in fact the worst of the
  * tied teams.
  */
-function describeSeparation(reason: SeparationReason): string {
+function describeSeparation(reason: SeparationReason, beaten: TeamDisplay | undefined): string {
   const { tiebreaker, value, aboveValue, tiedCount } = reason;
   const signed = (n: number) => `${n >= 0 ? "+" : ""}${n}`;
   const amongTied = tiedCount > 2 ? ` among the ${tiedCount} level on wins` : "";
@@ -672,7 +672,7 @@ function describeSeparation(reason: SeparationReason): string {
     case "head_to_head":
       return `Won head-to-head${amongTied} (${aboveValue} ${aboveValue === 1 ? "win" : "wins"} to ${value})`;
     case "head_to_head_two_way":
-      return "Won head-to-head against the tied team";
+      return `Won head-to-head against ${beaten?.short ?? beaten?.header ?? "the tied team"}`;
     case "head_to_head_point_differential":
       return `Better head-to-head point difference${amongTied} (${signed(aboveValue)} to ${signed(value)})`;
     case "point_differential":
@@ -702,16 +702,18 @@ function describeSeparation(reason: SeparationReason): string {
 function advancementNotes(
   standings: Standing[],
   qualifyCount: number | null,
+  teamDisplayById: Map<string, TeamDisplay>,
 ): Map<string, string> {
   const notes = new Map<string, string>();
   if (qualifyCount === null) return notes;
 
   for (let i = 0; i < Math.min(qualifyCount, standings.length); i++) {
     const here = standings[i]!;
-    const reason = standings[i + 1]?.separatedFromAbove;
+    const below = standings[i + 1];
+    const reason = below?.separatedFromAbove;
     notes.set(
       here.entrantId,
-      reason ? describeSeparation(reason) : `Outright ${here.wins}-${here.losses} record`,
+      reason ? describeSeparation(reason, teamDisplayById.get(below.entrantId)) : `Outright ${here.wins}-${here.losses} record`,
     );
   }
   return notes;
@@ -804,7 +806,7 @@ export async function getDisplayStandings(tournamentId: string): Promise<Display
       const groupMatches = stageMatches.filter((m) => m.group === g.name);
       const standings = engineComputeStandings(g.entrantIds, groupMatches, cfg.tiebreakers);
       const qCount = qualifyCountByGroupId.get(groupRow.id) ?? defaultQualifyCount;
-      const notes = advancementNotes(standings, qCount);
+      const notes = advancementNotes(standings, qCount, teamDisplayById);
       const groupIsComplete =
         groupMatches.length > 0 && groupMatches.every((m) => RESOLVED_STATUSES.includes(m.status));
 

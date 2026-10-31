@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTournamentBySlug } from "@/lib/tournament-data";
 import { getServiceSupabase } from "@/lib/supabase-server";
-import { addPlayers, removePlayer } from "@/app/admin/actions";
+import { addPlayers, removePlayer, updatePlayerNickname } from "@/app/admin/actions";
 import { Card } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -14,7 +14,7 @@ export default async function SetupPlayersPage({ params }: PageProps<"/admin/[sl
   const supabase = getServiceSupabase();
   const { data: players } = await supabase
     .from("player")
-    .select("id, first_name, last_name, dupr_id")
+    .select("id, first_name, last_name, nickname, dupr_id")
     .eq("tournament_id", tournament.id)
     .order("first_name");
 
@@ -28,10 +28,11 @@ export default async function SetupPlayersPage({ params }: PageProps<"/admin/[sl
             label="Paste names, one per line"
             name="names"
             rows={6}
-            placeholder={"Jes Villafuerte\nMarco Reyes\nLea Dizon"}
+            placeholder={"Jes Villafuerte (Jes)\nMarco Reyes (Marc)\nLea Dizon"}
           />
           <p className="text-xs text-[var(--color-text-muted)]">
-            DUPR ID and photos are optional — players without a photo are assigned a stylish default icon badge.
+            Put a nickname in brackets after the name, e.g. &quot;Mevil Bacud (Meb)&quot;. Nicknames are used in
+            standings notes; without one, the first name is used. DUPR ID and photos are optional — players without a photo are assigned a stylish default icon badge.
           </p>
           <Button type="submit">Add players</Button>
         </form>
@@ -46,6 +47,18 @@ export default async function SetupPlayersPage({ params }: PageProps<"/admin/[sl
                 {`${p.first_name} ${p.last_name}`.trim()}
               </span>
               <div className="flex items-center gap-3">
+                <form action={updatePlayerNickname.bind(null, slug, p.id)} className="flex items-center gap-1">
+                  <input
+                    name="nickname"
+                    defaultValue={p.nickname ?? ""}
+                    placeholder="Nickname"
+                    aria-label={`Nickname for ${p.first_name}`}
+                    className="w-24 rounded-md border border-[var(--border-subtle)] px-2 py-1 text-xs"
+                  />
+                  <button type="submit" className="text-xs font-medium text-[var(--color-navy)] hover:underline">
+                    Save
+                  </button>
+                </form>
                 {p.dupr_id && (
                   <span className="text-xs text-[var(--color-text-muted)]">DUPR: {p.dupr_id}</span>
                 )}

@@ -4,6 +4,11 @@ import { getServiceSupabase } from "./supabase-server";
 
 export type TeamDisplay = {
   header: string;
+  /**
+   * The players' nicknames ("Meb & Rain"), falling back to first names, for
+   * places a full roster is too long -- such as a tiebreak note.
+   */
+  short?: string;
   subtext: string | null;
 };
 
@@ -36,21 +41,23 @@ type TeamWithMembers = {
   name: string;
   team_member: {
     position: number;
-    player: { id: string; first_name: string; last_name: string } | null;
+    player: { id: string; first_name: string; last_name: string; nickname?: string | null } | null;
   }[];
 };
 
 /** Shapes a joined team row into its display form, ordering players by roster position. */
 export function teamDisplayFromJoined(team: TeamWithMembers): TeamDisplay {
   const sortedMembers = [...(team.team_member ?? [])].sort((a, b) => a.position - b.position);
-  const playerNames = sortedMembers
+  const players = sortedMembers
     .filter((m): m is typeof m & { player: NonNullable<typeof m.player> } => Boolean(m.player))
-    .map((m) => `${m.player.first_name} ${m.player.last_name}`.trim())
-    .filter(Boolean);
-  return formatTeamDisplay(team.name, playerNames);
+    .map((m) => m.player);
+  const playerNames = players.map((p) => `${p.first_name} ${p.last_name}`.trim()).filter(Boolean);
+  const nicknames = players.map((p) => p.nickname?.trim() || p.first_name.trim()).filter(Boolean);
+  const display = formatTeamDisplay(team.name, playerNames);
+  return { ...display, short: nicknames.length ? nicknames.join(" & ") : display.header };
 }
 
-const TEAM_WITH_MEMBERS_SELECT = "id, name, team_member(position, player(id, first_name, last_name))";
+const TEAM_WITH_MEMBERS_SELECT = "id, name, team_member(position, player(id, first_name, last_name, nickname))";
 
 /**
  * Every team in a tournament, keyed by id, as one round trip -- the nested

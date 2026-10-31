@@ -60,7 +60,7 @@ export function stageLabel(input: StageLabelInput): StageLabel {
   if (is("16")) return { stage: "Round of 16", bracket: null, full: "Round of 16" };
   if (is("quarter")) return { stage: "Quarter Finals", bracket: null, full: "Quarter Finals" };
   if (is("semi")) return { stage: "Semi-Finals", bracket: null, full: "Semi-Finals" };
-  if (is("third")) return { stage: "Fight for 3rd Place", bracket: null, full: "Fight for 3rd Place" };
+  if (is("third")) return { stage: "3rd Place", bracket: null, full: "3rd Place" };
   if (is("champ") || is("final")) return { stage: "Championship", bracket: null, full: "Championship" };
 
   const bracket = bracketLabel(input.groupName, input.groupOrder);
