@@ -51,7 +51,11 @@ export function teamDisplayFromJoined(team: TeamWithMembers): TeamDisplay {
   const players = sortedMembers
     .filter((m): m is typeof m & { player: NonNullable<typeof m.player> } => Boolean(m.player))
     .map((m) => m.player);
-  const playerNames = players.map((p) => `${p.first_name} ${p.last_name}`.trim()).filter(Boolean);
+  // Players go by their nicknames everywhere public; the full name is only the
+  // fallback for someone who has none.
+  const playerNames = players
+    .map((p) => p.nickname?.trim() || `${p.first_name} ${p.last_name}`.trim())
+    .filter(Boolean);
   const nicknames = players.map((p) => p.nickname?.trim() || p.first_name.trim()).filter(Boolean);
   const display = formatTeamDisplay(team.name, playerNames);
   return { ...display, short: nicknames.length ? nicknames.join(" & ") : display.header };
