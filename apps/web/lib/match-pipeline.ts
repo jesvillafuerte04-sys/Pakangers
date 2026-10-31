@@ -665,12 +665,14 @@ function describeSeparation(reason: SeparationReason): string {
       return `Better win rate (${Math.round(aboveValue * 100)}% to ${Math.round(value * 100)}%)`;
     case "head_to_head":
       return `Won head-to-head${amongTied} (${aboveValue} ${aboveValue === 1 ? "win" : "wins"} to ${value})`;
+    case "head_to_head_two_way":
+      return "Won head-to-head against the tied team";
     case "head_to_head_point_differential":
       return `Better head-to-head point difference${amongTied} (${signed(aboveValue)} to ${signed(value)})`;
     case "point_differential":
-      return `Better point difference (${signed(aboveValue)} to ${signed(value)})`;
+      return `Better point difference${tiedCount > 2 ? ` in a ${tiedCount}-way tie` : ""} (${signed(aboveValue)} to ${signed(value)})`;
     case "points_scored":
-      return `More points scored (${aboveValue} to ${value})`;
+      return `More total points earned${tiedCount > 2 ? ` in a ${tiedCount}-way tie` : ""} (${aboveValue} to ${value})`;
     case "points_allowed":
       // metricValue negates this one, because fewer allowed is better.
       return `Fewer points allowed (${-aboveValue} to ${-value})`;

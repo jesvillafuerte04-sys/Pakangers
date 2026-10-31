@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { computeStandings } from '../src/standings.ts';
-import type { Match, ScoringConfig, Tiebreaker } from '../src/types.ts';
+import { PAKANGERS_TIEBREAKERS, type Match, type ScoringConfig, type Tiebreaker } from '../src/types.ts';
 
 const scoring: ScoringConfig = { pointsToWin: 11, winBy: 'sudden_death', bestOf: 1, scoringType: 'side_out' };
 
@@ -166,4 +166,50 @@ test('head_to_head still wins over point_differential for a simple two-way tie',
   ];
   const standings = computeStandings(['A', 'B', 'C'], matches, USAPA);
   assert.deepEqual(standings.map((s) => s.entrantId).slice(0, 2), ['A', 'B']);
+});
+
+test('Pakangers order: two teams level on wins go by head-to-head, not point differential', () => {
+  // A and B both 2-1. B has the far better margin, but A beat B.
+  const matches = [
+    match('A', 'B', 11, 9),
+    match('A', 'C', 11, 10),
+    match('D', 'A', 11, 2),
+    match('B', 'C', 11, 0),
+    match('B', 'D', 11, 0),
+    match('C', 'D', 11, 9),
+  ];
+  const standings = computeStandings(['A', 'B', 'C', 'D'], matches, PAKANGERS_TIEBREAKERS);
+  assert.deepEqual(standings.slice(0, 2).map((s) => s.entrantId), ['A', 'B']);
+  assert.equal(standings[1]!.separatedFromAbove?.tiebreaker, 'head_to_head_two_way');
+});
+
+test('Pakangers order: three teams level skip head-to-head and go by point differential', () => {
+  // A beats B, B beats C, C beats A (circular); each also beats D. C has the best margin.
+  const matches = [
+    match('A', 'B', 11, 9),
+    match('B', 'C', 11, 9),
+    match('C', 'A', 11, 1),
+    match('A', 'D', 11, 5),
+    match('B', 'D', 11, 5),
+    match('C', 'D', 11, 5),
+  ];
+  const standings = computeStandings(['A', 'B', 'C', 'D'], matches, PAKANGERS_TIEBREAKERS);
+  assert.deepEqual(standings.map((s) => s.entrantId), ['C', 'B', 'A', 'D']);
+  assert.equal(standings[0]!.separatedFromAbove, undefined);
+  assert.equal(standings[1]!.separatedFromAbove?.tiebreaker, 'point_differential');
+});
+
+test('Pakangers order: equal point differential in a three-way tie goes to total points earned', () => {
+  // Each finishes +8 overall, so it comes down to points earned: A 29, B 28, C 27.
+  const even = [
+    match('A', 'B', 11, 7),
+    match('B', 'C', 11, 7),
+    match('C', 'A', 11, 7),
+    match('A', 'D', 11, 3),
+    match('B', 'D', 10, 2),
+    match('C', 'D', 9, 1),
+  ];
+  const standings = computeStandings(['A', 'B', 'C', 'D'], even, PAKANGERS_TIEBREAKERS);
+  assert.deepEqual(standings.slice(0, 3).map((s) => s.entrantId), ['A', 'B', 'C']);
+  assert.equal(standings[1]!.separatedFromAbove?.tiebreaker, 'points_scored');
 });

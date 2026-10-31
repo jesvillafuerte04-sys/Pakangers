@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { USAPA_TIEBREAKERS } from "@pakangers/engine";
+import { PAKANGERS_TIEBREAKERS } from "@pakangers/engine";
 import { verifyPasscode, createSession, destroySession, requireSession } from "@/lib/session";
 import { getServiceSupabase } from "@/lib/supabase-server";
 import type { TypedSupabaseClient, Json } from "@pakangers/db";
@@ -62,9 +62,9 @@ async function instantiateFromTemplate(
   const groupIdByStageAndName = new Map<string, string>();
 
   for (const stage of config.stages) {
-    // Every round-robin stage ranks by the USA Pickleball order, whatever the
-    // stored template says -- older templates predate head-to-head.
-    const tiebreakers = stage.formatKey === "round_robin" ? USAPA_TIEBREAKERS : stage.tiebreakers;
+    // Every round-robin stage ranks by the Pakangers order, whatever the
+    // stored template says -- older templates predate it.
+    const tiebreakers = stage.formatKey === "round_robin" ? PAKANGERS_TIEBREAKERS : stage.tiebreakers;
 
     const { data: stageRow, error: stageError } = await supabase
       .from("stage")
@@ -595,7 +595,7 @@ async function deepDuplicateTournament(
           sequence: stg.sequence,
           scoring_config: stg.scoring_config,
           tiebreaker_config:
-            stg.format_key === "round_robin" ? (USAPA_TIEBREAKERS as unknown as Json) : stg.tiebreaker_config,
+            stg.format_key === "round_robin" ? (PAKANGERS_TIEBREAKERS as unknown as Json) : stg.tiebreaker_config,
           entrant_config: stg.entrant_config,
         })
         .select("id")
@@ -851,7 +851,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
   const crossoverStyle = String(formData.get("crossover_style") ?? "opposite");
   const includePools = formData.get("include_pools") === "true";
   const poolCount = Math.min(16, Math.max(1, parseInt(String(formData.get("pool_count") ?? "2"), 10)));
-  const advancePerPool = Math.min(2, Math.max(1, parseInt(String(formData.get("advance_per_pool") ?? "2"), 10)));
+  const advancePerPool = Math.min(4, Math.max(1, parseInt(String(formData.get("advance_per_pool") ?? "2"), 10)));
   const includeThirdPlace = formData.get("include_third_place") === "true";
 
   const pointsToWin = parseInt(String(formData.get("points_to_win") ?? "11"), 10) || 11;
@@ -920,7 +920,7 @@ export async function configureTournamentStages(slug: string, formData: FormData
         format_key: "round_robin",
         sequence: currentSequence++,
         scoring_config: poolScoring as unknown as Json,
-        tiebreaker_config: USAPA_TIEBREAKERS as unknown as Json,
+        tiebreaker_config: PAKANGERS_TIEBREAKERS as unknown as Json,
       })
       .select("id")
       .single();

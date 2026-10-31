@@ -3,7 +3,7 @@ import { getPublicTournament } from "@/lib/public-data";
 import { getDisplayStandings } from "@/lib/match-pipeline";
 import { Card } from "@/components/ui/Card";
 import { StandingsRow } from "@/components/StandingsRow";
-import type { Tiebreaker } from "@pakangers/engine";
+import { PAKANGERS_TIEBREAKERS, type Tiebreaker } from "@pakangers/engine";
 import { bracketLabel } from "@/lib/match-identity";
 
 const TIEBREAKER_LABEL: Record<Tiebreaker, string> = {
@@ -11,6 +11,7 @@ const TIEBREAKER_LABEL: Record<Tiebreaker, string> = {
   win_percentage: "win percentage",
   head_to_head: "head-to-head",
   head_to_head_point_differential: "head-to-head point differential",
+  head_to_head_two_way: "head-to-head (when two teams are tied)",
   point_differential: "point differential",
   points_scored: "points scored",
   points_allowed: "points allowed",
@@ -20,6 +21,10 @@ const TIEBREAKER_LABEL: Record<Tiebreaker, string> = {
 
 function formatTiebreakerNote(tiebreakers: Tiebreaker[]): string {
   if (tiebreakers.length === 0) return "";
+  // The Pakangers order reads more plainly as the rule players are told.
+  if (tiebreakers.join() === PAKANGERS_TIEBREAKERS.join()) {
+    return "Ranked by matches won. Two teams tied: head-to-head winner. Three or more tied: point differential, then total points earned, then coin toss.";
+  }
   const labels = tiebreakers.map((tb) => TIEBREAKER_LABEL[tb] ?? tb);
   if (labels.length === 1) {
     return `Ties are broken by: ${labels[0]}.`;

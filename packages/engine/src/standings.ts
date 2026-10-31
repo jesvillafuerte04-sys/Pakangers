@@ -123,6 +123,9 @@ function partitionByKey(group: Standing[], keyOf: (s: Standing) => number): Stan
 
 /** The value a tiebreaker compares, for one entrant within a tied group. */
 function valueFor(s: Standing, group: Standing[], matches: Match[], tb: Tiebreaker): number {
+  if (tb === 'head_to_head_two_way') {
+    return headToHeadWins(group.map((g) => g.entrantId), matches).get(s.entrantId) ?? 0;
+  }
   if (tb === 'head_to_head' || tb === 'head_to_head_point_differential') {
     const ids = group.map((g) => g.entrantId);
     const metric = tb === 'head_to_head' ? headToHeadWins(ids, matches) : headToHeadPointDiff(ids, matches);
@@ -136,6 +139,12 @@ function valueFor(s: Standing, group: Standing[], matches: Match[], tb: Tiebreak
  * A single returned group means this tiebreaker could not separate anyone.
  */
 function applyTiebreaker(group: Standing[], matches: Match[], tb: Tiebreaker): Standing[][] {
+  if (tb === 'head_to_head_two_way') {
+    // Only a straight two-way tie is settled by the match between them; with
+    // three or more level the results can go round in a circle, so it passes.
+    if (group.length !== 2) return [group];
+    return applyTiebreaker(group, matches, 'head_to_head');
+  }
   if (tb === 'head_to_head' || tb === 'head_to_head_point_differential') {
     // Both are computed over the matches played *between the tied entrants only*,
     // which is what USA Pickleball calls for. With 3+ tied entrants this is the

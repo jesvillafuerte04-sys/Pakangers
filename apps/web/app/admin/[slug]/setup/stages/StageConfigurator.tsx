@@ -15,10 +15,10 @@ interface Props {
 
 export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
   const [isPending, startTransition] = useTransition();
-  const [playoffFormat, setPlayoffFormat] = useState<PlayoffFormat>("semifinals");
+  const [playoffFormat, setPlayoffFormat] = useState<PlayoffFormat>("quarterfinals");
   const [includePools, setIncludePools] = useState(true);
   const [crossoverStyle, setCrossoverStyle] = useState<"opposite" | "adjacent">("opposite");
-  const [poolCount, setPoolCount] = useState(2);
+  const [poolCount, setPoolCount] = useState(4);
   const [advancePerPool, setAdvancePerPool] = useState(2);
   const [includeThirdPlace, setIncludeThirdPlace] = useState(true);
 
@@ -73,15 +73,10 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
 
   const handlePoolCountChange = (count: number) => {
     setPoolCount(count);
-    if (playoffFormat === "quarterfinals") {
-      setAdvancePerPool(count >= 8 ? 1 : 2);
-    } else if (playoffFormat === "semifinals") {
-      setAdvancePerPool(count >= 4 ? 1 : 2);
-    } else if (playoffFormat === "round_of_16") {
-      setAdvancePerPool(count >= 16 ? 1 : 2);
-    } else if (playoffFormat === "finals_only") {
-      setAdvancePerPool(1);
-    }
+    // Advance just enough per pool to fill the knockout exactly, e.g. 2
+    // brackets into the quarterfinals take the top 4 of each.
+    const slots = { round_of_16: 16, quarterfinals: 8, semifinals: 4, finals_only: 2, none: 0 }[playoffFormat];
+    if (slots > 0) setAdvancePerPool(Math.max(1, Math.min(4, slots / count)));
   };
 
   const totalKnockoutSlots =
@@ -98,8 +93,8 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
   const isPoolCountAllowed = (num: number, format: PlayoffFormat) => {
     if (format === "none") return true;
     if (format === "round_of_16") return num === 8;
-    if (format === "quarterfinals") return num === 4;
-    if (format === "semifinals") return num === 2 || num === 4;
+    if (format === "quarterfinals") return num === 2 || num === 4 || num === 8;
+    if (format === "semifinals") return num === 1 || num === 2 || num === 4;
     if (format === "finals_only") return num === 1 || num === 2;
     return true;
   };
@@ -183,8 +178,8 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {[
               { id: "round_of_16", label: "Round of 16 (Top 16)", desc: "16 teams · 8 Pools (Top 2)" },
-              { id: "quarterfinals", label: "Quarterfinals (Top 8)", desc: "8 teams · 4 Pools (Top 2)" },
-              { id: "semifinals", label: "Semifinals (Top 4)", desc: "4 teams · 2 Pools (Top 2) or 4 Pools (Top 1)" },
+              { id: "quarterfinals", label: "Quarterfinals (Top 8)", desc: "8 teams · 2 Pools (Top 4), 4 Pools (Top 2) or 8 Pools (Top 1) · Official format" },
+              { id: "semifinals", label: "Semifinals (Top 4)", desc: "4 teams · 1 Pool (Top 4), 2 Pools (Top 2) or 4 Pools (Top 1)" },
               { id: "finals_only", label: "Championship Only", desc: "Top 2 teams · 1 final match" },
               { id: "none", label: "Pure Round Robin", desc: "Pools only · No knockout stage" },
             ].map((opt) => {
@@ -270,7 +265,7 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
                     Advance per Pool ({poolCount * advancePerPool} Teams)
                   </label>
                   <div className="flex gap-2">
-                    {[1, 2].map((adv) => {
+                    {[1, 2, 4].map((adv) => {
                       const advAllowed = isAdvanceAllowed(adv);
                       return (
                         <button
@@ -298,6 +293,15 @@ export function StageConfigurator({ slug, isDraft, currentStageCount }: Props) {
         </div>
 
         {/* Crossover Seeding Options */}
+        {includePools && poolCount === 2 && advancePerPool === 4 && playoffFormat === "quarterfinals" && (
+          <div className="flex flex-col gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-sunken)] p-4">
+            <span className="text-sm font-bold text-[var(--color-navy)]">Quarterfinal Crossover</span>
+            <span className="text-xs text-[var(--color-text-muted)]">
+              A1 vs B4, A2 vs B3, A3 vs B2, A4 vs B1. A1 and B1 sit in opposite halves, so they can only meet in the championship.
+            </span>
+          </div>
+        )}
+
         {includePools && poolCount >= 4 && playoffFormat !== "none" && (
           <div className="flex flex-col gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-sunken)] p-4">
             <div className="flex flex-col">

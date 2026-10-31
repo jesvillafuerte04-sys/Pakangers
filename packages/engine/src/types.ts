@@ -13,6 +13,11 @@ export type Tiebreaker =
   | 'head_to_head'
   /** Point differential counted only in matches between the tied entrants (USA Pickleball step 2). */
   | 'head_to_head_point_differential'
+  /**
+   * Head-to-head result, consulted only when exactly two entrants are level.
+   * A tie of three or more skips it and falls through to the next criterion.
+   */
+  | 'head_to_head_two_way'
   | 'point_differential'
   | 'points_scored'
   | 'points_allowed'
@@ -39,6 +44,26 @@ export const USAPA_TIEBREAKERS: Tiebreaker[] = [
   'head_to_head_point_differential',
   'point_differential',
   'points_allowed',
+  'coin_flip',
+];
+
+/**
+ * The Pakangers round-robin tie-break order, used for every official event.
+ *
+ *  1. match_wins            most matches won
+ *  2. head_to_head_two_way  two teams level: the winner of their match
+ *  3. point_differential    three or more level: overall margin in the bracket
+ *  4. points_scored         then total points earned
+ *  5. coin_flip             then a coin toss; flagged, never guessed
+ *
+ * The list is re-applied from the top whenever a tie splits, so a three-way
+ * tie that point differential narrows to two is then settled head-to-head.
+ */
+export const PAKANGERS_TIEBREAKERS: Tiebreaker[] = [
+  'match_wins',
+  'head_to_head_two_way',
+  'point_differential',
+  'points_scored',
   'coin_flip',
 ];
 
